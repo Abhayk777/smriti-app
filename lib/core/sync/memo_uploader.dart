@@ -2,9 +2,7 @@ import 'dart:io';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../db/app_database.dart';
 import '../db/database.dart';
-import '../files/file_paths.dart';
 import '../repo/memo_repo.dart';
 
 /// Result of a memo upload operation.

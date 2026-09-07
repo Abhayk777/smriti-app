@@ -8,9 +8,18 @@ import '../core/ability/estimator.dart';
 enum PhraseKey {
   sessionStart,
   sessionEnd,
-  marketBasketIntro,
-  tryAnother,
   wellDone,
+  tryAnother,
+  // Game intros
+  marketBasketIntro,
+  facesOfFamilyIntro,
+  sortHarvestIntro,
+  tracePathIntro,
+  myDayIntro,
+  lampsFestivalIntro,
+  nameHarvestIntro,
+  weavingPatternsIntro,
+  soundsHomeIntro,
 }
 
 /// One playable item generated for a trial.
@@ -67,29 +76,9 @@ class TrialResult {
   final Map<String, Object?> metrics;
 }
 
-/// Content a game draws its items from. Today this is loaded from the mock
-/// content JSON; from task A09 onward `ContentPuller` populates the same shape
-/// from Drift.
-class GameContent {
-  const GameContent({
-    required this.version,
-    required this.marketItems,
-  });
-
-  factory GameContent.fromJson(Map<String, Object?> json) {
-    final items = (json['marketItems'] as List<Object?>? ?? const [])
-        .cast<Map<String, Object?>>()
-        .map(MarketItem.fromJson)
-        .toList(growable: false);
-    return GameContent(
-      version: json['version'] as String? ?? 'unknown',
-      marketItems: items,
-    );
-  }
-
-  final String version;
-  final List<MarketItem> marketItems;
-}
+// ---------------------------------------------------------------------------
+// Content models for all games
+// ---------------------------------------------------------------------------
 
 /// A single purchasable thing on the market shelf.
 class MarketItem {
@@ -113,6 +102,100 @@ class MarketItem {
 
   /// Used to classify a wrong pick as semantically near or far.
   final String category;
+}
+
+/// A person from the elder's family, for the Faces of My Family game.
+class PersonItem {
+  const PersonItem({
+    required this.id,
+    required this.name,
+    required this.relationship,
+    required this.photoPath,
+    this.voicePath,
+    this.memoryPrompt,
+    this.isDeceased = false,
+  });
+
+  factory PersonItem.fromJson(Map<String, Object?> json) => PersonItem(
+        id: json['id'] as String,
+        name: json['name'] as String,
+        relationship: json['relationship'] as String,
+        photoPath: json['photoPath'] as String? ?? '',
+        voicePath: json['voicePath'] as String?,
+        memoryPrompt: json['memoryPrompt'] as String?,
+        isDeceased: json['isDeceased'] as bool? ?? false,
+      );
+
+  final String id;
+  final String name;
+  final String relationship;
+  final String photoPath;
+  final String? voicePath;
+  final String? memoryPrompt;
+  final bool isDeceased;
+}
+
+/// A routine activity for the My Day game.
+class RoutineEntry {
+  const RoutineEntry({
+    required this.id,
+    required this.timeMin,
+    required this.labelKey,
+    required this.iconAsset,
+  });
+
+  factory RoutineEntry.fromJson(Map<String, Object?> json) => RoutineEntry(
+        id: json['id'] as String,
+        timeMin: json['timeMin'] as int,
+        labelKey: json['labelKey'] as String,
+        iconAsset: json['iconAsset'] as String,
+      );
+
+  final String id;
+  final int timeMin; // minutes from midnight
+  final String labelKey;
+  final String iconAsset;
+}
+
+/// Content a game draws its items from. Today this is loaded from the mock
+/// content JSON; from task A09 onward `ContentPuller` populates the same shape
+/// from Drift.
+class GameContent {
+  const GameContent({
+    required this.version,
+    required this.marketItems,
+    this.people = const [],
+    this.routineItems = const [],
+  });
+
+  factory GameContent.fromJson(Map<String, Object?> json) {
+    final items = (json['marketItems'] as List<Object?>? ?? const [])
+        .cast<Map<String, Object?>>()
+        .map(MarketItem.fromJson)
+        .toList(growable: false);
+
+    final people = (json['people'] as List<Object?>? ?? const [])
+        .cast<Map<String, Object?>>()
+        .map(PersonItem.fromJson)
+        .toList(growable: false);
+
+    final routines = (json['routineItems'] as List<Object?>? ?? const [])
+        .cast<Map<String, Object?>>()
+        .map(RoutineEntry.fromJson)
+        .toList(growable: false);
+
+    return GameContent(
+      version: json['version'] as String? ?? 'unknown',
+      marketItems: items,
+      people: people,
+      routineItems: routines,
+    );
+  }
+
+  final String version;
+  final List<MarketItem> marketItems;
+  final List<PersonItem> people;
+  final List<RoutineEntry> routineItems;
 }
 
 /// The contract every game implements, per APP-BUILD-SPEC.md §11.

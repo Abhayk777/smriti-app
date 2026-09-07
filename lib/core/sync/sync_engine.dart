@@ -1,9 +1,10 @@
 import 'dart:async';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:workmanager/workmanager.dart';
 
-import '../db/app_database.dart';
+import '../db/database.dart';
 import '../repo/content_repo.dart';
 import '../repo/event_repo.dart';
 import '../repo/memo_repo.dart';
@@ -36,8 +37,8 @@ class SyncResult {
   });
 
   const SyncResult.ok() : this._(ok: true, errors: const [], trigger: null);
-  const SyncResult.skipped(String reason) : this._(ok: true, errors: [reason], trigger: null);
-  const SyncResult.partial(List<String> errors, {SyncTrigger? trigger})
+  SyncResult.skipped(String reason) : this._(ok: true, errors: [reason], trigger: null);
+  SyncResult.partial(List<String> errors, {SyncTrigger? trigger})
       : this._(ok: false, errors: errors, trigger: trigger);
 
   final bool ok;
@@ -91,6 +92,12 @@ class SyncEngine {
   /// Whether a sync is currently running.
   bool get isRunning => _running;
 
+  /// Current sync trigger being processed, if any.
+  SyncTrigger? get currentTrigger => _currentTrigger;
+
+  /// Configured sync interval.
+  Duration get syncInterval => _syncInterval;
+
   /// Last sync timestamp.
   DateTime? get lastSyncAt => _lastSyncAt;
 
@@ -101,7 +108,6 @@ class SyncEngine {
     // Setup connectivity listener
     Connectivity().onConnectivityChanged.listen((result) {
       if (result != ConnectivityResult.none) {
-        // Connectivity regained - trigger sync
         run(trigger: SyncTrigger.connectivityRegained);
       }
     });

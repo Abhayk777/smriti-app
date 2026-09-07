@@ -1,6 +1,6 @@
+import 'package:drift/drift.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../db/app_database.dart';
 import '../db/database.dart';
 import '../repo/event_repo.dart';
 
@@ -102,8 +102,8 @@ class EscalationWriter {
           medicationId: medicationId,
           step: step,
           requestedAt: DateTime.now().millisecondsSinceEpoch,
-          cancelled: const Value(false),
-          synced: const Value(false),
+          cancelled: Value(false),
+          synced: Value(false),
         ),
       );
       

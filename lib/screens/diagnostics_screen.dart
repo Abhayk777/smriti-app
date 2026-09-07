@@ -4,6 +4,7 @@ import '../app_colors.dart';
 import '../core/db/app_database.dart';
 import '../core/repo/content_repo.dart';
 import '../core/repo/event_repo.dart';
+import '../core/repo/memo_repo.dart';
 import '../core/sync/sync_engine.dart';
 
 /// Diagnostics screen for caregiver use only.

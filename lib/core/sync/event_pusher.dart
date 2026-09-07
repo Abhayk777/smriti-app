@@ -1,6 +1,5 @@
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
 
-import '../db/app_database.dart';
 import '../db/database.dart';
 import '../repo/event_repo.dart';
 
@@ -22,7 +21,7 @@ class EventPushResult {
   int get totalPushed => eventsPushed + sessionsPushed + reminderEventsPushed;
 }
 
-/// Pushes unsynced trial events, sessions, and reminder events to Supabase.
+/// Pushes unsynced trial events, sessions, and reminder events to supabase.Supabase.
 ///
 /// Per AGENTS.md non-negotiable #4: Device writes never use `.select()` or
 /// chain a `RETURNING`. Uses bare `.insert()` / `.upsert()` with onConflict.
@@ -45,7 +44,7 @@ class EventPusher {
         (throw Exception('No patientId configured'));
   }
 
-  /// Pushes all unsynced trial events to Supabase.
+  /// Pushes all unsynced trial events to supabase.Supabase.
   Future<EventPushResult> push() async {
     try {
       final pid = await _getPatientId();
@@ -61,7 +60,7 @@ class EventPusher {
           'patient_id': pid,
         }).toList();
         
-        await Supabase.instance.client.from('events').upsert(
+        await supabase.Supabase.instance.client.from('events').upsert(
           rows,
           onConflict: 'id',
           ignoreDuplicates: true,
@@ -84,7 +83,7 @@ class EventPusher {
           'patient_id': pid,
         }).toList();
         
-        await Supabase.instance.client.from('sessions').upsert(
+        await supabase.Supabase.instance.client.from('sessions').upsert(
           rows,
           onConflict: 'id',
           ignoreDuplicates: true,
@@ -105,7 +104,7 @@ class EventPusher {
           'patient_id': pid,
         }).toList();
         
-        await Supabase.instance.client.from('reminder_events').upsert(
+        await supabase.Supabase.instance.client.from('reminder_events').upsert(
           rows,
           onConflict: 'id',
           ignoreDuplicates: true,

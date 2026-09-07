@@ -4,7 +4,6 @@ import 'package:workmanager/workmanager.dart';
 
 import 'app_colors.dart';
 import 'core/auth/supabase_bootstrap.dart';
-import 'core/db/app_database.dart';
 import 'core/sync/sync_engine.dart';
 import 'screens/main_screen.dart';
 

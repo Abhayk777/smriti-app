@@ -1,8 +1,8 @@
 import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
 
-import '../db/app_database.dart';
 import '../db/database.dart';
 import '../repo/content_repo.dart';
+import 'reminder_isolate.dart';
 
 /// Schedules medication alarms using AndroidAlarmManager.
 ///
@@ -143,7 +143,6 @@ class AlarmScheduler {
     }
 
     // Find the next day of week
-    int nextDay = dayOfWeek;
     int daysToAdd = 0;
 
     if (today < dayOfWeek) {

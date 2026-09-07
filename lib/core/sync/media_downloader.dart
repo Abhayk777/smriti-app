@@ -1,7 +1,6 @@
 import 'dart:io';
-import 'dart:typed_data';
 
-import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as path;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../db/database.dart';
@@ -37,7 +36,9 @@ class MediaDownloader {
   /// The [remotePath] is the storage path from the backend (e.g., 'people/photos/abc123.jpg').
   Future<bool> downloadPeoplePhoto(String personId, String remotePath) async {
     try {
-      final localPath = FilePaths.peoplePhoto(personId);
+      final dir = await FilePaths.peoplePhotos();
+      final filename = path.basename(remotePath);
+      final localPath = path.join(dir, filename);
       final file = File(localPath);
       
       // Create parent directories if they don't exist
@@ -71,7 +72,9 @@ class MediaDownloader {
   /// Downloads a person's voice recording from Supabase storage.
   Future<bool> downloadPeopleVoice(String personId, String remotePath) async {
     try {
-      final localPath = FilePaths.peopleVoice(personId);
+      final dir = await FilePaths.peopleVoice();
+      final filename = path.basename(remotePath);
+      final localPath = path.join(dir, filename);
       final file = File(localPath);
       
       await file.create(recursive: true);
@@ -99,7 +102,9 @@ class MediaDownloader {
   /// Downloads a medication's photo from Supabase storage.
   Future<bool> downloadMedicationPhoto(String medId, String remotePath) async {
     try {
-      final localPath = FilePaths.medicationPhoto(medId);
+      final dir = await FilePaths.medicationPhotos();
+      final filename = path.basename(remotePath);
+      final localPath = path.join(dir, filename);
       final file = File(localPath);
       
       await file.create(recursive: true);
@@ -127,7 +132,9 @@ class MediaDownloader {
   /// Downloads a medication's voice reminder from Supabase storage.
   Future<bool> downloadMedicationVoice(String medId, String remotePath) async {
     try {
-      final localPath = FilePaths.medicationVoice(medId);
+      final dir = await FilePaths.medicationVoice();
+      final filename = path.basename(remotePath);
+      final localPath = path.join(dir, filename);
       final file = File(localPath);
       
       await file.create(recursive: true);
@@ -155,7 +162,9 @@ class MediaDownloader {
   /// Downloads language pack files.
   Future<bool> downloadLanguagePack(String langCode, String remotePath) async {
     try {
-      final localPath = FilePaths.languagePackFile(langCode, remotePath);
+      final dir = await FilePaths.languagePacks();
+      final filename = path.basename(remotePath);
+      final localPath = path.join(dir, filename);
       final file = File(localPath);
       
       await file.create(recursive: true);
@@ -192,17 +201,23 @@ class MediaDownloader {
     
     // Verify people media
     for (final p in peopleData) {
-      final personId = p['id'] as String;
-      
       if (p['photo_path'] is String && (p['photo_path'] as String).isNotEmpty) {
-        final file = File(FilePaths.peoplePhoto(personId));
+        final remotePath = p['photo_path'] as String;
+        final dir = await FilePaths.peoplePhotos();
+        final filename = path.basename(remotePath);
+        final filePath = path.join(dir, filename);
+        final file = File(filePath);
         if (await file.exists() && await file.length() > 0) {
           verified++;
         }
       }
       
       if (p['voice_path'] is String && (p['voice_path'] as String).isNotEmpty) {
-        final file = File(FilePaths.peopleVoice(personId));
+        final remotePath = p['voice_path'] as String;
+        final dir = await FilePaths.peopleVoice();
+        final filename = path.basename(remotePath);
+        final filePath = path.join(dir, filename);
+        final file = File(filePath);
         if (await file.exists() && await file.length() > 0) {
           verified++;
         }
@@ -211,17 +226,23 @@ class MediaDownloader {
     
     // Verify medications media
     for (final m in medicationsData) {
-      final medId = m['id'] as String;
-      
       if (m['pill_photo_path'] is String && (m['pill_photo_path'] as String).isNotEmpty) {
-        final file = File(FilePaths.medicationPhoto(medId));
+        final remotePath = m['pill_photo_path'] as String;
+        final dir = await FilePaths.medicationPhotos();
+        final filename = path.basename(remotePath);
+        final filePath = path.join(dir, filename);
+        final file = File(filePath);
         if (await file.exists() && await file.length() > 0) {
           verified++;
         }
       }
       
       if (m['voice_path'] is String && (m['voice_path'] as String).isNotEmpty) {
-        final file = File(FilePaths.medicationVoice(medId));
+        final remotePath = m['voice_path'] as String;
+        final dir = await FilePaths.medicationVoice();
+        final filename = path.basename(remotePath);
+        final filePath = path.join(dir, filename);
+        final file = File(filePath);
         if (await file.exists() && await file.length() > 0) {
           verified++;
         }
@@ -240,7 +261,8 @@ class MediaDownloader {
   /// Cleans up temporary download files.
   Future<void> cleanupTempFiles() async {
     try {
-      final tempDir = Directory(FilePaths.tempDir);
+      final tempDirPath = await FilePaths.temporary();
+      final tempDir = Directory(tempDirPath);
       if (await tempDir.exists()) {
         await tempDir.delete(recursive: true);
       }

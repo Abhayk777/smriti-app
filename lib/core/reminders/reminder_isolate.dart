@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
+import 'package:flutter/foundation.dart';
+import 'package:drift/drift.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:just_audio/just_audio.dart';
@@ -9,6 +11,9 @@ import 'package:path_provider/path_provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
+
+// Platform-specific imports
+import 'package:flutter_local_notifications/flutter_local_notifications.dart' as notifications;
 
 import '../db/app_database.dart';
 import '../db/database.dart';
@@ -50,7 +55,17 @@ class LadderConfig {
 Future<void> fireReminderCallback(int id, Map<String, dynamic> params) async {
   // Step 1: Initialize bindings for isolate
   WidgetsFlutterBinding.ensureInitialized();
-  DartPluginRegistrant.ensureInitialized();
+  // DartPluginRegistrant is available on Android through flutter plugins
+  // For Windows, we don't need it
+  if (Platform.isAndroid) {
+    // This will be resolved at runtime on Android
+    try {
+      // ignore: undefined_identifier
+      DartPluginRegistrant.ensureInitialized();
+    } catch (_) {
+      // On platforms where it's not available, continue without it
+    }
+  }
   
   // Step 2: Open own Drift connection
   final db = await _openDatabaseConnection();
@@ -82,7 +97,7 @@ Future<void> fireReminderCallback(int id, Map<String, dynamic> params) async {
         id: reminderEventId,
         medicationId: medicationId,
         scheduledAt: now.millisecondsSinceEpoch,
-        firedAt: now.millisecondsSinceEpoch,
+        firedAt: Value(now.millisecondsSinceEpoch),
         channel: 'fullscreen',
         ladderStep: 0,
         synced: const Value(false),
@@ -145,9 +160,9 @@ Future<SmritiDatabase?> _openDatabaseConnection() async {
 Future<void> _showFullScreenNotification(String reminderEventId, Medication med) async {
   try {
     // Initialize notifications
-    const flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+    final flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
     
-    const androidPlatformChannelSpecifics = AndroidNotificationDetails(
+    final androidPlatformChannelSpecifics = AndroidNotificationDetails(
       'medication_reminder',
       'Medication Reminder',
       channelDescription: 'Full-screen medication reminders',
@@ -160,7 +175,7 @@ Future<void> _showFullScreenNotification(String reminderEventId, Medication med)
       ongoing: true,
     );
     
-    const platformChannelSpecifics = NotificationDetails(
+    final platformChannelSpecifics = NotificationDetails(
       android: androidPlatformChannelSpecifics,
     );
     
@@ -168,7 +183,7 @@ Future<void> _showFullScreenNotification(String reminderEventId, Medication med)
     await flutterLocalNotificationsPlugin.show(
       reminderEventId.hashCode,
       'Time for: ${med.name}',
-      '${med.dose}',
+      med.dose,
       platformChannelSpecifics,
       payload: 'medication_reminder:$reminderEventId',
     );
@@ -249,7 +264,17 @@ int _ladderAlarmId(String reminderEventId, int step) {
 Future<void> _fireLadderCallback(int id, Map<String, dynamic> params) async {
   // Initialize bindings
   WidgetsFlutterBinding.ensureInitialized();
-  DartPluginRegistrant.ensureInitialized();
+  // DartPluginRegistrant is available on Android through flutter plugins
+  // For Windows, we don't need it
+  if (defaultTargetPlatform == TargetPlatform.android) {
+    // This will be resolved at runtime on Android
+    try {
+      // ignore: undefined_identifier
+      DartPluginRegistrant.ensureInitialized();
+    } catch (_) {
+      // On platforms where it's not available, continue without it
+    }
+  }
   
   final db = await _openDatabaseConnection();
   if (db == null) return;
@@ -288,7 +313,7 @@ Future<void> _fireLadderCallback(int id, Map<String, dynamic> params) async {
         id: const Uuid().v4(),
         medicationId: medicationId,
         scheduledAt: originalEvent.scheduledAt,
-        firedAt: now.millisecondsSinceEpoch,
+        firedAt: Value(now.millisecondsSinceEpoch),
         channel: step == 1 ? 'fullscreen' : 'escalation',
         ladderStep: step,
         synced: const Value(false),
@@ -343,8 +368,8 @@ Future<void> _writeEscalationRequest(
         medicationId: medicationId,
         step: step,
         requestedAt: now.millisecondsSinceEpoch,
-        cancelled: const Value(false),
-        synced: const Value(false),
+        cancelled: Value(false),
+        synced: Value(false),
       ),
     );
     

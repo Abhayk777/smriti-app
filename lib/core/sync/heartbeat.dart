@@ -1,7 +1,6 @@
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../db/app_database.dart';
 import '../db/database.dart';
 import '../repo/event_repo.dart';
 
