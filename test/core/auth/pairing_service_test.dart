@@ -11,15 +11,30 @@ import '../repo/_test_db.dart';
 /// The live Edge Function is never called from tests; see the note in the task
 /// report about manual verification with a real token.
 class FakePairingGateway implements PairingGateway {
-  FakePairingGateway({this.response, this.onInvoke});
+  FakePairingGateway({
+    this.response,
+    this.onInvoke,
+    this.patientRows = const [],
+    this.signInError,
+    this.patientsError,
+  });
 
   final PairingResponse? response;
   final PairingResponse Function(String function, Map<String, dynamic> body)?
       onInvoke;
+  final List<Map<String, dynamic>> patientRows;
+  final Object? signInError;
+  final Object? patientsError;
 
   final List<String> invokedFunctions = [];
   final List<Map<String, dynamic>> bodies = [];
   final List<String> sessions = [];
+  final List<String> signIns = [];
+  int signOuts = 0;
+
+  /// Every gateway call in order, so tests can assert that sign-out happens
+  /// before the device session is established (AGENTS.md #8).
+  final List<String> calls = [];
 
   int get invocations => invokedFunctions.length;
 
@@ -28,6 +43,7 @@ class FakePairingGateway implements PairingGateway {
     String function,
     Map<String, dynamic> body,
   ) async {
+    calls.add('invoke:$function');
     invokedFunctions.add(function);
     bodies.add(body);
     return onInvoke?.call(function, body) ??
@@ -37,9 +53,45 @@ class FakePairingGateway implements PairingGateway {
 
   @override
   Future<void> setSession(String refreshToken) async {
+    calls.add('setSession');
     sessions.add(refreshToken);
   }
+
+  @override
+  Future<void> signInWithPassword(String email, String password) async {
+    calls.add('signIn');
+    if (signInError != null) throw signInError!;
+    signIns.add(email);
+  }
+
+  @override
+  Future<void> signOut() async {
+    calls.add('signOut');
+    signOuts++;
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> fetchCaregiverPatients() async {
+    calls.add('fetchPatients');
+    if (patientsError != null) throw patientsError!;
+    return patientRows;
+  }
 }
+
+/// A `patient_members` row shaped like the real nested select returns.
+Map<String, dynamic> patientRow({
+  required String id,
+  required String displayName,
+  String langCode = 'as',
+}) =>
+    {
+      'patient_id': id,
+      'patients': {
+        'id': id,
+        'display_name': displayName,
+        'lang_code': langCode,
+      },
+    };
 
 /// A realistic successful response from `redeem-pairing-token`.
 Map<String, dynamic> successBody({
@@ -234,6 +286,208 @@ void main() {
 
       // Untouched domains are still seeded.
       expect(await abilityRepo.getRecord(CognitiveDomain.language), isNotNull);
+    });
+  });
+
+  group('caregiver-login path', () {
+    test('signs the caregiver out BEFORE establishing the device session',
+        () async {
+      final gateway = FakePairingGateway(
+        response: PairingResponse(status: 200, data: successBody()),
+        patientRows: [patientRow(id: 'p1', displayName: 'Aai')],
+      );
+      final service = serviceWith(gateway);
+
+      await service.signInCaregiver(email: 'c@example.com', password: 'pw');
+      await service.completeCaregiverPairing('p1');
+
+      // The whole point of AGENTS.md non-negotiable #8, asserted as an order.
+      expect(gateway.calls, [
+        'signIn',
+        'fetchPatients',
+        'invoke:pair-device-authenticated',
+        'signOut',
+        'setSession',
+      ]);
+      expect(
+        gateway.calls.indexOf('signOut'),
+        lessThan(gateway.calls.indexOf('setSession')),
+        reason: 'caregiver credentials must be gone before the device session',
+      );
+
+      expect(gateway.bodies.single, {'patient_id': 'p1'});
+      expect(await db.appConfigsDao.getValue('patientId'),
+          '3f1c9b2e-5d47-4a1e-9c3a-77f0e2a4b118');
+      expect(await abilityRepo.getRecord(CognitiveDomain.memory), isNotNull);
+    });
+
+    test('parses the nested patient_members select', () async {
+      final gateway = FakePairingGateway(
+        patientRows: [
+          patientRow(id: 'p1', displayName: 'Aai', langCode: 'as'),
+          patientRow(id: 'p2', displayName: 'Deuta', langCode: 'bn'),
+        ],
+      );
+
+      final patients = await serviceWith(gateway)
+          .signInCaregiver(email: ' c@example.com ', password: 'pw');
+
+      expect(patients.map((p) => p.id), ['p1', 'p2']);
+      expect(patients.map((p) => p.displayName), ['Aai', 'Deuta']);
+      expect(patients.map((p) => p.langCode), ['as', 'bn']);
+      // Email is trimmed before it reaches the backend.
+      expect(gateway.signIns, ['c@example.com']);
+      // Still signed in: the picker needs the session alive.
+      expect(gateway.signOuts, 0);
+    });
+
+    test('tolerates the join arriving as a single-element list', () async {
+      final gateway = FakePairingGateway(
+        patientRows: [
+          {
+            'patient_id': 'p1',
+            'patients': [
+              {'id': 'p1', 'display_name': 'Aai', 'lang_code': 'as'},
+            ],
+          },
+        ],
+      );
+
+      final patients = await serviceWith(gateway)
+          .signInCaregiver(email: 'c@example.com', password: 'pw');
+
+      expect(patients.single.id, 'p1');
+      expect(patients.single.displayName, 'Aai');
+    });
+
+    test('empty credentials never reach the network', () async {
+      final gateway = FakePairingGateway();
+      final service = serviceWith(gateway);
+
+      await expectLater(
+        service.signInCaregiver(email: '  ', password: 'pw'),
+        throwsA(isA<PairingException>()),
+      );
+      await expectLater(
+        service.signInCaregiver(email: 'c@example.com', password: ''),
+        throwsA(isA<PairingException>()),
+      );
+
+      expect(gateway.calls, isEmpty);
+    });
+
+    test('a caregiver managing no patients is signed out again', () async {
+      final gateway = FakePairingGateway(patientRows: const []);
+
+      await expectLater(
+        serviceWith(gateway)
+            .signInCaregiver(email: 'c@example.com', password: 'pw'),
+        throwsA(isA<PairingException>()),
+      );
+
+      expect(gateway.signOuts, 1,
+          reason: 'no credentials may be left on the tablet');
+      expect(gateway.calls, ['signIn', 'fetchPatients', 'signOut']);
+    });
+
+    test('a failed patient lookup signs the caregiver out', () async {
+      final gateway = FakePairingGateway(
+        patientsError: Exception('network down'),
+      );
+
+      await expectLater(
+        serviceWith(gateway)
+            .signInCaregiver(email: 'c@example.com', password: 'pw'),
+        throwsA(isA<Exception>()),
+      );
+
+      expect(gateway.signOuts, 1);
+    });
+
+    test('cancelling after sign-in signs out', () async {
+      final gateway = FakePairingGateway(
+        patientRows: [patientRow(id: 'p1', displayName: 'Aai')],
+      );
+      final service = serviceWith(gateway);
+
+      await service.signInCaregiver(email: 'c@example.com', password: 'pw');
+      await service.cancelCaregiverLogin();
+
+      expect(gateway.signOuts, 1);
+      expect(gateway.sessions, isEmpty);
+      expect(await db.appConfigsDao.getValue('patientId'), isNull);
+    });
+
+    test('a rejected pairing still signs out, and pairs nothing', () async {
+      final gateway = FakePairingGateway(
+        response: const PairingResponse(
+          status: 403,
+          data: {'error': 'not authorised for this patient'},
+        ),
+        patientRows: [patientRow(id: 'p1', displayName: 'Aai')],
+      );
+      final service = serviceWith(gateway);
+
+      await service.signInCaregiver(email: 'c@example.com', password: 'pw');
+      await expectLater(
+        service.completeCaregiverPairing('p1'),
+        throwsA(
+          isA<PairingException>().having(
+            (e) => e.message,
+            'message',
+            'not authorised for this patient',
+          ),
+        ),
+      );
+
+      expect(gateway.signOuts, 1, reason: 'sign-out happens even on failure');
+      expect(gateway.sessions, isEmpty);
+      expect(await db.appConfigsDao.getValue('patientId'), isNull);
+    });
+
+    test('a thrown Edge Function call still signs out', () async {
+      final gateway = FakePairingGateway(
+        onInvoke: (_, __) => throw Exception('connection reset'),
+        patientRows: [patientRow(id: 'p1', displayName: 'Aai')],
+      );
+      final service = serviceWith(gateway);
+
+      await service.signInCaregiver(email: 'c@example.com', password: 'pw');
+      await expectLater(
+        service.completeCaregiverPairing('p1'),
+        throwsA(isA<Exception>()),
+      );
+
+      expect(gateway.signOuts, 1);
+      expect(gateway.sessions, isEmpty);
+    });
+
+    test('pairing with no patient selected never calls the backend', () async {
+      final gateway = FakePairingGateway();
+
+      await expectLater(
+        serviceWith(gateway).completeCaregiverPairing(''),
+        throwsA(isA<PairingException>()),
+      );
+
+      expect(gateway.invocations, 0);
+    });
+
+    test('the single-call form from spec 8 keeps the same ordering', () async {
+      final gateway = FakePairingGateway(
+        response: PairingResponse(status: 200, data: successBody()),
+      );
+
+      await serviceWith(gateway)
+          .pairViaCaregiverLogin('c@example.com', 'pw', 'p1');
+
+      expect(gateway.calls, [
+        'signIn',
+        'invoke:pair-device-authenticated',
+        'signOut',
+        'setSession',
+      ]);
+      expect(await db.appConfigsDao.getValue('patientId'), isNotNull);
     });
   });
 

@@ -3,6 +3,8 @@ import 'package:smriti/app_colors.dart';
 import 'package:smriti/core/auth/pairing_service.dart';
 import 'package:smriti/core/db/app_database.dart';
 import 'package:smriti/core/repo/ability_repo.dart';
+import 'package:smriti/screens/pairing/pair_confirm_screen.dart';
+import 'package:smriti/screens/pairing/patient_picker_screen.dart';
 import 'package:smriti/screens/pairing/scan_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -32,6 +34,70 @@ class _LoginScreenState extends State<LoginScreen> {
     emailController.dispose();
     passwordController.dispose();
     super.dispose();
+  }
+
+  bool _isSigningIn = false;
+
+  /// Caregiver-login pairing path (APP-BUILD-SPEC.md §8). Signs in, picks a
+  /// patient if there is more than one, confirms, then pairs — and the service
+  /// signs the caregiver out before any device session exists.
+  Future<void> _signInAsCaregiver() async {
+    if (_isSigningIn) return;
+    _isSigningIn = true;
+
+    try {
+      final patients = await _pairingService.signInCaregiver(
+        email: emailController.text,
+        password: passwordController.text,
+      );
+
+      if (!mounted) return;
+
+      // One patient needs no picker.
+      var patient = patients.first;
+      if (patients.length > 1) {
+        final chosen = await Navigator.of(context).push<CaregiverPatient>(
+          MaterialPageRoute(
+            builder: (_) => PatientPickerScreen(patients: patients),
+          ),
+        );
+        if (chosen == null) {
+          await _pairingService.cancelCaregiverLogin();
+          return;
+        }
+        patient = chosen;
+      }
+
+      if (!mounted) return;
+      final paired = await Navigator.of(context).push<bool>(
+        MaterialPageRoute(
+          builder: (_) => PairConfirmScreen(
+            pairingService: _pairingService,
+            patient: patient,
+          ),
+        ),
+      );
+
+      if (paired == true && mounted) {
+        passwordController.clear();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Tablet paired.')),
+        );
+      }
+    } on PairingException catch (e) {
+      _showError(e.message);
+    } catch (_) {
+      _showError('Could not sign in. Check the connection and retry.');
+    } finally {
+      _isSigningIn = false;
+    }
+  }
+
+  void _showError(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
   }
 
   /// Opens the QR scanner. The code-entry fallback lives inside that screen, so
@@ -156,7 +222,8 @@ class _LoginScreenState extends State<LoginScreen> {
                         SizedBox(
                           width: double.infinity,height: 60,
                           child: ElevatedButton(
-                            onPressed: () {},
+                            key: const Key('sign_in_button'),
+                            onPressed: _signInAsCaregiver,
                             style: ElevatedButton.styleFrom(
                               backgroundColor:AppColors.terracotta,
                               foregroundColor: AppColors.onColor,elevation: 0,

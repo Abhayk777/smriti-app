@@ -25,6 +25,19 @@ class PairingResponse {
   final Object? data;
 }
 
+/// One patient a signed-in caregiver manages.
+class CaregiverPatient {
+  const CaregiverPatient({
+    required this.id,
+    required this.displayName,
+    required this.langCode,
+  });
+
+  final String id;
+  final String displayName;
+  final String langCode;
+}
+
 /// The network surface pairing needs.
 ///
 /// Exists so the service can be unit-tested without a live backend. The real
@@ -34,6 +47,13 @@ abstract class PairingGateway {
   Future<PairingResponse> invoke(String function, Map<String, dynamic> body);
 
   Future<void> setSession(String refreshToken);
+
+  Future<void> signInWithPassword(String email, String password);
+
+  Future<void> signOut();
+
+  /// Raw `patient_members` rows for the signed-in caregiver.
+  Future<List<Map<String, dynamic>>> fetchCaregiverPatients();
 }
 
 class SupabasePairingGateway implements PairingGateway {
@@ -52,6 +72,30 @@ class SupabasePairingGateway implements PairingGateway {
   @override
   Future<void> setSession(String refreshToken) =>
       Supabase.instance.client.auth.setSession(refreshToken);
+
+  @override
+  Future<void> signInWithPassword(String email, String password) async {
+    await Supabase.instance.client.auth
+        .signInWithPassword(email: email, password: password);
+  }
+
+  @override
+  Future<void> signOut() => Supabase.instance.client.auth.signOut();
+
+  /// Lists the caregiver's patients.
+  ///
+  /// A plain nested PostgREST select, not an RPC: RLS on `patient_members`
+  /// already scopes rows to the authenticated caller, so a caregiver only ever
+  /// sees their own. This is a caregiver-side read, so AGENTS.md non-negotiable
+  /// #4 (no `.select()` on device writes) does not apply.
+  @override
+  Future<List<Map<String, dynamic>>> fetchCaregiverPatients() async {
+    final rows = await Supabase.instance.client
+        .from('patient_members')
+        .select('patient_id, patients(id, display_name, lang_code)')
+        .eq('role', 'caregiver');
+    return (rows as List).cast<Map<String, dynamic>>();
+  }
 }
 
 /// Pairs this tablet to a patient.
@@ -122,6 +166,116 @@ class PairingService {
       throw const PairingException('invalid or expired code');
     }
     return redeemToken(code);
+  }
+
+  // CAREGIVER-LOGIN PATH
+  //
+  // Split into sign-in and pair steps because the patient picker sits between
+  // them: the list can only be read while the caregiver session is alive, but
+  // that session must be gone before the device session exists.
+
+  /// Signs the caregiver in and returns the patients they manage.
+  ///
+  /// If anything goes wrong after sign-in, the caregiver is signed out before
+  /// the error propagates — the tablet must never be left holding caregiver
+  /// credentials (AGENTS.md non-negotiable #8).
+  Future<List<CaregiverPatient>> signInCaregiver({
+    required String email,
+    required String password,
+  }) async {
+    final trimmedEmail = email.trim();
+    if (trimmedEmail.isEmpty || password.isEmpty) {
+      throw const PairingException('Enter an email address and password.');
+    }
+
+    await _gateway.signInWithPassword(trimmedEmail, password);
+
+    try {
+      final patients = _parsePatients(await _gateway.fetchCaregiverPatients());
+      if (patients.isEmpty) {
+        throw const PairingException(
+          'This account does not manage any patients.',
+        );
+      }
+      return patients;
+    } catch (_) {
+      await _gateway.signOut();
+      rethrow;
+    }
+  }
+
+  /// Abandons a caregiver login without pairing. Always signs out.
+  Future<void> cancelCaregiverLogin() => _gateway.signOut();
+
+  /// Completes pairing for [patientId] using the live caregiver session.
+  ///
+  /// The sign-out happens immediately after the Edge Function returns and
+  /// before the device session is established, in that order, per AGENTS.md
+  /// non-negotiable #8 — including when the call failed.
+  Future<void> completeCaregiverPairing(String patientId) async {
+    if (patientId.isEmpty) {
+      throw const PairingException('No patient selected.');
+    }
+
+    PairingResponse res;
+    try {
+      res = await _gateway.invoke(
+        'pair-device-authenticated',
+        {'patient_id': patientId},
+      );
+    } catch (_) {
+      await _gateway.signOut();
+      rethrow;
+    }
+
+    // Mandatory, and before setSession below.
+    await _gateway.signOut();
+
+    if (res.status != 200) {
+      throw PairingException(_errorOf(res.data) ?? 'could not pair this tablet');
+    }
+
+    await _completePairing(_asMap(res.data));
+  }
+
+  /// The single-call form given in APP-BUILD-SPEC.md §8, for a caregiver who
+  /// already knows which patient to pair. The UI uses the split form above so
+  /// it can show a picker.
+  Future<void> pairViaCaregiverLogin(
+    String email,
+    String password,
+    String patientId,
+  ) async {
+    await _gateway.signInWithPassword(email.trim(), password);
+    await completeCaregiverPairing(patientId);
+  }
+
+  /// Flattens `patient_members` rows joined to `patients`.
+  static List<CaregiverPatient> _parsePatients(
+    List<Map<String, dynamic>> rows,
+  ) {
+    final patients = <CaregiverPatient>[];
+    for (final row in rows) {
+      // PostgREST returns the joined row as an object, or as a single-element
+      // list depending on how the relationship is detected.
+      final joined = row['patients'];
+      final patient = joined is List
+          ? (joined.isEmpty ? null : joined.first)
+          : joined;
+      if (patient is! Map) continue;
+
+      final id = patient['id'] ?? row['patient_id'];
+      if (id is! String || id.isEmpty) continue;
+
+      patients.add(
+        CaregiverPatient(
+          id: id,
+          displayName: patient['display_name'] as String? ?? 'Unnamed patient',
+          langCode: patient['lang_code'] as String? ?? 'en',
+        ),
+      );
+    }
+    return patients;
   }
 
   /// Applies the device session and patient details returned by either path.
