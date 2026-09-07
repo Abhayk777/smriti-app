@@ -1,0 +1,73 @@
+{
+	"age": 76,
+	"people": [
+		{
+			"id": "1cda8709-d82e-4725-9e4f-97198052d57f",
+			"name": "Bina",
+			"photo_path": "test/placeholder.jpg",
+			"sort_order": 0,
+			"voice_path": null,
+			"is_deceased": false,
+			"relationship": "daughter",
+			"memory_prompt": null
+		},
+		{
+			"id": "5b9e6f77-f579-4004-bef5-55d486ee5e55",
+			"name": "Bina",
+			"photo_path": "test/placeholder.jpg",
+			"sort_order": 0,
+			"voice_path": null,
+			"is_deceased": false,
+			"relationship": "daughter",
+			"memory_prompt": null
+		}
+	],
+	"script": "latin",
+	"routine": [
+		{
+			"id": "a2207b97-ab90-44c0-b1fb-a71e1e0fb9b4",
+			"time_min": 480,
+			"label_key": "breakfast",
+			"icon_asset": "icon_breakfast"
+		},
+		{
+			"id": "8991f407-4ef4-466b-a8bd-1d7da16bc3e4",
+			"time_min": 480,
+			"label_key": "breakfast",
+			"icon_asset": "icon_breakfast"
+		}
+	],
+	"version": 7,
+	"timezone": "Asia/Kolkata",
+	"lang_code": "en",
+	"elder_name": "Test Patient",
+	"escalation": null,
+	"medications": [
+		{
+			"id": "12660487-f1b1-4641-8131-d72be0bb13c6",
+			"dose": "500mg",
+			"name": "Metformin",
+			"active": true,
+			"voice_path": null,
+			"days_of_week": "1,2,3,4,5,6,7",
+			"window_end_min": 540,
+			"chosen_time_min": 500,
+			"pill_photo_path": null,
+			"window_start_min": 480
+		},
+		{
+			"id": "42ceba66-d6d3-4d2c-8508-e4e759c92592",
+			"dose": "500mg",
+			"name": "Metformin",
+			"active": true,
+			"voice_path": null,
+			"days_of_week": "1,2,3,4,5,6,7",
+			"window_end_min": 540,
+			"chosen_time_min": 500,
+			"pill_photo_path": null,
+			"window_start_min": 480
+		}
+	],
+	"education_years": 8,
+	"lang_pack_version": 1
+}

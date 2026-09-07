@@ -8,10 +8,14 @@ import 'package:smriti/screens/pairing/patient_picker_screen.dart';
 import 'package:smriti/screens/pairing/scan_screen.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key, this.pairingService});
+  const LoginScreen({super.key, this.pairingService, this.onPaired});
 
   /// Injectable for tests; production builds it from the shared database.
   final PairingService? pairingService;
+
+  /// Called once pairing succeeds by either path, so the shell can leave the
+  /// login screen and start the first content pull.
+  final VoidCallback? onPaired;
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -80,9 +84,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (paired == true && mounted) {
         passwordController.clear();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Tablet paired.')),
-        );
+        widget.onPaired?.call();
       }
     } on PairingException catch (e) {
       _showError(e.message);
@@ -110,9 +112,7 @@ class _LoginScreenState extends State<LoginScreen> {
     );
 
     if (paired == true && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Tablet paired.')),
-      );
+      widget.onPaired?.call();
     }
   }
 

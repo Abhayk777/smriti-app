@@ -1,15 +1,22 @@
-// Smoke test for the app shell: MyApp must render the login screen.
-// MyApp is pumped directly rather than calling main(), so this test does not
-// require a live Supabase.initialize().
+// Smoke test for the app shell: an unpaired tablet must open on the login
+// screen. MyApp is pumped directly rather than calling main(), so this test
+// does not require a live Supabase.initialize().
 
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:smriti/core/app_services.dart';
 import 'package:smriti/main.dart';
 import 'package:smriti/screens/login_screen.dart';
 
+import 'core/repo/_test_db.dart';
+
 void main() {
-  testWidgets('MyApp shows the login screen', (WidgetTester tester) async {
-    await tester.pumpWidget(const MyApp());
+  testWidgets('an unpaired tablet opens on the login screen', (tester) async {
+    final db = newTestDb();
+    addTearDown(db.close);
+
+    await tester.pumpWidget(MyApp(services: AppServices(database: db)));
+    await tester.pumpAndSettle();
 
     expect(find.byType(LoginScreen), findsOneWidget);
     expect(find.text('Sign In'), findsOneWidget);

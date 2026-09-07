@@ -77,6 +77,29 @@ class EventRepo {
     await db.into(db.reminderEvents).insert(event);
   }
 
+  /// Records what the elder did about a dose, exactly once.
+  ///
+  /// AGENTS.md non-negotiable #3 lists `endedAt`/`completed` on a still-open
+  /// `Sessions` row as the permitted "finish the row" update. This is the same
+  /// shape for reminders: `outcome` and `respondedAt` are null from the moment
+  /// the alarm fires until the elder answers, and the `respondedAt IS NULL`
+  /// guard means a finalized row can never be rewritten. Flagged for
+  /// confirmation — #3 does not name this case explicitly.
+  Future<void> recordReminderOutcome({
+    required String id,
+    required String outcome,
+    required int respondedAt,
+  }) async {
+    await (db.update(db.reminderEvents)
+          ..where((t) => t.id.equals(id) & t.respondedAt.isNull()))
+        .write(
+      ReminderEventsCompanion(
+        outcome: Value(outcome),
+        respondedAt: Value(respondedAt),
+      ),
+    );
+  }
+
   Future<ReminderEvent?> getReminderEvent(String id) {
     return (db.select(db.reminderEvents)..where((t) => t.id.equals(id)))
         .getSingleOrNull();
@@ -129,6 +152,25 @@ class EventRepo {
           ..orderBy([(t) => OrderingTerm(expression: t.requestedAt)])
           ..limit(limit))
         .get();
+  }
+
+  /// Total rows still waiting to be pushed, across all four tables. Reported
+  /// to the server by the heartbeat (APP-BUILD-SPEC.md §9).
+  Future<int> unsyncedCount() async {
+    final counts = await Future.wait<int>([
+      _countUnsynced('trial_events'),
+      _countUnsynced('sessions'),
+      _countUnsynced('reminder_events'),
+      _countUnsynced('escalation_requests'),
+    ]);
+    return counts.fold<int>(0, (sum, count) => sum + count);
+  }
+
+  Future<int> _countUnsynced(String table) async {
+    final row = await db.customSelect(
+      'SELECT COUNT(*) AS c FROM $table WHERE synced = 0',
+    ).getSingle();
+    return row.read<int>('c');
   }
 
   // SYNC FLAGS — the only permitted update on these rows

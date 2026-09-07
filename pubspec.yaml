@@ -41,6 +41,13 @@ dependencies:
   supabase_flutter: ^2.5.0
   uuid: ^4.3.3
   mobile_scanner: ^4.0.1
+  just_audio: ^0.9.36
+  android_alarm_manager_plus: ^4.0.0
+  flutter_local_notifications: ^17.0.0
+  permission_handler: ^11.3.0
+  device_info_plus: ^9.1.2
+  android_intent_plus: ^4.0.3
+  wakelock_plus: ^1.2.0
 
 dev_dependencies:
   flutter_test:

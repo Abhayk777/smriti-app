@@ -22,3 +22,20 @@ Future<void> initSupabase() async {
         const FlutterAuthClientOptions(authFlowType: AuthFlowType.pkce),
   );
 }
+
+/// Whether a Supabase session exists right now.
+///
+/// Lives here because only `lib/core/auth/` and `lib/core/sync/` may import
+/// `supabase_flutter` (AGENTS.md non-negotiable #1). If this is false the app
+/// keeps working completely - games, reminders, photos - and only sync stops.
+/// The elder is never told (non-negotiable #9).
+/// Returns false rather than throwing when the SDK was never initialised.
+/// `Supabase.instance` asserts in that case, and this is called from a
+/// fire-and-forget sync where a throw becomes an unhandled async error.
+bool hasSupabaseSession() {
+  try {
+    return Supabase.instance.client.auth.currentSession != null;
+  } catch (_) {
+    return false;
+  }
+}

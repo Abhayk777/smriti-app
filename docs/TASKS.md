@@ -23,6 +23,11 @@ a new session for the next task.
       one game (Market Basket) built end to end against a mock content JSON.
       AC: playing the game locally writes a fully-populated `TrialEvents` row
       (every column from §5 non-null where required) and updates `AbilityStates`.
+- [ ] **A06b** Post-pairing navigation: home screen with entry point into
+      a playable game session (using the A06 harness), so sessions can
+      actually be triggered and synced through real UI rather than tests
+      only. Should exist before A11's reminder-to-screen return path can
+      be meaningfully tested.
 
 ## Phase 3 — pairing (unblocks everything backend-facing)
 - [ ] **A07** Wire the existing login screen's QR button to `redeem-pairing-token` via
@@ -43,6 +48,35 @@ a new session for the next task.
       AC: playing a session while online results in rows appearing in Supabase's
       `events`/`sessions` tables with matching IDs. No `.select()` used anywhere in
       this code (verify by grep).
+- [ ] **A10b** Wire connectivity_plus into SyncEngine's hasConnection
+      callback, replacing the injected stub. Depends on A10.
+
+## Phase 4.5 — navigation shell (unblocks observing any of the above)
+- [ ] **A10.5** Minimal app shell, so pairing leads somewhere and A11 has a
+      target to return the elder to. Deliberately ugly — bare functional
+      widgets only.
+      1. Startup gate in `main.dart`: paired → home, unpaired → login.
+      2. `SyncEngine` constructed at startup; a pull triggered right after
+         pairing succeeds (this is what first puts real medications on the
+         device — `rescheduleAll()` has nothing to schedule without it).
+      3. Stub home screen: routine strip + one button into Market Basket.
+      4. Reminder screen (the future full-screen-intent target): pill photo,
+         caregiver voice playback, taken / not now, writes `outcome` +
+         `respondedAt`, returns home.
+      5. "Fire test reminder now" hidden trigger, pulled forward from §12 —
+         waiting for a real medication window on a physical device is not a
+         workable test loop.
+      6. `ContentPuller.onContentChanged` wired to `AlarmScheduler.rescheduleAll()`.
+         The scheduler stays a no-op stub until A11; only the call site is built.
+
+      Out of scope, do not touch: visual design beyond bare functional widgets,
+      the actual alarm scheduler / isolate logic (A11), OEM permission and
+      manifest work (A11, per §10).
+
+      AC: pairing a fresh device, running a real content pull, and landing on a
+      home screen showing real medication and routine data from the live
+      backend. First task where a human can observe real synced content in the
+      running app rather than in a test assertion.
 
 ## Phase 5 — reminders (highest risk, budget real time)
 - [ ] **A11** Alarm scheduler + reminder isolate + full-screen notification + ladder
