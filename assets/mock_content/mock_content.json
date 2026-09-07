@@ -1,0 +1,21 @@
+{
+  "version": "mock-1",
+  "_comment": "Stand-in for what ContentPuller (A09) will pull from Supabase. Market items are everyday North-East Indian market goods; iconAssets are placeholders until the design layer supplies art.",
+  "marketItems": [
+    { "id": "rice",      "labelKey": "item.rice",      "iconAsset": "assets/games/market/rice.png",      "category": "grain" },
+    { "id": "atta",      "labelKey": "item.atta",      "iconAsset": "assets/games/market/atta.png",      "category": "grain" },
+    { "id": "poha",      "labelKey": "item.poha",      "iconAsset": "assets/games/market/poha.png",      "category": "grain" },
+    { "id": "dal",       "labelKey": "item.dal",       "iconAsset": "assets/games/market/dal.png",       "category": "pulse" },
+    { "id": "chana",     "labelKey": "item.chana",     "iconAsset": "assets/games/market/chana.png",     "category": "pulse" },
+    { "id": "tomato",    "labelKey": "item.tomato",    "iconAsset": "assets/games/market/tomato.png",    "category": "vegetable" },
+    { "id": "potato",    "labelKey": "item.potato",    "iconAsset": "assets/games/market/potato.png",    "category": "vegetable" },
+    { "id": "brinjal",   "labelKey": "item.brinjal",   "iconAsset": "assets/games/market/brinjal.png",   "category": "vegetable" },
+    { "id": "banana",    "labelKey": "item.banana",    "iconAsset": "assets/games/market/banana.png",    "category": "fruit" },
+    { "id": "papaya",    "labelKey": "item.papaya",    "iconAsset": "assets/games/market/papaya.png",    "category": "fruit" },
+    { "id": "milk",      "labelKey": "item.milk",      "iconAsset": "assets/games/market/milk.png",      "category": "dairy" },
+    { "id": "curd",      "labelKey": "item.curd",      "iconAsset": "assets/games/market/curd.png",      "category": "dairy" },
+    { "id": "tea",       "labelKey": "item.tea",       "iconAsset": "assets/games/market/tea.png",       "category": "pantry" },
+    { "id": "salt",      "labelKey": "item.salt",      "iconAsset": "assets/games/market/salt.png",      "category": "pantry" },
+    { "id": "mustardoil","labelKey": "item.mustardoil","iconAsset": "assets/games/market/mustardoil.png","category": "pantry" }
+  ]
+}
