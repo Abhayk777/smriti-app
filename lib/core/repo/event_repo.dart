@@ -99,6 +99,31 @@ class EventRepo {
 
   // UNSYNCED READS — used by the sync layer to build push batches
 
+  Future<int> unsyncedCount() async {
+    // Count all unsynced items across all sync tables
+    final sessionsCount = await (db.select(db.sessions)
+          ..where((t) => t.synced.equals(false)))
+        .get()
+        .then((list) => list.length);
+    
+    final trialsCount = await (db.select(db.trialEvents)
+          ..where((t) => t.synced.equals(false)))
+        .get()
+        .then((list) => list.length);
+    
+    final reminderEventsCount = await (db.select(db.reminderEvents)
+          ..where((t) => t.synced.equals(false)))
+        .get()
+        .then((list) => list.length);
+    
+    final escalationsCount = await (db.select(db.escalationRequests)
+          ..where((t) => t.synced.equals(false)))
+        .get()
+        .then((list) => list.length);
+    
+    return sessionsCount + trialsCount + reminderEventsCount + escalationsCount;
+  }
+
   Future<List<Session>> unsyncedSessions({int limit = 200}) {
     return (db.select(db.sessions)
           ..where((t) => t.synced.equals(false))

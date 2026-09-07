@@ -63,3 +63,16 @@ LazyDatabase _openConnection() {
     return NativeDatabase.createInBackground(file);
   });
 }
+
+/// Opens a database connection for use in isolates.
+///
+/// Isolates cannot access the main isolate's database connection, so they
+/// must open their own. This function creates a LazyDatabase that will
+/// open a connection to the on-device SQLite file.
+///
+/// Used by: `fireReminderCallback` (A11) per AGENTS.md non-negotiable #6.
+Future<QueryExecutor> openConnectionForIsolate() async {
+  final directory = await getApplicationDocumentsDirectory();
+  final file = File(p.join(directory.path, 'smriti.sqlite'));
+  return NativeDatabase.createInBackground(file);
+}
