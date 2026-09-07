@@ -1,8 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:smriti/app_colors.dart';
+import 'package:smriti/core/auth/pairing_service.dart';
+import 'package:smriti/core/db/app_database.dart';
+import 'package:smriti/core/repo/ability_repo.dart';
+import 'package:smriti/screens/pairing/scan_screen.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  const LoginScreen({super.key, this.pairingService});
+
+  /// Injectable for tests; production builds it from the shared database.
+  final PairingService? pairingService;
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -14,11 +21,33 @@ class _LoginScreenState extends State<LoginScreen> {
 
   bool isPasswordVisible = false;
 
+  late final PairingService _pairingService = widget.pairingService ??
+      PairingService(
+        configs: appDatabase.appConfigsDao,
+        abilityRepo: AbilityRepo(appDatabase),
+      );
+
   @override
   void dispose() {
     emailController.dispose();
     passwordController.dispose();
     super.dispose();
+  }
+
+  /// Opens the QR scanner. The code-entry fallback lives inside that screen, so
+  /// this screen's layout is unchanged.
+  Future<void> _openPairingScanner() async {
+    final paired = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => ScanScreen(pairingService: _pairingService),
+      ),
+    );
+
+    if (paired == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Tablet paired.')),
+      );
+    }
   }
 
   @override
@@ -178,7 +207,8 @@ class _LoginScreenState extends State<LoginScreen> {
                         SizedBox(
                           width: double.infinity,height: 110,
                           child: OutlinedButton(
-                            onPressed: () {},
+                            key: const Key('scan_qr_button'),
+                            onPressed: _openPairingScanner,
                             style: OutlinedButton.styleFrom(
                               side: const BorderSide(color: AppColors.terracottaDark,width: 1.5),
                               shape: RoundedRectangleBorder(borderRadius:BorderRadius.circular(20)),

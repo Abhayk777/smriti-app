@@ -27,6 +27,23 @@ class AppConfigsDao extends DatabaseAccessor<SmritiDatabase>
     );
   }
 
+  /// Writes several keys in one transaction, so a crash mid-pairing cannot
+  /// leave `AppConfigs` half-populated (APP-BUILD-SPEC.md §8).
+  Future<void> setAll(Map<String, String> entries) async {
+    if (entries.isEmpty) return;
+    await transaction(() async {
+      await batch((batch) {
+        batch.insertAllOnConflictUpdate(
+          appConfigs,
+          [
+            for (final entry in entries.entries)
+              AppConfigsCompanion.insert(key: entry.key, value: entry.value),
+          ],
+        );
+      });
+    });
+  }
+
   Future<void> deleteValue(String key) async {
     await (delete(appConfigs)
           ..where((tbl) => tbl.key.equals(key)))

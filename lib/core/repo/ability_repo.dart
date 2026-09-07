@@ -84,6 +84,20 @@ class AbilityRepo {
     return seeded;
   }
 
+  /// Seeds every cognitive domain that has no estimate yet, from the age and
+  /// education years in `AppConfigs`. Called once at the end of pairing
+  /// (APP-BUILD-SPEC.md §8) so the elder's first session is already calibrated.
+  ///
+  /// Domains that already have an estimate are left alone — re-pairing a tablet
+  /// must never wipe accumulated ability history.
+  Future<Map<CognitiveDomain, AbilityRecord>> seedAll({DateTime? now}) async {
+    final seeded = <CognitiveDomain, AbilityRecord>{};
+    for (final domain in CognitiveDomain.values) {
+      seeded[domain] = await getOrSeed(domain, now: now);
+    }
+    return seeded;
+  }
+
   /// Applies one trial outcome to the stored estimate and returns the updated
   /// record. The θ used for the trial must be read *before* calling this, since
   /// `TrialEvents.thetaBefore` records the pre-update value.
