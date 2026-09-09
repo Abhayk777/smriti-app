@@ -175,7 +175,7 @@ class AlarmScheduler {
     await AndroidAlarmManager.oneShotAt(
       nextTime,
       alarmId,
-      _fireReminderCallback,
+      fireReminderCallback,
       exact: true,
       wakeup: true,
       allowWhileIdle: true,
@@ -188,30 +188,3 @@ class AlarmScheduler {
   }
 }
 
-/// The alarm callback that fires when a medication reminder is due.
-///
-/// This is a top-level function so it can be used with AndroidAlarmManager.
-/// It opens its own Drift connection and has no access to main isolate state.
-///
-/// Per AGENTS.md non-negotiable #6.
-@pragma('vm:entry-point')
-Future<void> _fireReminderCallback(int id, Map<String, dynamic> params) async {
-  // This callback needs to:
-  // 1. Initialize Flutter bindings
-  // 2. Open its own database connection
-  // 3. Get the medication
-  // 4. Create a ReminderEvent
-  // 5. Show full-screen notification
-  // 6. Play caregiver audio
-  // 7. Schedule ladder steps
-  // 8. Schedule next occurrence
-  // 9. Close database connection
-  
-  // For now, this is a placeholder. The full implementation requires:
-  // - Proper database initialization in isolate
-  // - Notification system setup
-  // - Audio playback
-  // - Alarm rescheduling
-  
-  // TODO: Implement full reminder callback
-}

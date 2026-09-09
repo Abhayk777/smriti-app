@@ -264,7 +264,7 @@ class _VoiceMemoScreenState extends State<VoiceMemoScreen> {
           ),
           const SizedBox(width: 16),
           const Text(
-            '🎙️  Voice Notes',
+            '✉️  Message Caregiver',
             style: TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.w700,
@@ -319,7 +319,7 @@ class _VoiceMemoScreenState extends State<VoiceMemoScreen> {
           Text(
             _isRecording
                 ? _formatDuration(_recordSeconds)
-                : 'Leave a message or thought',
+                : 'Send a voice message',
             style: TextStyle(
               fontSize: _isRecording ? 28 : 16,
               fontWeight: _isRecording ? FontWeight.w800 : FontWeight.w500,
@@ -346,7 +346,7 @@ class _VoiceMemoScreenState extends State<VoiceMemoScreen> {
             Icon(Icons.mic_none_rounded, size: 64, color: AppColors.border),
             SizedBox(height: 12),
             Text(
-              'No voice notes yet.',
+              'No messages sent yet.',
               style: TextStyle(fontSize: 18, color: AppColors.secondaryText),
             ),
           ],

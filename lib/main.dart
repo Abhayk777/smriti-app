@@ -54,6 +54,12 @@ Future<void> main() async {
     if (await Permission.notification.isDenied) {
       await Permission.notification.request();
     }
+    if (await Permission.scheduleExactAlarm.isDenied) {
+      await Permission.scheduleExactAlarm.request();
+    }
+    if (await Permission.ignoreBatteryOptimizations.isDenied) {
+      await Permission.ignoreBatteryOptimizations.request();
+    }
   } catch (_) {}
   
   // Initialize Workmanager for periodic sync

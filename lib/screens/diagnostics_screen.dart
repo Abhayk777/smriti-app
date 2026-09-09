@@ -1,3 +1,4 @@
+import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
@@ -142,29 +143,25 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
       final meds = await repo.getMedications();
       final med = meds.isNotEmpty ? meds.first : null;
 
-      final notifications = FlutterLocalNotificationsPlugin();
-      const androidDetails = AndroidNotificationDetails(
-        'medication_reminder',
-        'Medication Reminder',
-        channelDescription: 'Full-screen medication reminders',
-        importance: Importance.max,
-        priority: Priority.high,
-        fullScreenIntent: true,
-        visibility: NotificationVisibility.public,
-        playSound: true,
-        enableVibration: true,
-      );
-      await notifications.show(
-        9999,
-        med != null ? 'Time for: ${med.name}' : 'Medication Reminder (Test)',
-        med != null ? 'Dose: ${med.dose}' : 'Please take your scheduled medication',
-        const NotificationDetails(android: androidDetails),
+      final alarmTime = DateTime.now().add(const Duration(seconds: 10));
+      await AndroidAlarmManager.oneShotAt(
+        alarmTime,
+        9999, // Test alarm ID
+        _testAlarmCallback,
+        exact: true,
+        wakeup: true,
+        allowWhileIdle: true,
+        rescheduleOnReboot: true,
+        params: {
+          'medName': med?.name,
+          'medDose': med?.dose,
+        },
       );
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Test reminder fired! Check your notification tray / screen.'),
+            content: Text('Test reminder scheduled in 10 seconds. Please wait...'),
             backgroundColor: Colors.green,
           ),
         );
@@ -172,7 +169,7 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to fire test reminder: $e'), backgroundColor: Colors.red),
+          SnackBar(content: Text('Failed to schedule test reminder: $e'), backgroundColor: Colors.red),
         );
       }
     }
@@ -453,4 +450,33 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
       return 'Invalid';
     }
   }
+}
+
+@pragma('vm:entry-point')
+Future<void> _testAlarmCallback(int id, Map<String, dynamic> params) async {
+  WidgetsFlutterBinding.ensureInitialized();
+  try {
+    final notifications = FlutterLocalNotificationsPlugin();
+    const androidDetails = AndroidNotificationDetails(
+      'medication_reminder',
+      'Medication Reminder',
+      channelDescription: 'Full-screen medication reminders',
+      importance: Importance.max,
+      priority: Priority.high,
+      fullScreenIntent: true,
+      visibility: NotificationVisibility.public,
+      playSound: true,
+      enableVibration: true,
+    );
+    
+    final medName = params['medName'] as String?;
+    final medDose = params['medDose'] as String?;
+    
+    await notifications.show(
+      9999,
+      medName != null ? 'Time for: $medName' : 'Medication Reminder (Test)',
+      medDose != null ? 'Dose: $medDose' : 'Please take your scheduled medication',
+      const NotificationDetails(android: androidDetails),
+    );
+  } catch (_) {}
 }

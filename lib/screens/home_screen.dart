@@ -392,8 +392,8 @@ class _HomeScreenState extends State<HomeScreen>
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
           _buildQuickAction(
-            icon: Icons.mic,
-            label: 'Voice Note',
+            icon: Icons.message_rounded,
+            label: 'Message',
             color: AppColors.terracotta,
             onTap: () {
               Navigator.of(context).push(
