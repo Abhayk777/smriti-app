@@ -116,6 +116,19 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
       await appDatabase.appConfigsDao.deleteValue('patientId');
       await appDatabase.appConfigsDao.deleteValue('deviceUserId');
       await appDatabase.appConfigsDao.deleteValue('deviceRefreshToken');
+      await appDatabase.appConfigsDao.deleteValue('contentVersion');
+      await appDatabase.appConfigsDao.deleteValue('contentPatientId');
+      await appDatabase.appConfigsDao.deleteValue('elderName');
+
+      // Clear previous patient's cached content tables
+      await appDatabase.delete(appDatabase.people).go();
+      await appDatabase.delete(appDatabase.medications).go();
+      await appDatabase.delete(appDatabase.routineItems).go();
+      await appDatabase.delete(appDatabase.voiceMemos).go();
+      await appDatabase.delete(appDatabase.reminderEvents).go();
+      await appDatabase.delete(appDatabase.sessions).go();
+      await appDatabase.delete(appDatabase.trialEvents).go();
+
       SyncEngine.resetDefaultInstance();
       if (!mounted) return;
       Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);

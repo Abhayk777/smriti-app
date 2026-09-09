@@ -1,7 +1,12 @@
+import 'dart:async';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../db/app_database.dart';
 import '../db/dao/app_configs_dao.dart';
 import '../repo/ability_repo.dart';
+import '../repo/content_repo.dart';
+import '../sync/content_puller.dart';
 import '../sync/sync_engine.dart';
 
 /// Thrown when pairing cannot complete. Caregiver-facing: this is a setup
@@ -288,11 +293,27 @@ class PairingService {
 
     await _gateway.setSession(refreshToken);
 
+    final newPid = _requireString(data, 'patient_id');
+    final oldPid = await configs.getValue('patientId');
+    if (oldPid != null && oldPid != newPid) {
+      // Different patient! Clear old patient's cached content
+      await configs.deleteValue('contentVersion');
+      await configs.deleteValue('contentPatientId');
+      final db = appDatabase;
+      await db.delete(db.people).go();
+      await db.delete(db.medications).go();
+      await db.delete(db.routineItems).go();
+      await db.delete(db.voiceMemos).go();
+      await db.delete(db.reminderEvents).go();
+      await db.delete(db.sessions).go();
+      await db.delete(db.trialEvents).go();
+    }
+
     final age = _requireInt(data, 'age');
     final educationYears = _requireInt(data, 'education_years');
 
     await configs.setAll({
-      'patientId': _requireString(data, 'patient_id'),
+      'patientId': newPid,
       'deviceUserId': _requireString(data, 'device_user_id'),
       'langCode': _requireString(data, 'lang_code'),
       'elderName': _requireString(data, 'elder_name'),
@@ -307,6 +328,9 @@ class PairingService {
     // Seeded from the real demographics, so the first session starts near the
     // elder's expected baseline instead of zero (APP-BUILD-SPEC.md §3).
     await abilityRepo.seedAll();
+
+    // Immediately pull the newly paired patient's content
+    unawaited(ContentPuller(db: appDatabase, contentRepo: ContentRepo(appDatabase)).pull());
   }
 
   static Map<String, dynamic> _asMap(Object? data) {

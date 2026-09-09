@@ -38,7 +38,11 @@ class ContentPuller {
   /// Checks for a new content version and pulls it if available.
   Future<ContentPullResult> pull() async {
     try {
-      final patientId = await db.appConfigsDao.getValue('patientId');
+      final jwtPid = Supabase.instance.client.auth.currentUser?.appMetadata['patient_id'];
+      final patientId = (jwtPid is String && jwtPid.isNotEmpty)
+          ? jwtPid
+          : await db.appConfigsDao.getValue('patientId');
+
       if (patientId == null || patientId.isEmpty) {
         return const ContentPullResult(
           success: false,
@@ -46,8 +50,11 @@ class ContentPuller {
         );
       }
 
-      // Check current version
-      final currentVersion = await contentRepo.getContentVersion();
+      // Check current version and patient ID
+      final lastPulledPatientId = await db.appConfigsDao.getValue('contentPatientId');
+      final currentVersion = (lastPulledPatientId == patientId)
+          ? await contentRepo.getContentVersion()
+          : null; // Force full pull if patient changed!
 
       // Call the get_patient_content RPC (Postgres RPC, not edge function)
       final dynamic response = await Supabase.instance.client.rpc(
@@ -108,6 +115,7 @@ class ContentPuller {
         routineItems: routineItems,
         contentVersion: newVersion,
       );
+      await db.appConfigsDao.setValue('contentPatientId', patientId);
 
       // Update patient profile info if available
       final elderName = data['elder_name'] as String?;
