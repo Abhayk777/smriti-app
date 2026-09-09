@@ -33,17 +33,22 @@ class EventPusher {
     required this.db,
     required this.eventRepo,
     String? patientId,
-  }) : _patientId = patientId;
+  });
 
   final SmritiDatabase db;
   final EventRepo eventRepo;
-  String? _patientId;
 
   /// Patient ID from AppConfigs - will be read when needed
   Future<String> _getPatientId() async {
-    return _patientId ??= 
-        await db.appConfigsDao.getValue('patientId') ?? 
-        (throw Exception('No patientId configured'));
+    final jwtPid = supabase.Supabase.instance.client.auth.currentUser?.appMetadata['patient_id'];
+    if (jwtPid is String && jwtPid.isNotEmpty) {
+      return jwtPid;
+    }
+    final configPid = await db.appConfigsDao.getValue('patientId');
+    if (configPid != null && configPid.isNotEmpty) {
+      return configPid;
+    }
+    throw Exception('No patientId configured');
   }
 
   /// Pushes all unsynced trial events to supabase.Supabase.

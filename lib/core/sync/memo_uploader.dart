@@ -31,17 +31,22 @@ class MemoUploader {
     required this.db,
     required this.memoRepo,
     String? patientId,
-  }) : _patientId = patientId;
+  });
 
   final SmritiDatabase db;
   final MemoRepo memoRepo;
-  String? _patientId;
 
   /// Patient ID from AppConfigs - will be read when needed
   Future<String> _getPatientId() async {
-    return _patientId ??= 
-        await db.appConfigsDao.getValue('patientId') ?? 
-        (throw Exception('No patientId configured'));
+    final jwtPid = Supabase.instance.client.auth.currentUser?.appMetadata['patient_id'];
+    if (jwtPid is String && jwtPid.isNotEmpty) {
+      return jwtPid;
+    }
+    final configPid = await db.appConfigsDao.getValue('patientId');
+    if (configPid != null && configPid.isNotEmpty) {
+      return configPid;
+    }
+    throw Exception('No patientId configured');
   }
 
   /// Storage bucket for elder voice memos

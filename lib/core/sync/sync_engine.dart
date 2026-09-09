@@ -128,6 +128,12 @@ class SyncEngine {
     );
   }
 
+  /// Resets the default instance and internal state.
+  static void resetDefaultInstance() {
+    _defaultInstance?.reset();
+    _defaultInstance = null;
+  }
+
   /// Starts a sync operation if not already running.
   ///
   /// Returns immediately with [SyncResult.skipped] if:

@@ -2,6 +2,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../db/dao/app_configs_dao.dart';
 import '../repo/ability_repo.dart';
+import '../sync/sync_engine.dart';
 
 /// Thrown when pairing cannot complete. Caregiver-facing: this is a setup
 /// screen, so the message is shown. The elder never sees any of it
@@ -299,6 +300,9 @@ class PairingService {
       'educationYears': educationYears.toString(),
       'deviceRefreshToken': refreshToken,
     });
+
+    // Reset SyncEngine so new patient credentials take effect immediately
+    SyncEngine.resetDefaultInstance();
 
     // Seeded from the real demographics, so the first session starts near the
     // elder's expected baseline instead of zero (APP-BUILD-SPEC.md §3).

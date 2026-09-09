@@ -116,6 +116,7 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
       await appDatabase.appConfigsDao.deleteValue('patientId');
       await appDatabase.appConfigsDao.deleteValue('deviceUserId');
       await appDatabase.appConfigsDao.deleteValue('deviceRefreshToken');
+      SyncEngine.resetDefaultInstance();
       if (!mounted) return;
       Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
     }
