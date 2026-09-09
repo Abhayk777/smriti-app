@@ -74,18 +74,27 @@ class MemoUploader {
         try {
           // Upload to Supabase storage - path convention {patient_id}/{filename}
           final storagePath = '$pid/${memo.id}.m4a';
-          await Supabase.instance.client.storage
-              .from(_memosBucket)
-              .upload(
-                storagePath,
-                file,
-                fileOptions: const FileOptions(
-                  contentType: 'audio/m4a',
-                  upsert: true,
-                ),
-              );
+          try {
+            await Supabase.instance.client.storage
+                .from(_memosBucket)
+                .upload(
+                  storagePath,
+                  file,
+                  fileOptions: const FileOptions(
+                    contentType: 'audio/m4a',
+                  ),
+                );
+          } catch (storageErr) {
+            final errStr = storageErr.toString().toLowerCase();
+            // If the file is already uploaded in storage, proceed to create row
+            if (!errStr.contains('already exists') &&
+                !errStr.contains('409') &&
+                !errStr.contains('duplicate')) {
+              rethrow;
+            }
+          }
           
-          // Only create the row if storage upload succeeded
+          // Create the row in memos table
           try {
             await Supabase.instance.client.from('memos').insert({
               'id': memo.id,
@@ -97,7 +106,8 @@ class MemoUploader {
             });
           } catch (rowErr) {
             // If the row already exists (duplicate key error 23505), that's fine
-            if (!rowErr.toString().contains('duplicate') && !rowErr.toString().contains('23505')) {
+            final errStr = rowErr.toString().toLowerCase();
+            if (!errStr.contains('duplicate') && !errStr.contains('23505')) {
               rethrow;
             }
           }

@@ -1,13 +1,17 @@
+import 'dart:async';
 import 'dart:io';
 
+import 'package:drift/drift.dart' as drift;
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:uuid/uuid.dart';
 
 import '../app_colors.dart';
 import '../core/db/app_database.dart';
 import '../core/db/database.dart';
 import '../core/repo/content_repo.dart';
+import '../core/repo/event_repo.dart';
 import '../core/sync/sync_engine.dart';
 
 /// Screen displaying the elder's daily medications.
@@ -24,6 +28,7 @@ class MedicineScreen extends StatefulWidget {
 
 class _MedicineScreenState extends State<MedicineScreen> {
   final ContentRepo _repo = ContentRepo(appDatabase);
+  final EventRepo _eventRepo = EventRepo(appDatabase);
   final AudioPlayer _audioPlayer = AudioPlayer();
   final FlutterTts _tts = FlutterTts();
 
@@ -50,12 +55,59 @@ class _MedicineScreenState extends State<MedicineScreen> {
 
   Future<void> _load() async {
     final meds = await _repo.getMedications(activeOnly: true);
+    final todayStart = DateTime.now()
+        .copyWith(hour: 0, minute: 0, second: 0, millisecond: 0)
+        .millisecondsSinceEpoch;
+    final confirmedEvents = await (appDatabase.select(appDatabase.reminderEvents)
+          ..where((t) =>
+              t.respondedAt.isBiggerOrEqualValue(todayStart) &
+              t.outcome.equals('confirmed')))
+        .get();
+    final takenIds = confirmedEvents.map((e) => e.medicationId).toSet();
+
     if (mounted) {
       setState(() {
         _medications = meds;
+        _visuallyTakenIds.addAll(takenIds);
         _loading = false;
       });
     }
+  }
+
+  Future<void> _recordTaken(Medication med) async {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final id = const Uuid().v4();
+
+    final event = ReminderEventsCompanion.insert(
+      id: id,
+      medicationId: med.id,
+      scheduledAt: now,
+      firedAt: drift.Value(now),
+      respondedAt: drift.Value(now),
+      outcome: const drift.Value('confirmed'),
+      channel: 'in_app',
+      ladderStep: 0,
+      synced: const drift.Value(false),
+    );
+
+    await _eventRepo.insertReminderEvent(event);
+
+    setState(() {
+      _visuallyTakenIds.add(med.id);
+    });
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Recorded dose: ${med.name}'),
+          backgroundColor: AppColors.leafGreen,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
+
+    // Automatically push to Supabase in background
+    unawaited(SyncEngine.defaultInstance.run(trigger: SyncTrigger.manual));
   }
 
   String _formatTime(int min) {
@@ -265,13 +317,17 @@ class _MedicineScreenState extends State<MedicineScreen> {
               // Taken check button
               GestureDetector(
                 onTap: () {
-                  setState(() {
-                    if (isTaken) {
-                      _visuallyTakenIds.remove(med.id);
-                    } else {
-                      _visuallyTakenIds.add(med.id);
-                    }
-                  });
+                  if (!isTaken) {
+                    _recordTaken(med);
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('${med.name} is already marked as taken today.'),
+                        backgroundColor: AppColors.leafGreen,
+                        duration: const Duration(seconds: 2),
+                      ),
+                    );
+                  }
                 },
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
