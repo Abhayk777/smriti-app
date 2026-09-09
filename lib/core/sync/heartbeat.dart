@@ -79,10 +79,13 @@ class Heartbeat {
         },
       );
       
-      if (response.data is Map && response.data.containsKey('server_time_ms')) {
-        final data = response.data as Map;
-        final serverTimeMs = data['server_time_ms'] as int;
-        final clockSkewMs = data['clock_skew_ms'] as int? ?? 0;
+      final Map<String, dynamic>? data = response is Map
+          ? Map<String, dynamic>.from(response)
+          : null;
+      
+      if (data != null && data.containsKey('server_time_ms')) {
+        final serverTimeMs = (data['server_time_ms'] as num).toInt();
+        final clockSkewMs = (data['clock_skew_ms'] as num?)?.toInt() ?? 0;
         
         // Store clock skew for timestamp adjustments
         if (clockSkewMs != 0) {
@@ -98,7 +101,7 @@ class Heartbeat {
       return HeartbeatResult(
         serverTimeMs: DateTime.now().millisecondsSinceEpoch,
         clockSkewMs: 0,
-        error: 'Invalid response format',
+        error: 'Invalid response format: $response',
       );
       
     } catch (e) {

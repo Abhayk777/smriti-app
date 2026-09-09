@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 
 import '../app_colors.dart';
 import '../core/db/app_database.dart';
+import '../core/db/database.dart';
 import '../core/repo/content_repo.dart';
 import '../core/repo/event_repo.dart';
-import '../core/repo/memo_repo.dart';
 import '../core/sync/sync_engine.dart';
 
 /// Diagnostics screen for caregiver use only.
@@ -31,12 +31,7 @@ class DiagnosticsScreen extends StatefulWidget {
 class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
   late final ContentRepo _contentRepo = ContentRepo(appDatabase);
   late final EventRepo _eventRepo = EventRepo(appDatabase);
-  late final SyncEngine _syncEngine = SyncEngine(
-    db: appDatabase,
-    eventRepo: _eventRepo,
-    memoRepo: MemoRepo(appDatabase),
-    contentRepo: _contentRepo,
-  );
+  late final SyncEngine _syncEngine = SyncEngine.defaultInstance;
 
   String? _patientId;
   String? _deviceUserId;
@@ -46,7 +41,9 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
   String? _clockSkewMs;
   int _pendingEvents = 0;
   bool _isSyncing = false;
+  bool _hasRefreshToken = false;
   String? _syncResult;
+  List<Session> _recentSessions = [];
 
   @override
   void initState() {
@@ -62,7 +59,12 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
     _lastSyncError = await _syncEngine.getLastSyncError();
     _clockSkewMs = await appDatabase.appConfigsDao.getValue('clockSkewMs');
     _pendingEvents = await _eventRepo.unsyncedCount();
-    
+    final token = await appDatabase.appConfigsDao.getValue('deviceRefreshToken');
+    _hasRefreshToken = token != null && token.isNotEmpty;
+    try {
+      _recentSessions = await _eventRepo.getRecentSessions(limit: 20);
+    } catch (_) {}
+
     if (mounted) {
       setState(() {});
     }
@@ -83,6 +85,40 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
 
     // Reload data
     await _loadData();
+  }
+
+  Future<void> _rePairDevice() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Re-pair Tablet?'),
+        content: const Text(
+          'This will clear the current device registration and open the pairing screen. Existing game records will not be deleted.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.terracotta,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Re-pair'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true && mounted) {
+      await appDatabase.appConfigsDao.deleteValue('patientId');
+      await appDatabase.appConfigsDao.deleteValue('deviceUserId');
+      await appDatabase.appConfigsDao.deleteValue('deviceRefreshToken');
+      if (!mounted) return;
+      Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+    }
   }
 
   Future<void> _fireTestReminder() async {
@@ -130,6 +166,7 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
               _buildInfoRow('Last Sync Error', _lastSyncError ?? 'None'),
               _buildInfoRow('Pending Events', _pendingEvents.toString()),
               _buildInfoRow('Clock Skew', _clockSkewMs != null ? '$_clockSkewMs ms' : 'Unknown'),
+              _buildInfoRow('Has Refresh Token', _hasRefreshToken ? 'Yes' : 'No (Requires Re-pairing)'),
               const SizedBox(height: 8),
               
               // Sync Actions
@@ -155,6 +192,19 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
                             )
                           : const Text('Run Sync Now'),
                     ),
+                  ),
+                  const SizedBox(width: 12),
+                  OutlinedButton(
+                    onPressed: _rePairDevice,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.terracotta,
+                      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      side: const BorderSide(color: AppColors.terracotta),
+                    ),
+                    child: const Text('Re-pair Device'),
                   ),
                 ],
               ),
@@ -210,11 +260,90 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
                   color: Colors.grey[600],
                 ),
               ),
+              const SizedBox(height: 20),
+
+              // Game Play Activity Section
+              _buildSectionTitle('Game Play Activity'),
+              _buildGameActivity(),
               const SizedBox(height: 40),
             ],
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildGameActivity() {
+    if (_recentSessions.isEmpty) {
+      return Text(
+        'No games played yet on this device.',
+        style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+      );
+    }
+
+    int totalPlaySeconds = 0;
+    for (final s in _recentSessions) {
+      if (s.abandonedAtMs != null) {
+        totalPlaySeconds += s.abandonedAtMs! ~/ 1000;
+      } else if (s.endedAt != null && s.endedAt! > s.startedAt) {
+        totalPlaySeconds += (s.endedAt! - s.startedAt) ~/ 1000;
+      }
+    }
+    final totalMins = totalPlaySeconds ~/ 60;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text(
+              'Total Sessions: ${_recentSessions.length}',
+              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+            ),
+            const SizedBox(width: 20),
+            Text(
+              'Total Time: ${totalMins}m',
+              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: AppColors.leafGreen),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        ..._recentSessions.take(5).map((s) {
+          final dt = DateTime.fromMillisecondsSinceEpoch(s.startedAt);
+          final timeStr = '${dt.hour}:${dt.minute.toString().padLeft(2, '0')}';
+          final durationSec = s.abandonedAtMs != null
+              ? s.abandonedAtMs! ~/ 1000
+              : (s.endedAt != null && s.endedAt! > s.startedAt)
+                  ? (s.endedAt! - s.startedAt) ~/ 1000
+                  : 0;
+          final durStr = durationSec >= 60
+              ? '${durationSec ~/ 60}m ${durationSec % 60}s'
+              : '${durationSec}s';
+
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    s.gameIds.replaceAll('_', ' '),
+                    style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
+                  ),
+                ),
+                Text(
+                  durStr,
+                  style: const TextStyle(fontSize: 13, color: AppColors.primaryText),
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  '${dt.day}/${dt.month} $timeStr',
+                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                ),
+              ],
+            ),
+          );
+        }),
+      ],
     );
   }
 

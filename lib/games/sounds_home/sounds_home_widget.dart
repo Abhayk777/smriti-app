@@ -212,8 +212,10 @@ class _SoundsHomeWidgetState extends State<SoundsHomeWidget>
 
   @override
   Widget build(BuildContext context) {
+    final isCompact = MediaQuery.of(context).size.height < 500;
     final remaining = _durationSeconds - _elapsedSeconds;
     final progress = _elapsedSeconds / _durationSeconds;
+    final drumSize = isCompact ? 96.0 : 160.0;
 
     return Container(
       decoration: const BoxDecoration(
@@ -228,7 +230,7 @@ class _SoundsHomeWidgetState extends State<SoundsHomeWidget>
         ),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: EdgeInsets.symmetric(horizontal: 16, vertical: isCompact ? 8 : 20),
         child: Column(
           children: [
             // Timer
@@ -238,14 +240,14 @@ class _SoundsHomeWidgetState extends State<SoundsHomeWidget>
                 Text(
                   '${remaining ~/ 60}:${(remaining % 60).toString().padLeft(2, '0')}',
                   style: TextStyle(
-                    fontSize: 28,
+                    fontSize: isCompact ? 20 : 28,
                     fontWeight: FontWeight.w300,
                     color: Colors.green.shade200,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 4),
             // Progress bar
             ClipRRect(
               borderRadius: BorderRadius.circular(4),
@@ -253,21 +255,21 @@ class _SoundsHomeWidgetState extends State<SoundsHomeWidget>
                 value: progress,
                 backgroundColor: Colors.green.shade900,
                 valueColor: AlwaysStoppedAnimation(Colors.green.shade400),
-                minHeight: 6,
+                minHeight: isCompact ? 4 : 6,
               ),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: isCompact ? 8 : 16),
 
             // Instruction
             Text(
               'Tap the drum when you hear the bird 🐦',
               style: TextStyle(
-                fontSize: 20,
+                fontSize: isCompact ? 16 : 20,
                 fontWeight: FontWeight.w600,
                 color: Colors.green.shade100,
               ),
             ),
-            const SizedBox(height: 20),
+            SizedBox(height: isCompact ? 6 : 14),
 
             // Current sound display
             AnimatedBuilder(
@@ -281,13 +283,13 @@ class _SoundsHomeWidgetState extends State<SoundsHomeWidget>
                     _currentSound.isNotEmpty
                         ? _emojiForSound(_currentSound)
                         : '...',
-                    style: const TextStyle(fontSize: 60),
+                    style: TextStyle(fontSize: isCompact ? 36 : 60),
                   ),
                 );
               },
             ),
 
-            const Spacer(),
+            if (!isCompact) const Spacer() else const SizedBox(height: 10),
 
             // Drum button
             if (!_taskComplete)
@@ -300,8 +302,8 @@ class _SoundsHomeWidgetState extends State<SoundsHomeWidget>
                     return Transform.scale(
                       scale: scale,
                       child: Container(
-                        width: 160,
-                        height: 160,
+                        width: drumSize,
+                        height: drumSize,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           gradient: RadialGradient(
@@ -313,13 +315,13 @@ class _SoundsHomeWidgetState extends State<SoundsHomeWidget>
                           ),
                           border: Border.all(
                             color: Colors.amber.shade600,
-                            width: 4,
+                            width: isCompact ? 3 : 4,
                           ),
                           boxShadow: [
                             BoxShadow(
                               color: Colors.brown.withValues(alpha: 0.5),
-                              blurRadius: 20,
-                              spreadRadius: 4,
+                              blurRadius: isCompact ? 10 : 20,
+                              spreadRadius: isCompact ? 2 : 4,
                             ),
                           ],
                         ),
@@ -327,14 +329,13 @@ class _SoundsHomeWidgetState extends State<SoundsHomeWidget>
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(Icons.music_note,
-                                size: 40, color: Colors.amber.shade200),
-                            const SizedBox(height: 4),
+                                size: isCompact ? 24 : 40, color: Colors.amber.shade200),
                             Text(
-                              'TAP',
+                              'Tap!',
                               style: TextStyle(
-                                fontSize: 18,
+                                fontSize: isCompact ? 13 : 16,
                                 fontWeight: FontWeight.w700,
-                                color: Colors.amber.shade200,
+                                color: Colors.amber.shade100,
                               ),
                             ),
                           ],
@@ -345,22 +346,9 @@ class _SoundsHomeWidgetState extends State<SoundsHomeWidget>
                 ),
               )
             else
-              Column(
-                children: [
-                  const Icon(Icons.check_circle,
-                      size: 60, color: AppColors.leafGreen),
-                  const SizedBox(height: 12),
-                  Text(
-                    'Hits: $_hits  Misses: $_misses',
-                    style: TextStyle(
-                      fontSize: 18,
-                      color: Colors.green.shade200,
-                    ),
-                  ),
-                ],
-              ),
-
-            const SizedBox(height: 30),
+              const Icon(Icons.check_circle,
+                  size: 50, color: AppColors.leafGreen),
+            if (!isCompact) const Spacer(),
           ],
         ),
       ),

@@ -70,21 +70,20 @@ class MemoUploader {
         }
         
         try {
-          // Upload to Supabase storage
-          final fileName = 'memos/${memo.id}.m4a';
+          // Upload to Supabase storage - path convention {patient_id}/{filename}
+          final storagePath = '$pid/${memo.id}.m4a';
           await Supabase.instance.client.storage
               .from(_memosBucket)
-              .upload(fileName, file);
+              .upload(storagePath, file);
           
           // Only create the row if storage upload succeeded
           await Supabase.instance.client.from('memos').upsert({
             'id': memo.id,
             'patient_id': pid,
-            'local_path': memo.localPath,
+            'storage_path': storagePath,
             'duration_ms': memo.durationMs,
             'recorded_at': memo.recordedAt,
             'context_tag': memo.contextTag,
-            'uploaded': true,
           }, onConflict: 'id', ignoreDuplicates: true);
           
           // Mark as uploaded locally

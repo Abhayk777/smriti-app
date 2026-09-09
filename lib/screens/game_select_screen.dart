@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../app_colors.dart';
+import '../core/db/app_database.dart';
+import '../core/db/database.dart';
+import '../core/repo/event_repo.dart';
+import 'diagnostics_screen.dart';
 import 'game_screen.dart';
 
 /// Game data for display.
@@ -132,6 +136,8 @@ class GameSelectScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isCompact = MediaQuery.of(context).size.height < 500;
+
     return Scaffold(
       backgroundColor: AppColors.pageBackground,
       body: SafeArea(
@@ -139,7 +145,7 @@ class GameSelectScreen extends StatelessWidget {
           children: [
             // Header
             Padding(
-              padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
+              padding: EdgeInsets.fromLTRB(24, isCompact ? 10 : 20, 24, 0),
               child: Row(
                 children: [
                   IconButton(
@@ -148,30 +154,53 @@ class GameSelectScreen extends StatelessWidget {
                         size: 28, color: AppColors.primaryText),
                   ),
                   const SizedBox(width: 8),
-                  const Text(
+                  Text(
                     'Choose a Game',
                     style: TextStyle(
-                      fontSize: 26,
+                      fontSize: isCompact ? 22 : 26,
                       fontWeight: FontWeight.w700,
                       color: AppColors.primaryText,
+                    ),
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    tooltip: 'Sync & Diagnostics',
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const DiagnosticsScreen()),
+                      );
+                    },
+                    icon: const Icon(Icons.sync_rounded, color: AppColors.terracotta, size: 26),
+                  ),
+                  const SizedBox(width: 4),
+                  TextButton.icon(
+                    onPressed: () => _showHistoryDialog(context),
+                    icon: const Icon(Icons.bar_chart_rounded,
+                        color: AppColors.terracotta),
+                    label: Text(
+                      'Play History',
+                      style: TextStyle(
+                        fontSize: isCompact ? 14 : 16,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.terracotta,
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 20),
+            SizedBox(height: isCompact ? 10 : 20),
 
             // Game grid
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: GridView.builder(
-                  gridDelegate:
-                      const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 3,
-                    crossAxisSpacing: 16,
-                    mainAxisSpacing: 16,
-                    childAspectRatio: 1.1,
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: isCompact ? 4 : 3,
+                    crossAxisSpacing: isCompact ? 12 : 16,
+                    mainAxisSpacing: isCompact ? 12 : 16,
+                    childAspectRatio: isCompact ? 1.3 : 1.1,
                   ),
                   itemCount: _games.length,
                   itemBuilder: (context, index) {
@@ -194,6 +223,13 @@ class GameSelectScreen extends StatelessWidget {
       MaterialPageRoute(
         builder: (_) => GameScreen(gameId: info.id),
       ),
+    );
+  }
+
+  void _showHistoryDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => const _PlayHistoryDialog(),
     );
   }
 }
@@ -231,6 +267,7 @@ class _GameCardState extends State<_GameCard>
   @override
   Widget build(BuildContext context) {
     final info = widget.info;
+    final isCompact = MediaQuery.of(context).size.height < 500;
 
     return GestureDetector(
       onTapDown: (_) => setState(() => _pressed = true),
@@ -262,22 +299,22 @@ class _GameCardState extends State<_GameCard>
             ],
           ),
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(isCompact ? 8 : 16),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 // Emoji
                 Text(
                   info.emoji,
-                  style: const TextStyle(fontSize: 40),
+                  style: TextStyle(fontSize: isCompact ? 28 : 40),
                 ),
-                const SizedBox(height: 10),
+                SizedBox(height: isCompact ? 4 : 10),
 
                 // Game name
                 Text(
                   info.name,
-                  style: const TextStyle(
-                    fontSize: 16,
+                  style: TextStyle(
+                    fontSize: isCompact ? 13 : 16,
                     fontWeight: FontWeight.w700,
                     color: Colors.white,
                   ),
@@ -285,20 +322,22 @@ class _GameCardState extends State<_GameCard>
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 4),
+                SizedBox(height: isCompact ? 2 : 4),
 
                 // Domain tag
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 10, vertical: 4),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: isCompact ? 6 : 10,
+                    vertical: isCompact ? 2 : 4,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
                     info.domain,
                     style: TextStyle(
-                      fontSize: 11,
+                      fontSize: isCompact ? 9 : 11,
                       fontWeight: FontWeight.w600,
                       color: Colors.white.withValues(alpha: 0.9),
                     ),
@@ -308,6 +347,225 @@ class _GameCardState extends State<_GameCard>
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Dialog showing what games were played and for how long.
+class _PlayHistoryDialog extends StatefulWidget {
+  const _PlayHistoryDialog();
+
+  @override
+  State<_PlayHistoryDialog> createState() => _PlayHistoryDialogState();
+}
+
+class _PlayHistoryDialogState extends State<_PlayHistoryDialog> {
+  late final EventRepo _eventRepo = EventRepo(appDatabase);
+  List<Session> _sessions = [];
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadHistory();
+  }
+
+  Future<void> _loadHistory() async {
+    final list = await _eventRepo.getRecentSessions(limit: 50);
+    if (mounted) {
+      setState(() {
+        _sessions = list;
+        _loading = false;
+      });
+    }
+  }
+
+  String _formatDuration(int? startedAt, int? endedAt, int? abandonedAtMs) {
+    if (abandonedAtMs != null && abandonedAtMs > 0) {
+      final sec = abandonedAtMs ~/ 1000;
+      final m = sec ~/ 60;
+      final s = sec % 60;
+      return '${m}m ${s}s';
+    }
+    if (startedAt != null && endedAt != null && endedAt > startedAt) {
+      final sec = (endedAt - startedAt) ~/ 1000;
+      final m = sec ~/ 60;
+      final s = sec % 60;
+      return '${m}m ${s}s';
+    }
+    return '< 1m';
+  }
+
+  String _formatDate(int ms) {
+    final dt = DateTime.fromMillisecondsSinceEpoch(ms);
+    final now = DateTime.now();
+    final isToday = dt.year == now.year && dt.month == now.month && dt.day == now.day;
+    final timeStr = '${dt.hour}:${dt.minute.toString().padLeft(2, '0')}';
+    if (isToday) return 'Today at $timeStr';
+    return '${dt.day}/${dt.month}/${dt.year} at $timeStr';
+  }
+
+  String _gameDisplayName(String gameIds) {
+    final first = gameIds.split(',').first.trim();
+    for (final g in _games) {
+      if (g.id == first) return '${g.emoji} ${g.name}';
+    }
+    return first.replaceAll('_', ' ').toUpperCase();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isCompact = MediaQuery.of(context).size.height < 500;
+
+    int totalPlaySeconds = 0;
+    for (final s in _sessions) {
+      if (s.abandonedAtMs != null) {
+        totalPlaySeconds += s.abandonedAtMs! ~/ 1000;
+      } else if (s.endedAt != null && s.endedAt! > s.startedAt) {
+        totalPlaySeconds += (s.endedAt! - s.startedAt) ~/ 1000;
+      }
+    }
+    final totalMins = totalPlaySeconds ~/ 60;
+
+    return AlertDialog(
+      backgroundColor: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      title: Row(
+        children: [
+          const Icon(Icons.history_edu_rounded, color: AppColors.terracotta, size: 28),
+          const SizedBox(width: 10),
+          const Text(
+            'Play Activity History',
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: 20,
+              color: AppColors.primaryText,
+            ),
+          ),
+          const Spacer(),
+          IconButton(
+            icon: const Icon(Icons.close),
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+        ],
+      ),
+      content: SizedBox(
+        width: 600,
+        height: isCompact ? 240 : 380,
+        child: _loading
+            ? const Center(child: CircularProgressIndicator(color: AppColors.terracotta))
+            : _sessions.isEmpty
+                ? const Center(
+                    child: Text(
+                      'No games played yet.\nPlay a game to see your activity here!',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 16, color: AppColors.secondaryText),
+                    ),
+                  )
+                : Column(
+                    children: [
+                      // Overview summary row
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: AppColors.pageBackground,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceAround,
+                          children: [
+                            Column(
+                              children: [
+                                Text(
+                                  '${_sessions.length}',
+                                  style: const TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.terracotta,
+                                  ),
+                                ),
+                                const Text(
+                                  'Sessions Played',
+                                  style: TextStyle(fontSize: 12, color: AppColors.secondaryText),
+                                ),
+                              ],
+                            ),
+                            Container(width: 1, height: 28, color: AppColors.border),
+                            Column(
+                              children: [
+                                Text(
+                                  '${totalMins}m',
+                                  style: const TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.leafGreen,
+                                  ),
+                                ),
+                                const Text(
+                                  'Total Play Time',
+                                  style: TextStyle(fontSize: 12, color: AppColors.secondaryText),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+
+                      // Session list
+                      Expanded(
+                        child: ListView.separated(
+                          itemCount: _sessions.length,
+                          separatorBuilder: (_, __) => const Divider(height: 1),
+                          itemBuilder: (context, i) {
+                            final s = _sessions[i];
+                            final duration = _formatDuration(s.startedAt, s.endedAt, s.abandonedAtMs);
+                            final date = _formatDate(s.startedAt);
+
+                            return ListTile(
+                              dense: isCompact,
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              title: Text(
+                                _gameDisplayName(s.gameIds),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 15,
+                                  color: AppColors.primaryText,
+                                ),
+                              ),
+                              subtitle: Text(
+                                date,
+                                style: const TextStyle(fontSize: 12, color: AppColors.secondaryText),
+                              ),
+                              trailing: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  Text(
+                                    duration,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 14,
+                                      color: AppColors.primaryText,
+                                    ),
+                                  ),
+                                  Text(
+                                    s.completed ? 'Completed' : 'Stopped early',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: s.completed ? AppColors.leafGreen : AppColors.secondaryText,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
       ),
     );
   }

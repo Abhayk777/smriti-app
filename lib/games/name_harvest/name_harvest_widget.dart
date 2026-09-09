@@ -109,59 +109,111 @@ class _NameHarvestWidgetState extends State<NameHarvestWidget>
   @override
   Widget build(BuildContext context) {
     final category = widget.item.payload['category'] as String;
+    final isCompact = MediaQuery.of(context).size.height < 500;
 
     return Padding(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.symmetric(horizontal: 16, vertical: isCompact ? 6 : 20),
       child: Column(
         children: [
-          // Timer ring
-          SizedBox(
-            width: 100,
-            height: 100,
-            child: Stack(
-              alignment: Alignment.center,
+          if (isCompact)
+            // Compact Header: timer + prompt side-by-side
+            Row(
               children: [
-                AnimatedBuilder(
-                  animation: _ringController,
-                  builder: (context, child) {
-                    return CircularProgressIndicator(
-                      value: 1.0 - _ringController.value,
-                      strokeWidth: 6,
-                      backgroundColor: AppColors.border,
-                      valueColor: AlwaysStoppedAnimation(
-                        _remainingSeconds > 10
-                            ? AppColors.leafGreen
-                            : AppColors.terracotta,
+                SizedBox(
+                  width: 52,
+                  height: 52,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      AnimatedBuilder(
+                        animation: _ringController,
+                        builder: (context, child) {
+                          return CircularProgressIndicator(
+                            value: 1.0 - _ringController.value,
+                            strokeWidth: 4,
+                            backgroundColor: AppColors.border,
+                            valueColor: AlwaysStoppedAnimation(
+                              _remainingSeconds > 10
+                                  ? AppColors.leafGreen
+                                  : AppColors.terracotta,
+                            ),
+                          );
+                        },
                       ),
-                    );
-                  },
+                      Text(
+                        '$_remainingSeconds',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          color: _remainingSeconds > 10
+                              ? AppColors.primaryText
+                              : AppColors.terracotta,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                Text(
-                  '$_remainingSeconds',
-                  style: TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.w700,
-                    color: _remainingSeconds > 10
-                        ? AppColors.primaryText
-                        : AppColors.terracotta,
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Text(
+                    'Name all the ${_categoryLabel(category)} you can think of:',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.primaryText,
+                    ),
                   ),
                 ),
               ],
+            )
+          else ...[
+            // Regular tablet: timer ring on top
+            SizedBox(
+              width: 100,
+              height: 100,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  AnimatedBuilder(
+                    animation: _ringController,
+                    builder: (context, child) {
+                      return CircularProgressIndicator(
+                        value: 1.0 - _ringController.value,
+                        strokeWidth: 6,
+                        backgroundColor: AppColors.border,
+                        valueColor: AlwaysStoppedAnimation(
+                          _remainingSeconds > 10
+                              ? AppColors.leafGreen
+                              : AppColors.terracotta,
+                        ),
+                      );
+                    },
+                  ),
+                  Text(
+                    '$_remainingSeconds',
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w700,
+                      color: _remainingSeconds > 10
+                          ? AppColors.primaryText
+                          : AppColors.terracotta,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-          const SizedBox(height: 20),
-
-          // Prompt
-          Text(
-            'Name all the ${_categoryLabel(category)} you can think of:',
-            style: const TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.w600,
-              color: AppColors.primaryText,
+            const SizedBox(height: 16),
+            Text(
+              'Name all the ${_categoryLabel(category)} you can think of:',
+              style: const TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.w600,
+                color: AppColors.primaryText,
+              ),
+              textAlign: TextAlign.center,
             ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 20),
+          ],
+          SizedBox(height: isCompact ? 8 : 16),
 
           // Input area
           if (!_taskComplete)
@@ -170,62 +222,62 @@ class _NameHarvestWidgetState extends State<NameHarvestWidget>
                 Expanded(
                   child: TextField(
                     controller: _textController,
-                    style: const TextStyle(
-                        fontSize: 20, color: AppColors.primaryText),
+                    style: TextStyle(
+                        fontSize: isCompact ? 16 : 20, color: AppColors.primaryText),
                     decoration: InputDecoration(
                       hintText: 'Type an item...',
-                      hintStyle: const TextStyle(
-                          fontSize: 18, color: AppColors.secondaryText),
+                      hintStyle: TextStyle(
+                          fontSize: isCompact ? 14 : 18, color: AppColors.secondaryText),
                       filled: true,
                       fillColor: AppColors.raisedSurface,
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(14),
                         borderSide: const BorderSide(
                             color: AppColors.border, width: 1.5),
                       ),
-                      contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 18, vertical: 16),
+                      contentPadding: EdgeInsets.symmetric(
+                          horizontal: 14, vertical: isCompact ? 10 : 16),
                     ),
                     onSubmitted: (_) => _addItem(),
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 10),
                 ElevatedButton(
                   onPressed: _addItem,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.terracotta,
                     foregroundColor: AppColors.onColor,
-                    padding: const EdgeInsets.all(16),
+                    padding: EdgeInsets.all(isCompact ? 12 : 16),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14),
                     ),
                   ),
-                  child: const Icon(Icons.add, size: 28),
+                  child: Icon(Icons.add, size: isCompact ? 22 : 28),
                 ),
               ],
             ),
-          const SizedBox(height: 16),
+          SizedBox(height: isCompact ? 6 : 12),
 
           // Named items as chips
           Expanded(
             child: SingleChildScrollView(
               child: Wrap(
-                spacing: 10,
-                runSpacing: 10,
+                spacing: 8,
+                runSpacing: 8,
                 children: _namedItems.asMap().entries.map((entry) {
                   return Chip(
                     label: Text(
                       entry.value,
-                      style: const TextStyle(
-                        fontSize: 16,
+                      style: TextStyle(
+                        fontSize: isCompact ? 13 : 16,
                         fontWeight: FontWeight.w600,
                         color: AppColors.onColor,
                       ),
                     ),
                     backgroundColor: AppColors.leafGreen,
                     side: BorderSide.none,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 6),
+                    padding: EdgeInsets.symmetric(
+                        horizontal: isCompact ? 8 : 12, vertical: isCompact ? 4 : 6),
                   );
                 }).toList(),
               ),
@@ -235,18 +287,18 @@ class _NameHarvestWidgetState extends State<NameHarvestWidget>
           // Count
           Text(
             '${_namedItems.length} items named',
-            style: const TextStyle(
-              fontSize: 18,
+            style: TextStyle(
+              fontSize: isCompact ? 14 : 18,
               fontWeight: FontWeight.w600,
               color: AppColors.secondaryText,
             ),
           ),
 
           if (_taskComplete)
-            const Padding(
-              padding: EdgeInsets.only(top: 12),
+            Padding(
+              padding: EdgeInsets.only(top: isCompact ? 4 : 12),
               child: Icon(Icons.check_circle,
-                  size: 50, color: AppColors.leafGreen),
+                  size: isCompact ? 36 : 50, color: AppColors.leafGreen),
             ),
         ],
       ),

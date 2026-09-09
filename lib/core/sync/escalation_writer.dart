@@ -138,7 +138,7 @@ class EscalationWriter {
       'medication_id': escalation.medicationId,
       'step': escalation.step,
       'requested_at': escalation.requestedAt,
-      'cancelled': escalation.cancelled,
+      'status': escalation.cancelled ? 'cancelled' : 'requested',
     };
   }
 }

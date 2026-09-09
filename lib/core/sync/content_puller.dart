@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../db/database.dart';
 import '../repo/content_repo.dart';
+import 'media_downloader.dart';
 
 /// Result of a content pull operation.
 class ContentPullResult {
@@ -37,8 +38,7 @@ class ContentPuller {
   /// Checks for a new content version and pulls it if available.
   Future<ContentPullResult> pull() async {
     try {
-      final patientId =
-          await db.appConfigsDao.getValue('patientId');
+      final patientId = await db.appConfigsDao.getValue('patientId');
       if (patientId == null || patientId.isEmpty) {
         return const ContentPullResult(
           success: false,
@@ -49,30 +49,28 @@ class ContentPuller {
       // Check current version
       final currentVersion = await contentRepo.getContentVersion();
 
-      // Call the get_patient_content RPC
-      final response = await Supabase.instance.client.functions.invoke(
-        'get-patient-content',
-        body: {
-          'patient_id': patientId,
-          'current_version': currentVersion,
-        },
+      // Call the get_patient_content RPC (Postgres RPC, not edge function)
+      final dynamic response = await Supabase.instance.client.rpc(
+        'get_patient_content',
+        params: {'p_patient_id': patientId},
       );
 
-      if (response.status != 200) {
-        return ContentPullResult(
+      if (response == null || response is! Map) {
+        return const ContentPullResult(
           success: false,
-          error: 'Server returned status ${response.status}',
+          error: 'Empty or invalid content response from server',
         );
       }
 
-      final data = response.data;
-      if (data is! Map || data['version'] == null) {
-        // No new content
+      final data = Map<String, dynamic>.from(response);
+      final versionRaw = data['version'];
+      if (versionRaw == null) {
+        // No version field
         return const ContentPullResult(success: true, itemsPulled: 0);
       }
 
-      final newVersion = data['version'] as String;
-      if (newVersion == currentVersion) {
+      final newVersion = versionRaw.toString();
+      if (currentVersion != null && newVersion == currentVersion) {
         return const ContentPullResult(success: true, itemsPulled: 0);
       }
 
@@ -80,14 +78,30 @@ class ContentPuller {
       final people = _parsePeople(data['people'] as List<Object?>? ?? []);
       final medications =
           _parseMedications(data['medications'] as List<Object?>? ?? []);
-      final routineItems =
-          _parseRoutineItems(data['routine_items'] as List<Object?>? ?? []);
+      final routineItems = _parseRoutineItems(
+        (data['routine'] ?? data['routine_items']) as List<Object?>? ?? [],
+      );
 
-      // TODO: Step 1-2: Download and verify media files before swap
-      // This requires MediaDownloader (partially implemented).
-      // For now, skip media verification.
+      // Step 1: Download media files before DB swap (AGENTS.md #5)
+      final downloader = MediaDownloader(db);
+      for (final p in people) {
+        if (p.photoPath.value.isNotEmpty) {
+          await downloader.downloadPeoplePhoto(p.id.value, p.photoPath.value);
+        }
+        if (p.voicePath.value != null && p.voicePath.value!.isNotEmpty) {
+          await downloader.downloadPeopleVoice(p.id.value, p.voicePath.value!);
+        }
+      }
+      for (final m in medications) {
+        if (m.pillPhotoPath.value != null && m.pillPhotoPath.value!.isNotEmpty) {
+          await downloader.downloadMedicationPhoto(m.id.value, m.pillPhotoPath.value!);
+        }
+        if (m.voicePath.value != null && m.voicePath.value!.isNotEmpty) {
+          await downloader.downloadMedicationVoice(m.id.value, m.voicePath.value!);
+        }
+      }
 
-      // Step 3: Atomic DB swap
+      // Step 2 & 3: Atomic DB swap
       await contentRepo.replaceContent(
         people: people,
         medications: medications,
@@ -95,8 +109,19 @@ class ContentPuller {
         contentVersion: newVersion,
       );
 
-      // Step 4: Reschedule alarms
-      // TODO: Call alarm scheduler once implemented
+      // Update patient profile info if available
+      final elderName = data['elder_name'] as String?;
+      if (elderName != null && elderName.isNotEmpty) {
+        await db.appConfigsDao.setValue('elderName', elderName);
+      }
+      final langCode = data['lang_code'] as String?;
+      if (langCode != null && langCode.isNotEmpty) {
+        await db.appConfigsDao.setValue('langCode', langCode);
+      }
+      final timezone = data['timezone'] as String?;
+      if (timezone != null && timezone.isNotEmpty) {
+        await db.appConfigsDao.setValue('timezone', timezone);
+      }
 
       final totalItems =
           people.length + medications.length + routineItems.length;

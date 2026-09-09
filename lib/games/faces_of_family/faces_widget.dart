@@ -65,39 +65,41 @@ class _FacesWidgetState extends State<FacesWidget> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(20),
+    final isCompact = MediaQuery.of(context).size.height < 500;
+
+    return SingleChildScrollView(
+      padding: EdgeInsets.symmetric(horizontal: 16, vertical: isCompact ? 8 : 20),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           // Question prompt
           Text(
             _promptForMode(_mode),
-            style: const TextStyle(
-              fontSize: 24,
+            style: TextStyle(
+              fontSize: isCompact ? 18 : 24,
               fontWeight: FontWeight.w600,
               color: AppColors.primaryText,
             ),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 30),
+          SizedBox(height: isCompact ? 10 : 24),
 
           // Person avatar/photo
-          _buildAvatar(),
-          const SizedBox(height: 30),
+          _buildAvatar(isCompact),
+          SizedBox(height: isCompact ? 12 : 24),
 
           // Answer options
           if (!_answered)
             Wrap(
-              spacing: 16,
-              runSpacing: 16,
+              spacing: isCompact ? 10 : 16,
+              runSpacing: isCompact ? 10 : 16,
               alignment: WrapAlignment.center,
-              children: _options.map(_buildOption).toList(),
+              children: _options.map((p) => _buildOption(p, isCompact)).toList(),
             )
           else
-            const Icon(
+            Icon(
               Icons.check_circle,
-              size: 60,
+              size: isCompact ? 40 : 60,
               color: AppColors.leafGreen,
             ),
         ],
@@ -121,7 +123,7 @@ class _FacesWidgetState extends State<FacesWidget> {
     }
   }
 
-  Widget _buildAvatar() {
+  Widget _buildAvatar(bool isCompact) {
     // Use first letter of name as avatar since we have no real photos
     final initial = _target.name.isNotEmpty ? _target.name[0] : '?';
     final colors = [
@@ -131,27 +133,28 @@ class _FacesWidgetState extends State<FacesWidget> {
       AppColors.marigold,
     ];
     final color = colors[_target.name.hashCode % colors.length];
+    final avatarSize = isCompact ? 76.0 : 150.0;
 
     return Container(
-      width: 160,
-      height: 160,
+      width: avatarSize,
+      height: avatarSize,
       decoration: BoxDecoration(
         color: color,
         shape: BoxShape.circle,
-        border: Border.all(color: AppColors.border, width: 3),
+        border: Border.all(color: AppColors.border, width: isCompact ? 2 : 3),
         boxShadow: [
           BoxShadow(
             color: color.withValues(alpha: 0.3),
-            blurRadius: 20,
-            spreadRadius: 4,
+            blurRadius: isCompact ? 10 : 20,
+            spreadRadius: isCompact ? 2 : 4,
           ),
         ],
       ),
       child: Center(
         child: Text(
           initial,
-          style: const TextStyle(
-            fontSize: 64,
+          style: TextStyle(
+            fontSize: isCompact ? 34 : 64,
             fontWeight: FontWeight.w700,
             color: AppColors.onColor,
           ),
@@ -160,12 +163,18 @@ class _FacesWidgetState extends State<FacesWidget> {
     );
   }
 
-  Widget _buildOption(PersonItem person) {
+  Widget _buildOption(PersonItem person, bool isCompact) {
     return GestureDetector(
       onTap: () => _onOptionTap(person),
       child: Container(
-        constraints: const BoxConstraints(minWidth: 140, minHeight: 60),
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+        constraints: BoxConstraints(
+          minWidth: isCompact ? 110 : 140,
+          minHeight: isCompact ? 44 : 60,
+        ),
+        padding: EdgeInsets.symmetric(
+          horizontal: isCompact ? 16 : 24,
+          vertical: isCompact ? 10 : 16,
+        ),
         decoration: BoxDecoration(
           color: AppColors.raisedSurface,
           borderRadius: BorderRadius.circular(16),
@@ -183,8 +192,8 @@ class _FacesWidgetState extends State<FacesWidget> {
           children: [
             Text(
               _mode == 'relationship' ? person.relationship : person.name,
-              style: const TextStyle(
-                fontSize: 20,
+              style: TextStyle(
+                fontSize: isCompact ? 16 : 20,
                 fontWeight: FontWeight.w600,
                 color: AppColors.primaryText,
               ),
@@ -193,8 +202,8 @@ class _FacesWidgetState extends State<FacesWidget> {
             if (_mode == 'relationship')
               Text(
                 person.name,
-                style: const TextStyle(
-                  fontSize: 14,
+                style: TextStyle(
+                  fontSize: isCompact ? 12 : 14,
                   color: AppColors.secondaryText,
                 ),
               ),

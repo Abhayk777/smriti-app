@@ -297,6 +297,7 @@ class PairingService {
       'elderName': _requireString(data, 'elder_name'),
       'age': age.toString(),
       'educationYears': educationYears.toString(),
+      'deviceRefreshToken': refreshToken,
     });
 
     // Seeded from the real demographics, so the first session starts near the

@@ -8,6 +8,7 @@ import '../app_colors.dart';
 import '../core/db/app_database.dart';
 import '../core/repo/ability_repo.dart';
 import '../core/repo/event_repo.dart';
+import '../core/sync/sync_engine.dart';
 import '../games/cognitive_game.dart';
 import '../games/session_runner.dart';
 
@@ -177,10 +178,118 @@ class _GameScreenState extends State<GameScreen> {
     setState(() => _currentItem = item);
   }
 
-  void _endSession({bool completed = false}) {
+  Future<void> _endSession({bool completed = false}) async {
     if (_sessionEnded) return;
     _sessionEnded = true;
+    _timerUpdate?.cancel();
     _runner?.end(completed: completed);
+    unawaited(SyncEngine.defaultInstance.run(trigger: SyncTrigger.sessionEnded));
+
+    if (!mounted) return;
+
+    // Show session summary dialog so user/caregiver sees what was played and how long
+    if (_elapsed.inSeconds >= 3) {
+      final mins = _elapsed.inMinutes;
+      final secs = _elapsed.inSeconds % 60;
+      final durationStr = mins > 0 ? '${mins}m ${secs}s' : '${secs}s';
+      final name = _gameName(widget.gameId);
+
+      await showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) {
+          final isCompact = MediaQuery.of(ctx).size.height < 500;
+          return AlertDialog(
+            backgroundColor: Colors.white,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            contentPadding: EdgeInsets.symmetric(horizontal: 24, vertical: isCompact ? 16 : 24),
+            content: SizedBox(
+              width: 360,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: isCompact ? 46 : 60,
+                    height: isCompact ? 46 : 60,
+                    decoration: BoxDecoration(
+                      color: AppColors.leafGreen.withValues(alpha: 0.15),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.check_circle_rounded,
+                      color: AppColors.leafGreen,
+                      size: isCompact ? 28 : 36,
+                    ),
+                  ),
+                  SizedBox(height: isCompact ? 8 : 14),
+                  Text(
+                    completed ? 'Session Complete!' : 'Great Effort!',
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.primaryText,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    name,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.terracotta,
+                    ),
+                  ),
+                  SizedBox(height: isCompact ? 10 : 16),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: AppColors.pageBackground,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.timer_outlined, color: AppColors.secondaryText, size: 20),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Time Played: $durationStr',
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.primaryText,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(height: isCompact ? 12 : 18),
+                  SizedBox(
+                    width: double.infinity,
+                    height: isCompact ? 42 : 48,
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.of(ctx).pop(),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.terracotta,
+                        foregroundColor: AppColors.onColor,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      child: const Text(
+                        'Back to Games',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      );
+    }
+
     if (mounted) Navigator.of(context).pop();
   }
 
@@ -226,13 +335,17 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   Widget _buildTopBar() {
+    final isCompact = MediaQuery.of(context).size.height < 500;
     final minutes = _elapsed.inMinutes;
     final seconds = _elapsed.inSeconds % 60;
     final remaining = 6 - minutes;
     final progress = _elapsed.inSeconds / 360.0;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      padding: EdgeInsets.symmetric(
+        horizontal: 20,
+        vertical: isCompact ? 6 : 12,
+      ),
       decoration: BoxDecoration(
         color: AppColors.raisedSurface,
         border: Border(

@@ -142,24 +142,25 @@ class _MyDayWidgetState extends State<MyDayWidget> {
 
   @override
   Widget build(BuildContext context) {
+    final isCompact = MediaQuery.of(context).size.height < 500;
     return Padding(
-      padding: const EdgeInsets.all(20),
-      child: _mode == 'ordering' ? _buildOrderingMode() : _buildOrientationMode(),
+      padding: EdgeInsets.all(isCompact ? 10 : 20),
+      child: _mode == 'ordering' ? _buildOrderingMode(isCompact) : _buildOrientationMode(isCompact),
     );
   }
 
-  Widget _buildOrderingMode() {
+  Widget _buildOrderingMode(bool isCompact) {
     return Column(
       children: [
-        const Text(
+        Text(
           'Put these in the right order — morning to night:',
           style: TextStyle(
-            fontSize: 22,
+            fontSize: isCompact ? 17 : 22,
             fontWeight: FontWeight.w600,
             color: AppColors.primaryText,
           ),
         ),
-        const SizedBox(height: 20),
+        SizedBox(height: isCompact ? 8 : 20),
         Expanded(
           child: ReorderableListView(
             // ignore: deprecated_member_use
@@ -173,36 +174,45 @@ class _MyDayWidgetState extends State<MyDayWidget> {
             },
             children: _events.asMap().entries.map((entry) {
               final event = entry.value;
-              return _buildEventTile(event, key: ValueKey(event['id']));
+              return _buildEventTile(event, isCompact: isCompact, key: ValueKey(event['id']));
             }).toList(),
           ),
         ),
-        const SizedBox(height: 16),
+        SizedBox(height: isCompact ? 8 : 16),
         if (!_submitted)
           ElevatedButton(
             onPressed: _onReorderComplete,
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.terracotta,
               foregroundColor: AppColors.onColor,
-              padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
+              padding: EdgeInsets.symmetric(
+                horizontal: isCompact ? 28 : 40,
+                vertical: isCompact ? 10 : 16,
+              ),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
               ),
             ),
-            child: const Text(
+            child: Text(
               'Done',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+              style: TextStyle(
+                fontSize: isCompact ? 15 : 18,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
       ],
     );
   }
 
-  Widget _buildEventTile(Map<String, Object> event, {Key? key}) {
+  Widget _buildEventTile(Map<String, Object> event, {bool isCompact = false, Key? key}) {
     return Container(
       key: key,
-      margin: const EdgeInsets.symmetric(vertical: 6),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      margin: EdgeInsets.symmetric(vertical: isCompact ? 3 : 6),
+      padding: EdgeInsets.symmetric(
+        horizontal: isCompact ? 14 : 20,
+        vertical: isCompact ? 8 : 16,
+      ),
       decoration: BoxDecoration(
         color: AppColors.raisedSurface,
         borderRadius: BorderRadius.circular(16),
@@ -212,78 +222,82 @@ class _MyDayWidgetState extends State<MyDayWidget> {
         children: [
           Text(
             (event['icon'] as String?) ?? '📌',
-            style: const TextStyle(fontSize: 30),
+            style: TextStyle(fontSize: isCompact ? 22 : 30),
           ),
           const SizedBox(width: 16),
           Text(
             (event['label'] as String?) ?? '',
-            style: const TextStyle(
-              fontSize: 20,
+            style: TextStyle(
+              fontSize: isCompact ? 16 : 20,
               fontWeight: FontWeight.w600,
               color: AppColors.primaryText,
             ),
           ),
           const Spacer(),
-          const Icon(Icons.drag_handle, color: AppColors.ghostHand, size: 28),
+          Icon(Icons.drag_handle, color: AppColors.ghostHand, size: isCompact ? 22 : 28),
         ],
       ),
     );
   }
 
-  Widget _buildOrientationMode() {
+  Widget _buildOrientationMode(bool isCompact) {
     final question =
         (widget.item.payload['question'] as Map<String, Object>?) ?? {};
     final questionText =
         question['question'] as String? ?? 'What day is it today?';
 
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        const Icon(Icons.calendar_today, size: 50, color: AppColors.marigold),
-        const SizedBox(height: 20),
-        Text(
-          questionText,
-          style: const TextStyle(
-            fontSize: 26,
-            fontWeight: FontWeight.w600,
-            color: AppColors.primaryText,
+    return SingleChildScrollView(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.calendar_today, size: isCompact ? 36 : 50, color: AppColors.marigold),
+          SizedBox(height: isCompact ? 10 : 20),
+          Text(
+            questionText,
+            style: TextStyle(
+              fontSize: isCompact ? 20 : 26,
+              fontWeight: FontWeight.w600,
+              color: AppColors.primaryText,
+            ),
+            textAlign: TextAlign.center,
           ),
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 30),
-        if (!_submitted)
-          Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            alignment: WrapAlignment.center,
-            children: _orientationOptions.map((option) {
-              return GestureDetector(
-                onTap: () => _onOrientationAnswer(option),
-                child: Container(
-                  constraints: const BoxConstraints(minWidth: 100),
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 20, vertical: 14),
-                  decoration: BoxDecoration(
-                    color: AppColors.raisedSurface,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: AppColors.border, width: 1.5),
-                  ),
-                  child: Text(
-                    option,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.primaryText,
+          SizedBox(height: isCompact ? 14 : 30),
+          if (!_submitted)
+            Wrap(
+              spacing: isCompact ? 8 : 12,
+              runSpacing: isCompact ? 8 : 12,
+              alignment: WrapAlignment.center,
+              children: _orientationOptions.map((option) {
+                return GestureDetector(
+                  onTap: () => _onOrientationAnswer(option),
+                  child: Container(
+                    constraints: BoxConstraints(minWidth: isCompact ? 80 : 100),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: isCompact ? 14 : 20,
+                      vertical: isCompact ? 10 : 14,
                     ),
-                    textAlign: TextAlign.center,
+                    decoration: BoxDecoration(
+                      color: AppColors.raisedSurface,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: AppColors.border, width: 1.5),
+                    ),
+                    child: Text(
+                      option,
+                      style: TextStyle(
+                        fontSize: isCompact ? 15 : 18,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.primaryText,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
                   ),
-                ),
-              );
-            }).toList(),
-          )
-        else
-          const Icon(Icons.check_circle, size: 60, color: AppColors.leafGreen),
-      ],
+                );
+              }).toList(),
+            )
+          else
+            Icon(Icons.check_circle, size: isCompact ? 40 : 60, color: AppColors.leafGreen),
+        ],
+      ),
     );
   }
 }

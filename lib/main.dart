@@ -16,7 +16,6 @@ Future<void> main() async {
   // Initialize Workmanager for periodic sync
   await Workmanager().initialize(
     callbackDispatcher,
-    isInDebugMode: false,
   );
   
   // Register periodic sync task
@@ -34,6 +33,7 @@ Future<void> main() async {
 /// Callback dispatcher for Workmanager.
 ///
 /// This is required by Workmanager to handle background tasks.
+@pragma('vm:entry-point')
 void callbackDispatcher() {
   Workmanager().executeTask((task, inputData) async {
     // For now, we'll trigger sync from the main app

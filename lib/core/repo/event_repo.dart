@@ -25,6 +25,14 @@ class EventRepo {
         .getSingleOrNull();
   }
 
+  /// Gets recent play sessions ordered by newest first.
+  Future<List<Session>> getRecentSessions({int limit = 20}) {
+    return (db.select(db.sessions)
+          ..orderBy([(t) => OrderingTerm(expression: t.startedAt, mode: OrderingMode.desc)])
+          ..limit(limit))
+        .get();
+  }
+
   /// Closes an open session. Refuses to touch one that already ended, so a
   /// finalized row can never be rewritten.
   Future<void> endSession({

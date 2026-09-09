@@ -80,58 +80,57 @@ class _SortHarvestWidgetState extends State<SortHarvestWidget> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(20),
+    final isCompact = MediaQuery.of(context).size.height < 500;
+
+    return SingleChildScrollView(
+      padding: EdgeInsets.symmetric(horizontal: 16, vertical: isCompact ? 8 : 20),
       child: Column(
         children: [
-          // Instruction (no mention of current rule — it's unsignalled!)
-          const Text(
+          // Instruction
+          Text(
             'Place this item where it belongs:',
             style: TextStyle(
-              fontSize: 22,
+              fontSize: isCompact ? 18 : 22,
               fontWeight: FontWeight.w600,
               color: AppColors.primaryText,
             ),
           ),
-          const SizedBox(height: 24),
+          SizedBox(height: isCompact ? 10 : 24),
 
           // Card to sort
-          _buildCard(),
-          const SizedBox(height: 40),
+          _buildCard(isCompact),
+          SizedBox(height: isCompact ? 14 : 32),
 
           // Sorting mats
           if (!_answered)
-            Expanded(
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: _mats.map(_buildMat).toList(),
-              ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: _mats.map((m) => _buildMat(m, isCompact)).toList(),
             )
           else
-            const Expanded(
-              child: Center(
-                child: Icon(Icons.check_circle,
-                    size: 60, color: AppColors.leafGreen),
-              ),
+            const Center(
+              child: Icon(Icons.check_circle,
+                  size: 50, color: AppColors.leafGreen),
             ),
         ],
       ),
     );
   }
 
-  Widget _buildCard() {
+  Widget _buildCard(bool isCompact) {
+    final size = isCompact ? 84.0 : 140.0;
     return Container(
-      width: 150,
-      height: 150,
+      width: size,
+      height: size,
       decoration: BoxDecoration(
         color: AppColors.raisedSurface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.marigold, width: 3),
+        borderRadius: BorderRadius.circular(isCompact ? 14 : 20),
+        border: Border.all(color: AppColors.marigold, width: isCompact ? 2 : 3),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.15),
-            blurRadius: 12,
-            offset: const Offset(0, 6),
+            color: Colors.black.withValues(alpha: 0.12),
+            blurRadius: isCompact ? 6 : 12,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -140,13 +139,13 @@ class _SortHarvestWidgetState extends State<SortHarvestWidget> {
         children: [
           Text(
             _card['emoji'] ?? '🌿',
-            style: const TextStyle(fontSize: 50),
+            style: TextStyle(fontSize: isCompact ? 32 : 48),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 4),
           Text(
             _card['id']?.split('_').first ?? '',
-            style: const TextStyle(
-              fontSize: 16,
+            style: TextStyle(
+              fontSize: isCompact ? 13 : 16,
               fontWeight: FontWeight.w600,
               color: AppColors.primaryText,
             ),
@@ -156,35 +155,35 @@ class _SortHarvestWidgetState extends State<SortHarvestWidget> {
     );
   }
 
-  Widget _buildMat(String mat) {
+  Widget _buildMat(String mat, bool isCompact) {
     final color = _colorForMat(mat);
     return GestureDetector(
       onTap: () => _onMatTap(mat),
       child: Container(
-        width: 130,
-        height: 160,
+        width: isCompact ? 96 : 130,
+        height: isCompact ? 104 : 150,
         decoration: BoxDecoration(
           color: color.withValues(alpha: 0.15),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: color, width: 2.5),
+          borderRadius: BorderRadius.circular(isCompact ? 14 : 20),
+          border: Border.all(color: color, width: isCompact ? 2 : 2.5),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              width: 50,
-              height: 50,
+              width: isCompact ? 36 : 50,
+              height: isCompact ? 36 : 50,
               decoration: BoxDecoration(
                 color: color.withValues(alpha: 0.3),
                 shape: BoxShape.circle,
               ),
-              child: Icon(Icons.place, color: color, size: 30),
+              child: Icon(Icons.place, color: color, size: isCompact ? 20 : 30),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: isCompact ? 6 : 12),
             Text(
               mat.replaceAll('_', ' '),
               style: TextStyle(
-                fontSize: 16,
+                fontSize: isCompact ? 13 : 16,
                 fontWeight: FontWeight.w700,
                 color: color,
               ),

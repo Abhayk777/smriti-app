@@ -114,20 +114,21 @@ class _MarketBasketWidgetState extends State<MarketBasketWidget>
 
   @override
   Widget build(BuildContext context) {
+    final isCompact = MediaQuery.of(context).size.height < 500;
     return Padding(
-      padding: const EdgeInsets.all(20),
-      child: _buildPhase(),
+      padding: EdgeInsets.all(isCompact ? 8 : 20),
+      child: _buildPhase(isCompact),
     );
   }
 
-  Widget _buildPhase() {
+  Widget _buildPhase(bool isCompact) {
     switch (_phase) {
       case 'showing_list':
-        return _buildListPhase();
+        return _buildListPhase(isCompact);
       case 'delay':
         return _buildDelayPhase();
       case 'picking':
-        return _buildPickingPhase();
+        return _buildPickingPhase(isCompact);
       case 'done':
         return const Center(
           child: Icon(Icons.check_circle, size: 80, color: AppColors.leafGreen),
@@ -137,26 +138,28 @@ class _MarketBasketWidgetState extends State<MarketBasketWidget>
     }
   }
 
-  Widget _buildListPhase() {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        const Text(
-          'Remember these items:',
-          style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.w600,
-            color: AppColors.primaryText,
+  Widget _buildListPhase(bool isCompact) {
+    return SingleChildScrollView(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            'Remember these items:',
+            style: TextStyle(
+              fontSize: isCompact ? 18 : 24,
+              fontWeight: FontWeight.w600,
+              color: AppColors.primaryText,
+            ),
           ),
-        ),
-        const SizedBox(height: 30),
-        Wrap(
-          spacing: 20,
-          runSpacing: 20,
-          alignment: WrapAlignment.center,
-          children: _targets.map((item) => _buildItemCard(item, large: true)).toList(),
-        ),
-      ],
+          SizedBox(height: isCompact ? 12 : 30),
+          Wrap(
+            spacing: isCompact ? 12 : 20,
+            runSpacing: isCompact ? 12 : 20,
+            alignment: WrapAlignment.center,
+            children: _targets.map((item) => _buildItemCard(item, large: !isCompact)).toList(),
+          ),
+        ],
+      ),
     );
   }
 
@@ -179,25 +182,25 @@ class _MarketBasketWidgetState extends State<MarketBasketWidget>
     );
   }
 
-  Widget _buildPickingPhase() {
+  Widget _buildPickingPhase(bool isCompact) {
     return Column(
       children: [
-        const Text(
+        Text(
           'Pick the items from your list:',
           style: TextStyle(
-            fontSize: 22,
+            fontSize: isCompact ? 16 : 22,
             fontWeight: FontWeight.w600,
             color: AppColors.primaryText,
           ),
         ),
-        const SizedBox(height: 20),
+        SizedBox(height: isCompact ? 8 : 20),
         Expanded(
           child: GridView.builder(
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 4,
-              crossAxisSpacing: 16,
-              mainAxisSpacing: 16,
-              childAspectRatio: 1.0,
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: isCompact ? 4 : 4,
+              crossAxisSpacing: isCompact ? 10 : 16,
+              mainAxisSpacing: isCompact ? 10 : 16,
+              childAspectRatio: isCompact ? 1.3 : 1.0,
             ),
             itemCount: _shelf.length,
             itemBuilder: (context, index) {
@@ -207,21 +210,27 @@ class _MarketBasketWidgetState extends State<MarketBasketWidget>
             },
           ),
         ),
-        const SizedBox(height: 16),
+        SizedBox(height: isCompact ? 8 : 16),
         // Done button
         ElevatedButton(
           onPressed: _picked.isNotEmpty ? _submitResult : null,
           style: ElevatedButton.styleFrom(
             backgroundColor: AppColors.terracotta,
             foregroundColor: AppColors.onColor,
-            padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
+            padding: EdgeInsets.symmetric(
+              horizontal: isCompact ? 28 : 40,
+              vertical: isCompact ? 10 : 16,
+            ),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
             ),
           ),
           child: Text(
             'Done (${_picked.length} picked)',
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+            style: TextStyle(
+              fontSize: isCompact ? 15 : 18,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ),
       ],

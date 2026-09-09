@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
 
 import '../db/database.dart';
@@ -48,11 +50,29 @@ class EventPusher {
   Future<EventPushResult> push() async {
     try {
       final pid = await _getPatientId();
+      final client = supabase.Supabase.instance.client;
       int eventsPushed = 0;
       int sessionsPushed = 0;
       int reminderEventsPushed = 0;
       
-      // Push unsynced trial events
+      // 1. Push unsynced sessions FIRST (events reference session_id)
+      final unsyncedSessions = await eventRepo.unsyncedSessions(limit: 200);
+      if (unsyncedSessions.isNotEmpty) {
+        final rows = unsyncedSessions.map((s) => {
+          ..._sessionToMap(s),
+          'patient_id': pid,
+        }).toList();
+        
+        await client.from('sessions').insert(rows);
+        
+        await eventRepo.markSessionsSynced(
+          unsyncedSessions.map((s) => s.id).toList(),
+        );
+        
+        sessionsPushed = unsyncedSessions.length;
+      }
+
+      // 2. Push unsynced trial events
       final unsyncedTrials = await eventRepo.unsyncedTrials(limit: 500);
       if (unsyncedTrials.isNotEmpty) {
         final rows = unsyncedTrials.map((t) => {
@@ -60,13 +80,9 @@ class EventPusher {
           'patient_id': pid,
         }).toList();
         
-        await supabase.Supabase.instance.client.from('events').upsert(
-          rows,
-          onConflict: 'id',
-          ignoreDuplicates: true,
-        );
+        await client.from('events').insert(rows);
         
-        // Mark as synced ONLY if the upsert succeeded
+        // Mark as synced ONLY if the insert succeeded
         // Per AGENTS.md #4: We don't .select() to verify, we assume success
         await eventRepo.markTrialsSynced(
           unsyncedTrials.map((t) => t.id).toList(),
@@ -75,28 +91,7 @@ class EventPusher {
         eventsPushed = unsyncedTrials.length;
       }
       
-      // Push unsynced sessions
-      final unsyncedSessions = await eventRepo.unsyncedSessions(limit: 200);
-      if (unsyncedSessions.isNotEmpty) {
-        final rows = unsyncedSessions.map((s) => {
-          ..._sessionToMap(s),
-          'patient_id': pid,
-        }).toList();
-        
-        await supabase.Supabase.instance.client.from('sessions').upsert(
-          rows,
-          onConflict: 'id',
-          ignoreDuplicates: true,
-        );
-        
-        await eventRepo.markSessionsSynced(
-          unsyncedSessions.map((s) => s.id).toList(),
-        );
-        
-        sessionsPushed = unsyncedSessions.length;
-      }
-      
-      // Push unsynced reminder events
+      // 3. Push unsynced reminder events
       final unsyncedReminderEvents = await eventRepo.unsyncedReminderEvents(limit: 200);
       if (unsyncedReminderEvents.isNotEmpty) {
         final rows = unsyncedReminderEvents.map((r) => {
@@ -104,11 +99,7 @@ class EventPusher {
           'patient_id': pid,
         }).toList();
         
-        await supabase.Supabase.instance.client.from('reminder_events').upsert(
-          rows,
-          onConflict: 'id',
-          ignoreDuplicates: true,
-        );
+        await client.from('reminder_events').insert(rows);
         
         await eventRepo.markReminderEventsSynced(
           unsyncedReminderEvents.map((r) => r.id).toList(),
@@ -135,11 +126,20 @@ class EventPusher {
 
   /// Converts a TrialEvent to a Map for Supabase upsert.
   Map<String, dynamic> _trialEventToMap(TrialEvent event) {
+    dynamic metricsJson;
+    if (event.metrics != null && event.metrics!.isNotEmpty) {
+      try {
+        metricsJson = jsonDecode(event.metrics!);
+      } catch (_) {
+        metricsJson = null;
+      }
+    }
+
     return {
       'id': event.id,
       'session_id': event.sessionId,
       'game_id': event.gameId,
-      'domain': event.domain,
+      'domain': event.domain.toLowerCase(),
       'item_id': event.itemId,
       'item_difficulty': event.itemDifficulty,
       'theta_before': event.thetaBefore,
@@ -152,7 +152,7 @@ class EventPusher {
       'trial_index': event.trialIndex,
       'trial_context': event.trialContext,
       'hint_level': event.hintLevel,
-      'metrics': event.metrics,
+      'metrics': metricsJson,
       'ts': event.ts,
       'hour_of_day': event.hourOfDay,
       'tz_offset_min': event.tzOffsetMin,

@@ -1,8 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:smriti/app_colors.dart';
 import 'package:smriti/core/auth/pairing_service.dart';
 import 'package:smriti/core/db/app_database.dart';
 import 'package:smriti/core/repo/ability_repo.dart';
+import 'package:smriti/core/sync/sync_engine.dart';
+import 'package:smriti/screens/home_screen.dart';
 import 'package:smriti/screens/pairing/pair_confirm_screen.dart';
 import 'package:smriti/screens/pairing/patient_picker_screen.dart';
 import 'package:smriti/screens/pairing/scan_screen.dart';
@@ -80,8 +84,10 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (paired == true && mounted) {
         passwordController.clear();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Tablet paired.')),
+        unawaited(SyncEngine.defaultInstance.run(trigger: SyncTrigger.manual));
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const HomeScreen()),
+          (route) => false,
         );
       }
     } on PairingException catch (e) {
@@ -110,8 +116,10 @@ class _LoginScreenState extends State<LoginScreen> {
     );
 
     if (paired == true && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Tablet paired.')),
+      unawaited(SyncEngine.defaultInstance.run(trigger: SyncTrigger.manual));
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const HomeScreen()),
+        (route) => false,
       );
     }
   }

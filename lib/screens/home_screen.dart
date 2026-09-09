@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../app_colors.dart';
 import '../core/db/app_database.dart';
+import '../core/sync/sync_engine.dart';
 import 'diagnostics_screen.dart';
 import 'game_select_screen.dart';
 
@@ -25,7 +26,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   String _elderName = '';
   Timer? _clockTimer;
   DateTime _now = DateTime.now();
@@ -37,6 +38,7 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadElderName();
     _clockTimer = Timer.periodic(const Duration(seconds: 30), (_) {
       if (mounted) setState(() => _now = DateTime.now());
@@ -46,10 +48,21 @@ class _HomeScreenState extends State<HomeScreen>
       vsync: this,
       duration: const Duration(seconds: 3),
     )..repeat(reverse: true);
+
+    // Trigger initial sync and heartbeat
+    unawaited(SyncEngine.defaultInstance.run(trigger: SyncTrigger.appForeground));
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      unawaited(SyncEngine.defaultInstance.run(trigger: SyncTrigger.appForeground));
+    }
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _clockTimer?.cancel();
     _diagnosticsTapResetTimer?.cancel();
     _breathController.dispose();
@@ -98,65 +111,10 @@ class _HomeScreenState extends State<HomeScreen>
 
     if (_diagnosticsTapCount >= 5) {
       _diagnosticsTapCount = 0;
-      _showPinDialog();
+      Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const DiagnosticsScreen()),
+      );
     }
-  }
-
-  void _showPinDialog() {
-    final pinController = TextEditingController();
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text(
-          'Caregiver Access',
-          style: TextStyle(
-            fontWeight: FontWeight.w700,
-            color: AppColors.primaryText,
-          ),
-        ),
-        content: TextField(
-          controller: pinController,
-          obscureText: true,
-          keyboardType: TextInputType.number,
-          decoration: InputDecoration(
-            hintText: 'Enter PIN',
-            filled: true,
-            fillColor: AppColors.pageBackground,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
-          autofocus: true,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              // Accept any 4-digit PIN for now — real implementation
-              // would check against stored PIN
-              if (pinController.text.length >= 4) {
-                Navigator.of(context).pop();
-                Navigator.of(this.context).push(
-                  MaterialPageRoute(
-                    builder: (_) => const DiagnosticsScreen(),
-                  ),
-                );
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.terracotta,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Enter'),
-          ),
-        ],
-      ),
-    );
   }
 
   @override
@@ -170,18 +128,17 @@ class _HomeScreenState extends State<HomeScreen>
             _buildDecorations(),
 
             // Main content
-            Padding(
-              padding: const EdgeInsets.all(24),
+            SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
               child: Column(
                 children: [
                   // Top: greeting and clock
                   _buildGreetingSection(),
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 24),
 
                   // Center: main actions
-                  Expanded(
-                    child: _buildMainActions(),
-                  ),
+                  _buildMainActions(),
+                  const SizedBox(height: 24),
 
                   // Bottom: quick actions
                   _buildQuickActions(),
@@ -196,7 +153,7 @@ class _HomeScreenState extends State<HomeScreen>
               child: GestureDetector(
                 onTap: _onDiagnosticsTap,
                 behavior: HitTestBehavior.translucent,
-                child: const SizedBox(width: 60, height: 60),
+                child: const SizedBox(width: 100, height: 100),
               ),
             ),
           ],
@@ -239,29 +196,34 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Widget _buildGreetingSection() {
+    final isCompact = MediaQuery.of(context).size.height < 500;
     return Column(
       children: [
-        // Greeting
-        Text(
-          '${_greeting()}${_elderName.isNotEmpty ? ', $_elderName' : ''}',
-          style: const TextStyle(
-            fontSize: 30,
-            fontWeight: FontWeight.w700,
-            color: AppColors.primaryText,
+        // Greeting - also supports 5-tap to open diagnostics
+        GestureDetector(
+          onTap: _onDiagnosticsTap,
+          behavior: HitTestBehavior.opaque,
+          child: Text(
+            '${_greeting()}${_elderName.isNotEmpty ? ', $_elderName' : ''}',
+            style: TextStyle(
+              fontSize: isCompact ? 22 : 30,
+              fontWeight: FontWeight.w700,
+              color: AppColors.primaryText,
+            ),
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 4),
 
         // Date
         Text(
           _dateString(),
-          style: const TextStyle(
-            fontSize: 18,
+          style: TextStyle(
+            fontSize: isCompact ? 14 : 18,
             fontWeight: FontWeight.w500,
             color: AppColors.secondaryText,
           ),
         ),
-        const SizedBox(height: 20),
+        SizedBox(height: isCompact ? 10 : 20),
 
         // Large clock
         AnimatedBuilder(
@@ -269,11 +231,13 @@ class _HomeScreenState extends State<HomeScreen>
           builder: (context, child) {
             final glow = 0.1 + _breathController.value * 0.1;
             return Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 36, vertical: 20),
+              padding: EdgeInsets.symmetric(
+                horizontal: isCompact ? 24 : 36,
+                vertical: isCompact ? 8 : 20,
+              ),
               decoration: BoxDecoration(
                 color: AppColors.raisedSurface,
-                borderRadius: BorderRadius.circular(24),
+                borderRadius: BorderRadius.circular(isCompact ? 16 : 24),
                 border: Border.all(color: AppColors.border, width: 1.5),
                 boxShadow: [
                   BoxShadow(
@@ -285,11 +249,11 @@ class _HomeScreenState extends State<HomeScreen>
               ),
               child: Text(
                 _timeString(),
-                style: const TextStyle(
-                  fontSize: 56,
+                style: TextStyle(
+                  fontSize: isCompact ? 36 : 56,
                   fontWeight: FontWeight.w300,
                   color: AppColors.primaryText,
-                  letterSpacing: 4,
+                  letterSpacing: isCompact ? 2 : 4,
                 ),
               ),
             );
@@ -300,6 +264,8 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Widget _buildMainActions() {
+    final isCompact = MediaQuery.of(context).size.height < 500;
+    final spacing = isCompact ? 14.0 : 24.0;
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
@@ -317,7 +283,7 @@ class _HomeScreenState extends State<HomeScreen>
             );
           },
         ),
-        const SizedBox(width: 24),
+        SizedBox(width: spacing),
 
         // My Family button
         _buildLargeButton(
@@ -335,7 +301,7 @@ class _HomeScreenState extends State<HomeScreen>
             );
           },
         ),
-        const SizedBox(width: 24),
+        SizedBox(width: spacing),
 
         // My Day button
         _buildLargeButton(
@@ -364,44 +330,45 @@ class _HomeScreenState extends State<HomeScreen>
     required Color color,
     required VoidCallback onTap,
   }) {
+    final isCompact = MediaQuery.of(context).size.height < 500;
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 180,
-        height: 200,
+        width: isCompact ? 140 : 180,
+        height: isCompact ? 130 : 200,
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [color, color.withValues(alpha: 0.85)],
           ),
-          borderRadius: BorderRadius.circular(28),
+          borderRadius: BorderRadius.circular(isCompact ? 20 : 28),
           boxShadow: [
             BoxShadow(
               color: color.withValues(alpha: 0.35),
-              blurRadius: 16,
-              offset: const Offset(0, 8),
+              blurRadius: isCompact ? 10 : 16,
+              offset: const Offset(0, 6),
             ),
           ],
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(emoji, style: const TextStyle(fontSize: 50)),
-            const SizedBox(height: 12),
+            Text(emoji, style: TextStyle(fontSize: isCompact ? 32 : 50)),
+            SizedBox(height: isCompact ? 6 : 12),
             Text(
               label,
-              style: const TextStyle(
-                fontSize: 20,
+              style: TextStyle(
+                fontSize: isCompact ? 15 : 20,
                 fontWeight: FontWeight.w700,
                 color: Colors.white,
               ),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 2),
             Text(
               sublabel,
               style: TextStyle(
-                fontSize: 13,
+                fontSize: isCompact ? 11 : 13,
                 color: Colors.white.withValues(alpha: 0.8),
               ),
             ),

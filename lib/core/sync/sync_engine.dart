@@ -4,6 +4,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:workmanager/workmanager.dart';
 
+import '../db/app_database.dart';
 import '../db/database.dart';
 import '../repo/content_repo.dart';
 import '../repo/event_repo.dart';
@@ -117,6 +118,16 @@ class SyncEngine {
     // and the package to be initialized
   }
 
+  static SyncEngine? _defaultInstance;
+  static SyncEngine get defaultInstance {
+    return _defaultInstance ??= SyncEngine(
+      db: appDatabase,
+      eventRepo: EventRepo(appDatabase),
+      memoRepo: MemoRepo(appDatabase),
+      contentRepo: ContentRepo(appDatabase),
+    );
+  }
+
   /// Starts a sync operation if not already running.
   ///
   /// Returns immediately with [SyncResult.skipped] if:
@@ -138,14 +149,29 @@ class SyncEngine {
       return SyncResult.skipped('offline');
     }
 
-    // Check authentication
+    // Check authentication - if null, try to restore device session using deviceRefreshToken
     if (Supabase.instance.client.auth.currentSession == null) {
-      await _recordSyncError('not authed');
-      return SyncResult.skipped('not authed');
+      final token = await db.appConfigsDao.getValue('deviceRefreshToken');
+      if (token != null && token.isNotEmpty) {
+        try {
+          await Supabase.instance.client.auth.setSession(token);
+        } catch (e) {
+          await _recordSyncError('setSession failed: $e');
+        }
+      } else {
+        await _recordSyncError('no deviceRefreshToken in local DB');
+      }
     }
 
-    // Check rate limiting
-    if (_lastSyncAt != null) {
+    if (Supabase.instance.client.auth.currentSession == null) {
+      final error = await getLastSyncError() ?? 'not authed';
+      return SyncResult.skipped(error);
+    }
+
+    // Check rate limiting (exempt manual and sessionEnded triggers)
+    if (_lastSyncAt != null &&
+        trigger != SyncTrigger.manual &&
+        trigger != SyncTrigger.sessionEnded) {
       final sinceLast = DateTime.now().difference(_lastSyncAt!);
       if (sinceLast < _minInterval) {
         return SyncResult.skipped('rate limited');
