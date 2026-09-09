@@ -57,11 +57,7 @@ class EscalationWriter {
         'patient_id': pid,
       }).toList();
       
-      await Supabase.instance.client.from('escalations').upsert(
-        rows,
-        onConflict: 'id',
-        ignoreDuplicates: true,
-      );
+      await Supabase.instance.client.from('escalations').insert(rows);
       
       // Mark as synced
       await eventRepo.markEscalationsSynced(
@@ -108,7 +104,7 @@ class EscalationWriter {
       );
       
       // Now push to Supabase
-      await Supabase.instance.client.from('escalations').upsert({
+      await Supabase.instance.client.from('escalations').insert({
         'id': escalationId,
         'reminder_event_id': reminderEventId,
         'medication_id': medicationId,
@@ -116,7 +112,7 @@ class EscalationWriter {
         'status': 'requested',
         'requested_at': DateTime.now().millisecondsSinceEpoch,
         'patient_id': pid,
-      }, onConflict: 'id', ignoreDuplicates: true);
+      });
       
       // Mark as synced locally
       await eventRepo.markEscalationsSynced([escalationId]);

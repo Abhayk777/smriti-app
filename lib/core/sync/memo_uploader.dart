@@ -77,14 +77,14 @@ class MemoUploader {
               .upload(storagePath, file);
           
           // Only create the row if storage upload succeeded
-          await Supabase.instance.client.from('memos').upsert({
+          await Supabase.instance.client.from('memos').insert({
             'id': memo.id,
             'patient_id': pid,
             'storage_path': storagePath,
             'duration_ms': memo.durationMs,
             'recorded_at': memo.recordedAt,
             'context_tag': memo.contextTag,
-          }, onConflict: 'id', ignoreDuplicates: true);
+          });
           
           // Mark as uploaded locally
           await memoRepo.markUploaded([memo.id]);
@@ -132,15 +132,14 @@ class MemoUploader {
           .upload(fileName, file);
       
       // Create metadata row
-      await Supabase.instance.client.from('memos').upsert({
+      await Supabase.instance.client.from('memos').insert({
         'id': memo.id,
         'patient_id': pid,
-        'local_path': memo.localPath,
+        'storage_path': fileName,
         'duration_ms': memo.durationMs,
         'recorded_at': memo.recordedAt,
         'context_tag': memo.contextTag,
-        'uploaded': true,
-      }, onConflict: 'id', ignoreDuplicates: true);
+      });
       
       // Mark as uploaded locally
       await memoRepo.markUploaded([memo.id]);
