@@ -6,7 +6,13 @@ import '../app_colors.dart';
 import '../core/db/app_database.dart';
 import '../core/sync/sync_engine.dart';
 import 'diagnostics_screen.dart';
+import 'family_screen.dart';
 import 'game_select_screen.dart';
+import 'medicine_screen.dart';
+import 'music_screen.dart';
+import 'my_day_screen.dart';
+import 'photos_screen.dart';
+import 'voice_memo_screen.dart';
 
 /// Main home screen for the elder.
 ///
@@ -292,12 +298,8 @@ class _HomeScreenState extends State<HomeScreen>
           sublabel: 'See your loved ones',
           color: AppColors.indigo,
           onTap: () {
-            // TODO: Family album screen
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Family album coming soon'),
-                backgroundColor: AppColors.indigo,
-              ),
+            Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const FamilyScreen()),
             );
           },
         ),
@@ -310,12 +312,8 @@ class _HomeScreenState extends State<HomeScreen>
           sublabel: 'Today\'s schedule',
           color: AppColors.marigold,
           onTap: () {
-            // TODO: Daily schedule screen
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Daily schedule coming soon'),
-                backgroundColor: AppColors.marigold,
-              ),
+            Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const MyDayScreen()),
             );
           },
         ),
@@ -393,7 +391,9 @@ class _HomeScreenState extends State<HomeScreen>
             label: 'Voice Memo',
             color: AppColors.terracotta,
             onTap: () {
-              // TODO: Voice memo screen
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const VoiceMemoScreen()),
+              );
             },
           ),
           _buildQuickAction(
@@ -401,7 +401,9 @@ class _HomeScreenState extends State<HomeScreen>
             label: 'Medicine',
             color: AppColors.leafGreen,
             onTap: () {
-              // TODO: Medicine reminder view
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const MedicineScreen()),
+              );
             },
           ),
           _buildQuickAction(
@@ -409,7 +411,9 @@ class _HomeScreenState extends State<HomeScreen>
             label: 'Photos',
             color: AppColors.indigo,
             onTap: () {
-              // TODO: Photo album
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const PhotosScreen()),
+              );
             },
           ),
           _buildQuickAction(
@@ -417,7 +421,9 @@ class _HomeScreenState extends State<HomeScreen>
             label: 'Music',
             color: AppColors.marigold,
             onTap: () {
-              // TODO: Music player
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const MusicScreen()),
+              );
             },
           ),
         ],
