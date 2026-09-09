@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 import '../app_colors.dart';
 import '../core/db/app_database.dart';
@@ -136,11 +137,45 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
   }
 
   Future<void> _fireTestReminder() async {
-    // TODO: Implement test reminder
-    // This would trigger a test medication reminder
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Test reminder scheduled')),
-    );
+    try {
+      final repo = ContentRepo(appDatabase);
+      final meds = await repo.getMedications();
+      final med = meds.isNotEmpty ? meds.first : null;
+
+      final notifications = FlutterLocalNotificationsPlugin();
+      const androidDetails = AndroidNotificationDetails(
+        'medication_reminder',
+        'Medication Reminder',
+        channelDescription: 'Full-screen medication reminders',
+        importance: Importance.max,
+        priority: Priority.high,
+        fullScreenIntent: true,
+        visibility: NotificationVisibility.public,
+        playSound: true,
+        enableVibration: true,
+      );
+      await notifications.show(
+        9999,
+        med != null ? 'Time for: ${med.name}' : 'Medication Reminder (Test)',
+        med != null ? 'Dose: ${med.dose}' : 'Please take your scheduled medication',
+        const NotificationDetails(android: androidDetails),
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Test reminder fired! Check your notification tray / screen.'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to fire test reminder: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
   }
 
   @override

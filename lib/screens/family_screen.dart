@@ -2,20 +2,39 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
+import 'package:just_audio/just_audio.dart';
+import 'package:path/path.dart' as p;
 
 import '../app_colors.dart';
 import '../core/db/app_database.dart';
 import '../core/db/database.dart';
+import '../core/files/file_paths.dart';
 import '../core/repo/content_repo.dart';
 import '../core/sync/sync_engine.dart';
+
+/// Resolves a local file checking rawPath, then fallback directory.
+Future<File?> _resolveFile(String rawPath, Future<String> Function() getDir, String id, [List<String> exts = const ['.jpg', '.jpeg', '.png']]) async {
+  if (rawPath.isNotEmpty) {
+    final direct = File(rawPath);
+    if (direct.existsSync() && direct.lengthSync() > 0) return direct;
+  }
+  final dir = await getDir();
+  if (rawPath.isNotEmpty) {
+    final byBase = File(p.join(dir, p.basename(rawPath)));
+    if (byBase.existsSync() && byBase.lengthSync() > 0) return byBase;
+  }
+  for (final ext in exts) {
+    final byId = File(p.join(dir, '$id$ext'));
+    if (byId.existsSync() && byId.lengthSync() > 0) return byId;
+  }
+  return null;
+}
 
 /// Shows the elder's family as a warm photo grid.
 ///
 /// Reads from the local `People` Drift table — never from the network.
 /// Tapping a card opens a full-screen portrait with the memory prompt
-/// read aloud via TTS. If no photo is on disk the card shows a warm
-/// coloured circle with the person's initial (per §6: skip silently,
-/// never show a broken-image placeholder).
+/// read aloud via TTS or caregiver voice.
 class FamilyScreen extends StatefulWidget {
   const FamilyScreen({super.key});
 
@@ -111,7 +130,7 @@ class _FamilyScreenState extends State<FamilyScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text('👨‍👩‍👧‍👦', style: const TextStyle(fontSize: 72)),
+          const Text('👨‍👩‍👧‍👦', style: TextStyle(fontSize: 72)),
           const SizedBox(height: 16),
           const Text(
             'Your family photos will appear here\nonce your caregiver sets them up.',
@@ -184,7 +203,16 @@ class _PersonCard extends StatelessWidget {
             Expanded(
               child: ClipRRect(
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
-                child: _buildPhoto(),
+                child: FutureBuilder<File?>(
+                  future: _resolveFile(person.photoPath, FilePaths.peoplePhotos, person.id),
+                  builder: (context, snapshot) {
+                    final file = snapshot.data;
+                    if (file != null) {
+                      return Image.file(file, fit: BoxFit.cover, width: double.infinity);
+                    }
+                    return _buildPlaceholder();
+                  },
+                ),
               ),
             ),
             Padding(
@@ -220,13 +248,7 @@ class _PersonCard extends StatelessWidget {
     );
   }
 
-  Widget _buildPhoto() {
-    final path = person.photoPath;
-    final file = File(path);
-    if (path.isNotEmpty && file.existsSync()) {
-      return Image.file(file, fit: BoxFit.cover, width: double.infinity);
-    }
-    // Warm placeholder — initial in a coloured circle
+  Widget _buildPlaceholder() {
     return Container(
       color: _placeholderColor(),
       width: double.infinity,
@@ -272,35 +294,81 @@ class _PersonDetailScreen extends StatefulWidget {
 
 class _PersonDetailScreenState extends State<_PersonDetailScreen> {
   final FlutterTts _tts = FlutterTts();
-  bool _speaking = false;
+  AudioPlayer? _player;
+  bool _playing = false;
+  File? _voiceFile;
+  File? _photoFile;
+
+  @override
+  void initState() {
+    super.initState();
+    _initMedia();
+  }
+
+  Future<void> _initMedia() async {
+    final photo = await _resolveFile(widget.person.photoPath, FilePaths.peoplePhotos, widget.person.id);
+    final voice = await _resolveFile(widget.person.voicePath ?? '', FilePaths.peopleVoice, widget.person.id, ['.m4a', '.mp3', '.aac', '.wav']);
+    if (mounted) {
+      setState(() {
+        _photoFile = photo;
+        _voiceFile = voice;
+      });
+    }
+  }
 
   @override
   void dispose() {
     _tts.stop();
+    _player?.dispose();
     super.dispose();
   }
 
-  Future<void> _speak() async {
+  Future<void> _toggleAudio() async {
+    if (_playing) {
+      await _stopAudio();
+    } else {
+      await _playAudio();
+    }
+  }
+
+  Future<void> _playAudio() async {
+    // 1. If caregiver voice recording is present on disk, play it!
+    if (_voiceFile != null && _voiceFile!.existsSync()) {
+      setState(() => _playing = true);
+      _player ??= AudioPlayer();
+      try {
+        await _player!.setFilePath(_voiceFile!.path);
+        await _player!.play();
+      } catch (e) {
+        debugPrint('Error playing voice recording: $e');
+      } finally {
+        if (mounted) setState(() => _playing = false);
+      }
+      return;
+    }
+
+    // 2. Otherwise fall back to TTS for memoryPrompt
     final prompt = widget.person.memoryPrompt;
     if (prompt == null || prompt.isEmpty) return;
-    setState(() => _speaking = true);
+    setState(() => _playing = true);
     await _tts.setLanguage('en-IN');
     await _tts.setSpeechRate(0.45);
     await _tts.setPitch(1.0);
     await _tts.speak(prompt);
-    if (mounted) setState(() => _speaking = false);
+    if (mounted) setState(() => _playing = false);
   }
 
-  Future<void> _stopSpeaking() async {
+  Future<void> _stopAudio() async {
+    await _player?.stop();
     await _tts.stop();
-    if (mounted) setState(() => _speaking = false);
+    if (mounted) setState(() => _playing = false);
   }
 
   @override
   Widget build(BuildContext context) {
     final person = widget.person;
-    final hasPhoto = person.photoPath.isNotEmpty &&
-        File(person.photoPath).existsSync();
+    final hasAudio = (_voiceFile != null && _voiceFile!.existsSync()) ||
+        (person.memoryPrompt != null && person.memoryPrompt!.isNotEmpty);
 
     return Scaffold(
       backgroundColor: AppColors.primaryText,
@@ -309,8 +377,8 @@ class _PersonDetailScreenState extends State<_PersonDetailScreen> {
           children: [
             // Full-screen photo or placeholder
             Positioned.fill(
-              child: hasPhoto
-                  ? Image.file(File(person.photoPath), fit: BoxFit.cover)
+              child: _photoFile != null
+                  ? Image.file(_photoFile!, fit: BoxFit.cover)
                   : Container(
                       color: _placeholderColor(person),
                       child: Center(
@@ -348,7 +416,7 @@ class _PersonDetailScreenState extends State<_PersonDetailScreen> {
               ),
             ),
 
-            // Name + relationship + prompt + TTS button
+            // Name + relationship + prompt + Audio button
             Positioned(
               left: 32,
               right: 32,
@@ -382,16 +450,18 @@ class _PersonDetailScreenState extends State<_PersonDetailScreen> {
                         height: 1.4,
                       ),
                     ),
+                  ],
+                  if (hasAudio) ...[
                     const SizedBox(height: 20),
                     GestureDetector(
-                      onTap: _speaking ? _stopSpeaking : _speak,
+                      onTap: _toggleAudio,
                       child: Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 24,
                           vertical: 14,
                         ),
                         decoration: BoxDecoration(
-                          color: _speaking
+                          color: _playing
                               ? AppColors.terracotta
                               : Colors.white.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(40),
@@ -404,13 +474,15 @@ class _PersonDetailScreenState extends State<_PersonDetailScreen> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(
-                              _speaking ? Icons.stop : Icons.volume_up,
+                              _playing ? Icons.stop : Icons.volume_up,
                               color: Colors.white,
                               size: 22,
                             ),
                             const SizedBox(width: 10),
                             Text(
-                              _speaking ? 'Stop' : 'Hear it',
+                              _playing
+                                  ? 'Stop'
+                                  : (_voiceFile != null ? 'Hear Voice Message' : 'Hear Prompt'),
                               style: const TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.w600,

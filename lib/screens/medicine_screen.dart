@@ -10,6 +10,7 @@ import 'package:uuid/uuid.dart';
 import '../app_colors.dart';
 import '../core/db/app_database.dart';
 import '../core/db/database.dart';
+import '../core/files/file_paths.dart';
 import '../core/repo/content_repo.dart';
 import '../core/repo/event_repo.dart';
 import '../core/sync/sync_engine.dart';
@@ -124,15 +125,47 @@ class _MedicineScreenState extends State<MedicineScreen> {
     return 'Evening';
   }
 
+  Future<File?> _resolveMedPhoto(String? rawPath, String medId) async {
+    if (rawPath != null && rawPath.isNotEmpty) {
+      final direct = File(rawPath);
+      if (direct.existsSync() && direct.lengthSync() > 0) return direct;
+    }
+    final dir = await FilePaths.medicationPhotos();
+    if (rawPath != null && rawPath.isNotEmpty) {
+      final byBase = File('$dir/${rawPath.split('/').last}');
+      if (byBase.existsSync() && byBase.lengthSync() > 0) return byBase;
+    }
+    for (final ext in ['.jpg', '.jpeg', '.png']) {
+      final byId = File('$dir/$medId$ext');
+      if (byId.existsSync() && byId.lengthSync() > 0) return byId;
+    }
+    return null;
+  }
+
+  Future<File?> _resolveMedVoice(String? rawPath, String medId) async {
+    if (rawPath != null && rawPath.isNotEmpty) {
+      final direct = File(rawPath);
+      if (direct.existsSync() && direct.lengthSync() > 0) return direct;
+    }
+    final dir = await FilePaths.medicationVoice();
+    if (rawPath != null && rawPath.isNotEmpty) {
+      final byBase = File('$dir/${rawPath.split('/').last}');
+      if (byBase.existsSync() && byBase.lengthSync() > 0) return byBase;
+    }
+    for (final ext in ['.m4a', '.mp3', '.aac', '.wav']) {
+      final byId = File('$dir/$medId$ext');
+      if (byId.existsSync() && byId.lengthSync() > 0) return byId;
+    }
+    return null;
+  }
+
   Future<void> _playInstruction(Medication med) async {
-    if (med.voicePath != null && med.voicePath!.isNotEmpty) {
-      final file = File(med.voicePath!);
-      if (file.existsSync()) {
-        await _audioPlayer.stop();
-        await _audioPlayer.setFilePath(file.path);
-        await _audioPlayer.play();
-        return;
-      }
+    final voiceFile = await _resolveMedVoice(med.voicePath, med.id);
+    if (voiceFile != null && voiceFile.existsSync()) {
+      await _audioPlayer.stop();
+      await _audioPlayer.setFilePath(voiceFile.path);
+      await _audioPlayer.play();
+      return;
     }
 
     // TTS fallback for voice instruction
@@ -222,9 +255,6 @@ class _MedicineScreenState extends State<MedicineScreen> {
       itemBuilder: (context, index) {
         final med = _medications[index];
         final isTaken = _visuallyTakenIds.contains(med.id);
-        final hasPhoto = med.pillPhotoPath != null &&
-            med.pillPhotoPath!.isNotEmpty &&
-            File(med.pillPhotoPath!).existsSync();
 
         return Container(
           margin: const EdgeInsets.only(bottom: 16),
@@ -256,17 +286,24 @@ class _MedicineScreenState extends State<MedicineScreen> {
                   color: AppColors.medicineBlush,
                   borderRadius: BorderRadius.circular(16),
                 ),
-                child: hasPhoto
-                    ? ClipRRect(
+                child: FutureBuilder<File?>(
+                  future: _resolveMedPhoto(med.pillPhotoPath, med.id),
+                  builder: (context, snapshot) {
+                    final file = snapshot.data;
+                    if (file != null) {
+                      return ClipRRect(
                         borderRadius: BorderRadius.circular(16),
                         child: Image.file(
-                          File(med.pillPhotoPath!),
+                          file,
                           fit: BoxFit.cover,
                         ),
-                      )
-                    : const Center(
-                        child: Text('💊', style: TextStyle(fontSize: 36)),
-                      ),
+                      );
+                    }
+                    return const Center(
+                      child: Text('💊', style: TextStyle(fontSize: 36)),
+                    );
+                  },
+                ),
               ),
               const SizedBox(width: 20),
 

@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as path;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -33,129 +34,137 @@ class MediaDownloader {
 
   /// Downloads a person's photo from Supabase storage.
   ///
-  /// The [remotePath] is the storage path from the backend (e.g., 'people/photos/abc123.jpg').
-  Future<bool> downloadPeoplePhoto(String personId, String remotePath) async {
+  /// Returns the local file path on success, or null on failure.
+  Future<String?> downloadPeoplePhoto(String personId, String remotePath) async {
     try {
+      final cleanPath = remotePath.startsWith('/') ? remotePath.substring(1) : remotePath;
       final dir = await FilePaths.peoplePhotos();
-      final filename = path.basename(remotePath);
-      final localPath = path.join(dir, filename);
+      final ext = path.extension(cleanPath).isNotEmpty ? path.extension(cleanPath) : '.jpg';
+      final localPath = path.join(dir, '$personId$ext');
       final file = File(localPath);
       
-      // Create parent directories if they don't exist
+      // Also save by basename
+      final baseFile = File(path.join(dir, path.basename(cleanPath)));
+      
       await file.create(recursive: true);
       
-      // Download from Supabase storage
+      debugPrint('[MediaDownloader] Downloading people photo from $_mediaBucket/$cleanPath to $localPath');
       final data = await Supabase.instance.client.storage
           .from(_mediaBucket)
-          .download(remotePath);
+          .download(cleanPath);
       
-      // Write to local file
       await file.writeAsBytes(data, flush: true);
+      try {
+        await baseFile.writeAsBytes(data, flush: true);
+      } catch (_) {}
       
-      // Verify file exists and has content
       if (await file.exists() && await file.length() > 0) {
-        return true;
+        debugPrint('[MediaDownloader] Successfully downloaded people photo: $localPath (${data.length} bytes)');
+        return localPath;
       }
-      
-      // Clean up if verification failed
-      if (await file.exists()) {
-        await file.delete();
-      }
-      return false;
-      
+      return null;
     } catch (e) {
-      // Log error but don't throw - caller handles partial failures
-      return false;
+      debugPrint('[MediaDownloader] Failed to download people photo ($remotePath): $e');
+      return null;
     }
   }
 
   /// Downloads a person's voice recording from Supabase storage.
-  Future<bool> downloadPeopleVoice(String personId, String remotePath) async {
+  Future<String?> downloadPeopleVoice(String personId, String remotePath) async {
     try {
+      final cleanPath = remotePath.startsWith('/') ? remotePath.substring(1) : remotePath;
       final dir = await FilePaths.peopleVoice();
-      final filename = path.basename(remotePath);
-      final localPath = path.join(dir, filename);
+      final ext = path.extension(cleanPath).isNotEmpty ? path.extension(cleanPath) : '.m4a';
+      final localPath = path.join(dir, '$personId$ext');
       final file = File(localPath);
+      final baseFile = File(path.join(dir, path.basename(cleanPath)));
       
       await file.create(recursive: true);
       
+      debugPrint('[MediaDownloader] Downloading people voice from $_mediaBucket/$cleanPath to $localPath');
       final data = await Supabase.instance.client.storage
           .from(_mediaBucket)
-          .download(remotePath);
+          .download(cleanPath);
       
       await file.writeAsBytes(data, flush: true);
+      try {
+        await baseFile.writeAsBytes(data, flush: true);
+      } catch (_) {}
       
       if (await file.exists() && await file.length() > 0) {
-        return true;
+        debugPrint('[MediaDownloader] Successfully downloaded people voice: $localPath');
+        return localPath;
       }
-      
-      if (await file.exists()) {
-        await file.delete();
-      }
-      return false;
-      
+      return null;
     } catch (e) {
-      return false;
+      debugPrint('[MediaDownloader] Failed to download people voice ($remotePath): $e');
+      return null;
     }
   }
 
   /// Downloads a medication's photo from Supabase storage.
-  Future<bool> downloadMedicationPhoto(String medId, String remotePath) async {
+  Future<String?> downloadMedicationPhoto(String medId, String remotePath) async {
     try {
+      final cleanPath = remotePath.startsWith('/') ? remotePath.substring(1) : remotePath;
       final dir = await FilePaths.medicationPhotos();
-      final filename = path.basename(remotePath);
-      final localPath = path.join(dir, filename);
+      final ext = path.extension(cleanPath).isNotEmpty ? path.extension(cleanPath) : '.jpg';
+      final localPath = path.join(dir, '$medId$ext');
       final file = File(localPath);
+      final baseFile = File(path.join(dir, path.basename(cleanPath)));
       
       await file.create(recursive: true);
       
+      debugPrint('[MediaDownloader] Downloading medication photo from $_mediaBucket/$cleanPath to $localPath');
       final data = await Supabase.instance.client.storage
           .from(_mediaBucket)
-          .download(remotePath);
+          .download(cleanPath);
       
       await file.writeAsBytes(data, flush: true);
+      try {
+        await baseFile.writeAsBytes(data, flush: true);
+      } catch (_) {}
       
       if (await file.exists() && await file.length() > 0) {
-        return true;
+        debugPrint('[MediaDownloader] Successfully downloaded medication photo: $localPath');
+        return localPath;
       }
-      
-      if (await file.exists()) {
-        await file.delete();
-      }
-      return false;
-      
+      return null;
     } catch (e) {
-      return false;
+      debugPrint('[MediaDownloader] Failed to download medication photo ($remotePath): $e');
+      return null;
     }
   }
 
   /// Downloads a medication's voice reminder from Supabase storage.
-  Future<bool> downloadMedicationVoice(String medId, String remotePath) async {
+  Future<String?> downloadMedicationVoice(String medId, String remotePath) async {
     try {
+      final cleanPath = remotePath.startsWith('/') ? remotePath.substring(1) : remotePath;
       final dir = await FilePaths.medicationVoice();
-      final filename = path.basename(remotePath);
-      final localPath = path.join(dir, filename);
+      final ext = path.extension(cleanPath).isNotEmpty ? path.extension(cleanPath) : '.m4a';
+      final localPath = path.join(dir, '$medId$ext');
       final file = File(localPath);
+      final baseFile = File(path.join(dir, path.basename(cleanPath)));
       
       await file.create(recursive: true);
       
+      debugPrint('[MediaDownloader] Downloading medication voice from $_mediaBucket/$cleanPath to $localPath');
       final data = await Supabase.instance.client.storage
           .from(_mediaBucket)
-          .download(remotePath);
+          .download(cleanPath);
       
       await file.writeAsBytes(data, flush: true);
+      try {
+        await baseFile.writeAsBytes(data, flush: true);
+      } catch (_) {}
       
       if (await file.exists() && await file.length() > 0) {
-        return true;
+        debugPrint('[MediaDownloader] Successfully downloaded medication voice: $localPath');
+        return localPath;
       }
-      
-      if (await file.exists()) {
-        await file.delete();
-      }
-      return false;
-      
+      return null;
     } catch (e) {
-      return false;
+      debugPrint('[MediaDownloader] Failed to download medication voice ($remotePath): $e');
+      return null;
     }
   }
 

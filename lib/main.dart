@@ -1,5 +1,8 @@
+import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:workmanager/workmanager.dart';
 
 import 'app_colors.dart';
@@ -12,14 +15,56 @@ Future<void> main() async {
 
   // Initialize Supabase
   await initSupabase();
+
+  // Initialize Android Alarm Manager for medication reminders
+  try {
+    await AndroidAlarmManager.initialize();
+  } catch (e) {
+    debugPrint('Error initializing AndroidAlarmManager: $e');
+  }
+
+  // Initialize local notifications
+  try {
+    final localNotifications = FlutterLocalNotificationsPlugin();
+    const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const initSettings = InitializationSettings(android: androidSettings);
+    await localNotifications.initialize(initSettings);
+
+    final androidImplementation = localNotifications
+        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+    if (androidImplementation != null) {
+      await androidImplementation.createNotificationChannel(
+        const AndroidNotificationChannel(
+          'medication_reminder',
+          'Medication Reminder',
+          description: 'Full-screen medication reminders',
+          importance: Importance.max,
+          playSound: true,
+          enableVibration: true,
+        ),
+      );
+      await androidImplementation.requestNotificationsPermission();
+    }
+  } catch (e) {
+    debugPrint('Error initializing notifications: $e');
+  }
+
+  // Request permissions
+  try {
+    if (await Permission.notification.isDenied) {
+      await Permission.notification.request();
+    }
+  } catch (_) {}
   
   // Initialize Workmanager for periodic sync
-  await Workmanager().initialize(
-    callbackDispatcher,
-  );
-  
-  // Register periodic sync task
-  await SyncEngine.registerPeriodicSync();
+  try {
+    await Workmanager().initialize(
+      callbackDispatcher,
+    );
+    await SyncEngine.registerPeriodicSync();
+  } catch (e) {
+    debugPrint('Error initializing Workmanager: $e');
+  }
   
   // Set preferred orientations
   await SystemChrome.setPreferredOrientations([

@@ -124,7 +124,17 @@ class MemoUploader {
         } catch (e) {
           lastError = e.toString();
           debugPrint('Memo upload error: $e');
-          failedCount++;
+          final errStr = e.toString().toLowerCase();
+          if (errStr.contains('violates row-level security policy') ||
+              errStr.contains('403') ||
+              errStr.contains('unauthorized')) {
+            // This memo was recorded under an old patient session or expired token
+            // Mark as uploaded so it does not block future syncs indefinitely
+            await memoRepo.markUploaded([memo.id]);
+            debugPrint('Discarded orphaned memo ${memo.id} due to RLS policy restriction');
+          } else {
+            failedCount++;
+          }
         }
       }
       

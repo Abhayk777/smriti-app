@@ -1,7 +1,9 @@
 import 'package:drift/drift.dart';
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../db/database.dart';
+import '../reminders/alarm_scheduler.dart';
 import '../repo/content_repo.dart';
 import 'media_downloader.dart';
 
@@ -46,7 +48,7 @@ class ContentPuller {
       if (patientId == null || patientId.isEmpty) {
         return const ContentPullResult(
           success: false,
-          error: 'No patient ID configured',
+          error: 'No patientId configured',
         );
       }
 
@@ -91,31 +93,62 @@ class ContentPuller {
 
       // Step 1: Download media files before DB swap (AGENTS.md #5)
       final downloader = MediaDownloader(db);
+      final updatedPeople = <PeopleCompanion>[];
       for (final p in people) {
+        String localPhoto = p.photoPath.value;
+        String? localVoice = p.voicePath.value;
+
         if (p.photoPath.value.isNotEmpty) {
-          await downloader.downloadPeoplePhoto(p.id.value, p.photoPath.value);
+          final downloaded = await downloader.downloadPeoplePhoto(p.id.value, p.photoPath.value);
+          if (downloaded != null) localPhoto = downloaded;
         }
         if (p.voicePath.value != null && p.voicePath.value!.isNotEmpty) {
-          await downloader.downloadPeopleVoice(p.id.value, p.voicePath.value!);
+          final downloaded = await downloader.downloadPeopleVoice(p.id.value, p.voicePath.value!);
+          if (downloaded != null) localVoice = downloaded;
         }
+
+        updatedPeople.add(p.copyWith(
+          photoPath: Value(localPhoto),
+          voicePath: Value(localVoice),
+        ));
       }
+
+      final updatedMeds = <MedicationsCompanion>[];
       for (final m in medications) {
+        String? localPhoto = m.pillPhotoPath.value;
+        String? localVoice = m.voicePath.value;
+
         if (m.pillPhotoPath.value != null && m.pillPhotoPath.value!.isNotEmpty) {
-          await downloader.downloadMedicationPhoto(m.id.value, m.pillPhotoPath.value!);
+          final downloaded = await downloader.downloadMedicationPhoto(m.id.value, m.pillPhotoPath.value!);
+          if (downloaded != null) localPhoto = downloaded;
         }
         if (m.voicePath.value != null && m.voicePath.value!.isNotEmpty) {
-          await downloader.downloadMedicationVoice(m.id.value, m.voicePath.value!);
+          final downloaded = await downloader.downloadMedicationVoice(m.id.value, m.voicePath.value!);
+          if (downloaded != null) localVoice = downloaded;
         }
+
+        updatedMeds.add(m.copyWith(
+          pillPhotoPath: Value(localPhoto),
+          voicePath: Value(localVoice),
+        ));
       }
 
       // Step 2 & 3: Atomic DB swap
       await contentRepo.replaceContent(
-        people: people,
-        medications: medications,
+        people: updatedPeople,
+        medications: updatedMeds,
         routineItems: routineItems,
         contentVersion: newVersion,
       );
       await db.appConfigsDao.setValue('contentPatientId', patientId);
+
+      // Step 4: Reschedule alarms (APP-BUILD-SPEC.md §9.2 #5)
+      try {
+        final scheduler = AlarmScheduler(db: db, contentRepo: contentRepo);
+        await scheduler.rescheduleAll();
+      } catch (e) {
+        debugPrint('[ContentPuller] Error rescheduling alarms: $e');
+      }
 
       // Update patient profile info if available
       final elderName = data['elder_name'] as String?;
