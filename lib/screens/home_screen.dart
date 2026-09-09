@@ -9,9 +9,7 @@ import 'diagnostics_screen.dart';
 import 'family_screen.dart';
 import 'game_select_screen.dart';
 import 'medicine_screen.dart';
-import 'music_screen.dart';
 import 'my_day_screen.dart';
-import 'photos_screen.dart';
 import 'voice_memo_screen.dart';
 
 /// Main home screen for the elder.
@@ -38,6 +36,7 @@ class _HomeScreenState extends State<HomeScreen>
   DateTime _now = DateTime.now();
   int _diagnosticsTapCount = 0;
   Timer? _diagnosticsTapResetTimer;
+  Timer? _periodicSyncTimer;
 
   late AnimationController _breathController;
 
@@ -57,6 +56,11 @@ class _HomeScreenState extends State<HomeScreen>
 
     // Trigger initial sync and heartbeat
     unawaited(SyncEngine.defaultInstance.run(trigger: SyncTrigger.appForeground));
+
+    // Periodic automatic background sync while app is active
+    _periodicSyncTimer = Timer.periodic(const Duration(seconds: 60), (_) {
+      unawaited(SyncEngine.defaultInstance.run(trigger: SyncTrigger.periodic));
+    });
   }
 
   @override
@@ -71,6 +75,7 @@ class _HomeScreenState extends State<HomeScreen>
     WidgetsBinding.instance.removeObserver(this);
     _clockTimer?.cancel();
     _diagnosticsTapResetTimer?.cancel();
+    _periodicSyncTimer?.cancel();
     _breathController.dispose();
     super.dispose();
   }
@@ -378,7 +383,7 @@ class _HomeScreenState extends State<HomeScreen>
 
   Widget _buildQuickActions() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
       decoration: BoxDecoration(
         color: AppColors.bottomStrip,
         borderRadius: BorderRadius.circular(20),
@@ -388,7 +393,7 @@ class _HomeScreenState extends State<HomeScreen>
         children: [
           _buildQuickAction(
             icon: Icons.mic,
-            label: 'Voice Memo',
+            label: 'Voice Note',
             color: AppColors.terracotta,
             onTap: () {
               Navigator.of(context).push(
@@ -396,6 +401,7 @@ class _HomeScreenState extends State<HomeScreen>
               );
             },
           ),
+          const SizedBox(width: 32),
           _buildQuickAction(
             icon: Icons.medical_services,
             label: 'Medicine',
@@ -403,26 +409,6 @@ class _HomeScreenState extends State<HomeScreen>
             onTap: () {
               Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const MedicineScreen()),
-              );
-            },
-          ),
-          _buildQuickAction(
-            icon: Icons.photo_album,
-            label: 'Photos',
-            color: AppColors.indigo,
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const PhotosScreen()),
-              );
-            },
-          ),
-          _buildQuickAction(
-            icon: Icons.music_note,
-            label: 'Music',
-            color: AppColors.marigold,
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const MusicScreen()),
               );
             },
           ),

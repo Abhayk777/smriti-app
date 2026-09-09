@@ -7,6 +7,7 @@ import '../app_colors.dart';
 import '../core/db/app_database.dart';
 import '../core/db/database.dart';
 import '../core/repo/content_repo.dart';
+import '../core/sync/sync_engine.dart';
 
 /// Shows the elder's family as a warm photo grid.
 ///
@@ -31,6 +32,10 @@ class _FamilyScreenState extends State<FamilyScreen> {
   void initState() {
     super.initState();
     _load();
+    // Auto-refresh content from Supabase in the background
+    SyncEngine.defaultInstance.run(trigger: SyncTrigger.manual).then((_) {
+      if (mounted) _load();
+    });
   }
 
   Future<void> _load() async {

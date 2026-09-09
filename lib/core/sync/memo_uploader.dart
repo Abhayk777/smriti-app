@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../db/database.dart';
@@ -57,6 +58,7 @@ class MemoUploader {
       
       int uploadedCount = 0;
       int failedCount = 0;
+      String? lastError;
       
       for (final memo in pendingMemos) {
         // Upload the audio file first
@@ -65,7 +67,7 @@ class MemoUploader {
         
         if (!await file.exists()) {
           // File missing locally - mark as uploaded to avoid retrying
-          failedCount++;
+          await memoRepo.markUploaded([memo.id]);
           continue;
         }
         
@@ -74,24 +76,39 @@ class MemoUploader {
           final storagePath = '$pid/${memo.id}.m4a';
           await Supabase.instance.client.storage
               .from(_memosBucket)
-              .upload(storagePath, file);
+              .upload(
+                storagePath,
+                file,
+                fileOptions: const FileOptions(
+                  contentType: 'audio/m4a',
+                  upsert: true,
+                ),
+              );
           
           // Only create the row if storage upload succeeded
-          await Supabase.instance.client.from('memos').insert({
-            'id': memo.id,
-            'patient_id': pid,
-            'storage_path': storagePath,
-            'duration_ms': memo.durationMs,
-            'recorded_at': memo.recordedAt,
-            'context_tag': memo.contextTag,
-          });
+          try {
+            await Supabase.instance.client.from('memos').insert({
+              'id': memo.id,
+              'patient_id': pid,
+              'storage_path': storagePath,
+              'duration_ms': memo.durationMs,
+              'recorded_at': memo.recordedAt,
+              'context_tag': memo.contextTag,
+            });
+          } catch (rowErr) {
+            // If the row already exists (duplicate key error 23505), that's fine
+            if (!rowErr.toString().contains('duplicate') && !rowErr.toString().contains('23505')) {
+              rethrow;
+            }
+          }
           
           // Mark as uploaded locally
           await memoRepo.markUploaded([memo.id]);
           uploadedCount++;
           
         } catch (e) {
-          // Storage upload failed - don't create row
+          lastError = e.toString();
+          debugPrint('Memo upload error: $e');
           failedCount++;
         }
       }
@@ -99,6 +116,7 @@ class MemoUploader {
       return MemoUploadResult(
         uploadedCount: uploadedCount,
         failedCount: failedCount,
+        error: failedCount > 0 ? (lastError ?? 'Failed to upload $failedCount memos') : null,
       );
       
     } catch (e) {

@@ -13,6 +13,7 @@ import '../core/db/app_database.dart';
 import '../core/db/database.dart';
 import '../core/files/file_paths.dart';
 import '../core/repo/memo_repo.dart';
+import '../core/sync/sync_engine.dart';
 
 /// Screen allowing the elder to record voice memos and listen to previous recordings.
 ///
@@ -152,6 +153,8 @@ class _VoiceMemoScreenState extends State<VoiceMemoScreen> {
 
       await _memoRepo.insertMemo(memoCompanion);
       await _loadMemos();
+      // Automatically upload memo to Supabase in background
+      unawaited(SyncEngine.defaultInstance.run(trigger: SyncTrigger.manual));
     }
   }
 

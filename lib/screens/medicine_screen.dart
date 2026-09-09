@@ -8,6 +8,7 @@ import '../app_colors.dart';
 import '../core/db/app_database.dart';
 import '../core/db/database.dart';
 import '../core/repo/content_repo.dart';
+import '../core/sync/sync_engine.dart';
 
 /// Screen displaying the elder's daily medications.
 ///
@@ -34,6 +35,10 @@ class _MedicineScreenState extends State<MedicineScreen> {
   void initState() {
     super.initState();
     _load();
+    // Auto-refresh medications from Supabase in the background
+    SyncEngine.defaultInstance.run(trigger: SyncTrigger.manual).then((_) {
+      if (mounted) _load();
+    });
   }
 
   @override

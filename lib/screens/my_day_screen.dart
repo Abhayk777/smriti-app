@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import '../app_colors.dart';
 import '../core/db/app_database.dart';
 import '../core/repo/content_repo.dart';
+import '../core/sync/sync_engine.dart';
 
 /// Shows the elder's daily routine as a warm timeline.
 ///
@@ -33,6 +34,10 @@ class _MyDayScreenState extends State<MyDayScreen> {
     _now = DateTime.now();
     _nowMin = _now.hour * 60 + _now.minute;
     _load();
+    // Auto-refresh routine items from Supabase in the background
+    SyncEngine.defaultInstance.run(trigger: SyncTrigger.manual).then((_) {
+      if (mounted) _load();
+    });
   }
 
   Future<void> _load() async {
