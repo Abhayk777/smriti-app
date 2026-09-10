@@ -110,7 +110,6 @@ class MemoUploader {
               'context_tag': memo.contextTag,
             });
           } catch (rowErr) {
-            // If the row already exists (duplicate key error 23505), that's fine
             final errStr = rowErr.toString().toLowerCase();
             if (!errStr.contains('duplicate') && !errStr.contains('23505')) {
               rethrow;
@@ -124,17 +123,7 @@ class MemoUploader {
         } catch (e) {
           lastError = e.toString();
           debugPrint('Memo upload error: $e');
-          final errStr = e.toString().toLowerCase();
-          if (errStr.contains('violates row-level security policy') ||
-              errStr.contains('403') ||
-              errStr.contains('unauthorized')) {
-            // This memo was recorded under an old patient session or expired token
-            // Mark as uploaded so it does not block future syncs indefinitely
-            await memoRepo.markUploaded([memo.id]);
-            debugPrint('Discarded orphaned memo ${memo.id} due to RLS policy restriction');
-          } else {
-            failedCount++;
-          }
+          failedCount++;
         }
       }
       

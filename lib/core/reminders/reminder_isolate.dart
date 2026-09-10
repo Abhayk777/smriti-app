@@ -1,23 +1,17 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:ui';
 
 import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
-import 'package:flutter/foundation.dart';
 import 'package:drift/drift.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:just_audio/just_audio.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
-// Platform-specific imports
-import 'package:flutter_local_notifications/flutter_local_notifications.dart' as notifications;
-
-import '../db/app_database.dart';
 import '../db/database.dart';
-import '../files/file_paths.dart';
 import '../repo/content_repo.dart';
 import '../repo/event_repo.dart';
 import 'alarm_scheduler.dart';
@@ -60,7 +54,6 @@ Future<void> fireReminderCallback(int id, Map<String, dynamic> params) async {
   if (Platform.isAndroid) {
     // This will be resolved at runtime on Android
     try {
-      // ignore: undefined_identifier
       DartPluginRegistrant.ensureInitialized();
     } catch (_) {
       // On platforms where it's not available, continue without it
@@ -269,7 +262,6 @@ Future<void> _fireLadderCallback(int id, Map<String, dynamic> params) async {
   if (defaultTargetPlatform == TargetPlatform.android) {
     // This will be resolved at runtime on Android
     try {
-      // ignore: undefined_identifier
       DartPluginRegistrant.ensureInitialized();
     } catch (_) {
       // On platforms where it's not available, continue without it

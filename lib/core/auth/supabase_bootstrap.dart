@@ -1,5 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../db/app_database.dart';
+
 /// Supabase client bootstrap.
 ///
 /// Per AGENTS.md non-negotiable #1, `supabase_flutter` may only be imported
@@ -21,4 +23,11 @@ Future<void> initSupabase() async {
     authOptions:
         const FlutterAuthClientOptions(authFlowType: AuthFlowType.pkce),
   );
+
+  Supabase.instance.client.auth.onAuthStateChange.listen((data) {
+    final token = data.session?.refreshToken;
+    if (token != null && token.isNotEmpty) {
+      appDatabase.appConfigsDao.setValue('deviceRefreshToken', token);
+    }
+  });
 }

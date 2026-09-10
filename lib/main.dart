@@ -54,6 +54,9 @@ Future<void> main() async {
     if (await Permission.notification.isDenied) {
       await Permission.notification.request();
     }
+    if (await Permission.microphone.isDenied) {
+      await Permission.microphone.request();
+    }
     if (await Permission.scheduleExactAlarm.isDenied) {
       await Permission.scheduleExactAlarm.request();
     }

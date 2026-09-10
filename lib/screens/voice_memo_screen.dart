@@ -5,6 +5,7 @@ import 'package:drift/drift.dart' as drift;
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:path/path.dart' as p;
+import 'package:permission_handler/permission_handler.dart';
 import 'package:record/record.dart';
 import 'package:uuid/uuid.dart';
 
@@ -35,6 +36,7 @@ class _VoiceMemoScreenState extends State<VoiceMemoScreen> {
   int _recordSeconds = 0;
   Timer? _recordTimer;
   DateTime? _recordStartTime;
+  String? _currentRecordingMemoId;
 
   String? _currentlyPlayingId;
   PlayerState? _playerState;
@@ -88,7 +90,12 @@ class _VoiceMemoScreenState extends State<VoiceMemoScreen> {
 
   Future<void> _startRecording() async {
     try {
-      if (!await _audioRecorder.hasPermission()) {
+      var hasPerm = await _audioRecorder.hasPermission();
+      if (!hasPerm) {
+        final status = await Permission.microphone.request();
+        hasPerm = status.isGranted;
+      }
+      if (!hasPerm) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Microphone permission needed')),
@@ -103,6 +110,7 @@ class _VoiceMemoScreenState extends State<VoiceMemoScreen> {
 
       final memoDir = await FilePaths.memos();
       final memoId = const Uuid().v4();
+      _currentRecordingMemoId = memoId;
       final filePath = p.join(memoDir, '$memoId.m4a');
 
       await _audioRecorder.start(
@@ -142,19 +150,25 @@ class _VoiceMemoScreenState extends State<VoiceMemoScreen> {
     });
 
     if (path != null && File(path).existsSync()) {
-      final fileName = p.basenameWithoutExtension(path);
+      final memoId = _currentRecordingMemoId ?? p.basenameWithoutExtension(path);
       final memoCompanion = VoiceMemosCompanion.insert(
-        id: fileName,
+        id: memoId,
         localPath: path,
         durationMs: elapsedMs,
         recordedAt: DateTime.now().millisecondsSinceEpoch,
-        contextTag: const drift.Value('elder_note'),
+        contextTag: const drift.Value('message'),
       );
 
       await _memoRepo.insertMemo(memoCompanion);
       await _loadMemos();
       // Automatically upload memo to Supabase in background
-      unawaited(SyncEngine.defaultInstance.run(trigger: SyncTrigger.manual));
+      unawaited(() async {
+        final res = await SyncEngine.defaultInstance.run(trigger: SyncTrigger.manual);
+        if (!res.ok && res.errorSummary.contains('already running')) {
+          await Future.delayed(const Duration(seconds: 3));
+          await SyncEngine.defaultInstance.run(trigger: SyncTrigger.manual);
+        }
+      }());
     }
   }
 
