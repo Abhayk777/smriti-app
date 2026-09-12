@@ -1,10 +1,13 @@
 import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
+import 'package:drift/drift.dart' as drift;
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:uuid/uuid.dart';
 
 import '../app_colors.dart';
 import '../core/db/app_database.dart';
 import '../core/db/database.dart';
+import '../core/reminders/native_reminder_bridge.dart';
 import '../core/repo/content_repo.dart';
 import '../core/repo/event_repo.dart';
 import '../core/sync/sync_engine.dart';
@@ -46,6 +49,8 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
   bool _hasRefreshToken = false;
   String? _syncResult;
   List<Session> _recentSessions = [];
+  bool _canUseFsi = true;
+  bool _canScheduleExact = true;
 
   @override
   void initState() {
@@ -63,6 +68,8 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
     _pendingEvents = await _eventRepo.unsyncedCount();
     final token = await appDatabase.appConfigsDao.getValue('deviceRefreshToken');
     _hasRefreshToken = token != null && token.isNotEmpty;
+    _canUseFsi = await NativeReminderBridge.canUseFullScreenIntent();
+    _canScheduleExact = await NativeReminderBridge.canScheduleExactAlarms();
     try {
       _recentSessions = await _eventRepo.getRecentSessions(limit: 20);
     } catch (_) {}
@@ -142,8 +149,25 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
       final repo = ContentRepo(appDatabase);
       final meds = await repo.getMedications();
       final med = meds.isNotEmpty ? meds.first : null;
+      final testEventId = const Uuid().v4();
 
-      final alarmTime = DateTime.now().add(const Duration(seconds: 10));
+      if (med != null) {
+        final eventRepo = EventRepo(appDatabase);
+        final now = DateTime.now().millisecondsSinceEpoch;
+        await eventRepo.insertReminderEvent(
+          ReminderEventsCompanion.insert(
+            id: testEventId,
+            medicationId: med.id,
+            scheduledAt: now,
+            firedAt: drift.Value(now),
+            channel: 'fullscreen',
+            ladderStep: 0,
+            synced: const drift.Value(false),
+          ),
+        );
+      }
+
+      final alarmTime = DateTime.now().add(const Duration(seconds: 5));
       await AndroidAlarmManager.oneShotAt(
         alarmTime,
         9999, // Test alarm ID
@@ -153,23 +177,31 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
         allowWhileIdle: true,
         rescheduleOnReboot: true,
         params: {
-          'medName': med?.name,
-          'medDose': med?.dose,
+          'medId': med?.id ?? 'test_med',
+          'medName': med?.name ?? 'Test Medicine (Donepezil)',
+          'medDose': med?.dose ?? '1 tablet (5mg)',
+          'reminderEventId': testEventId,
         },
       );
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Test reminder scheduled in 10 seconds. Please wait...'),
+            content: Text(
+              'Test alarm in 5s! Lock your screen now to verify full-screen alert & voice playback.',
+            ),
             backgroundColor: Colors.green,
+            duration: Duration(seconds: 5),
           ),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to schedule test reminder: $e'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text('Failed to schedule test reminder: $e'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     }
@@ -268,9 +300,52 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
               const SizedBox(height: 20),
               
               // Reminder Test Section
-              _buildSectionTitle('Reminder Test'),
+              _buildSectionTitle('Reminders & Permissions'),
+              _buildInfoRow(
+                'Full-Screen Intent (Lock Screen)',
+                _canUseFsi ? 'Granted' : 'Revoked (Android 14+)',
+              ),
+              if (!_canUseFsi) ...[
+                const SizedBox(height: 6),
+                ElevatedButton.icon(
+                  onPressed: () async {
+                    await NativeReminderBridge.openFullScreenIntentSettings();
+                    await Future.delayed(const Duration(seconds: 1));
+                    await _loadData();
+                  },
+                  icon: const Icon(Icons.settings, size: 18),
+                  label: const Text('Grant Full-Screen Intent in Settings'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.orange[800],
+                    foregroundColor: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 8),
+              ],
+              _buildInfoRow(
+                'Exact Alarms',
+                _canScheduleExact ? 'Granted' : 'Revoked (Requires Special Access)',
+              ),
+              if (!_canScheduleExact) ...[
+                const SizedBox(height: 6),
+                ElevatedButton.icon(
+                  onPressed: () async {
+                    await NativeReminderBridge.openExactAlarmSettings();
+                    await Future.delayed(const Duration(seconds: 1));
+                    await _loadData();
+                  },
+                  icon: const Icon(Icons.alarm, size: 18),
+                  label: const Text('Grant Exact Alarm Permission'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.orange[800],
+                    foregroundColor: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 8),
+              ],
+              const SizedBox(height: 12),
               Text(
-                'Schedule a test reminder to verify that alarms are working correctly.',
+                'Schedule a 5-second test reminder to verify that full-screen alerts appear over the lock screen and play voice audio.',
                 style: TextStyle(
                   fontSize: 14,
                   color: Colors.grey[600],
@@ -280,7 +355,7 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
               Row(
                 children: [
                   Expanded(
-                    child: OutlinedButton(
+                    child: OutlinedButton.icon(
                       onPressed: _fireTestReminder,
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppColors.terracotta,
@@ -288,9 +363,13 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        side: const BorderSide(color: AppColors.terracotta),
+                        side: const BorderSide(color: AppColors.terracotta, width: 2),
                       ),
-                      child: const Text('Fire Test Reminder Now'),
+                      icon: const Icon(Icons.notification_important_rounded),
+                      label: const Text(
+                        'Schedule 5s Lock-Screen Test',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
                     ),
                   ),
                 ],
@@ -462,21 +541,32 @@ Future<void> _testAlarmCallback(int id, Map<String, dynamic> params) async {
       'Medication Reminder',
       channelDescription: 'Full-screen medication reminders',
       importance: Importance.max,
-      priority: Priority.high,
+      priority: Priority.max,
       fullScreenIntent: true,
+      category: AndroidNotificationCategory.alarm,
+      audioAttributesUsage: AudioAttributesUsage.alarm,
       visibility: NotificationVisibility.public,
       playSound: true,
       enableVibration: true,
+      ticker: 'Medication Reminder (Test)',
     );
-    
+
+    final medId = params['medId'] as String? ?? 'test_med';
     final medName = params['medName'] as String?;
     final medDose = params['medDose'] as String?;
-    
+    final reminderEventId =
+        params['reminderEventId'] as String? ?? 'test_event';
+
     await notifications.show(
       9999,
       medName != null ? 'Time for: $medName' : 'Medication Reminder (Test)',
-      medDose != null ? 'Dose: $medDose' : 'Please take your scheduled medication',
+      medDose != null
+          ? 'Dose: $medDose'
+          : 'Please take your scheduled medication',
       const NotificationDetails(android: androidDetails),
+      payload: 'medication_reminder:$medId:$reminderEventId',
     );
-  } catch (_) {}
+  } catch (e) {
+    debugPrint('[diagnostics_screen] Error in _testAlarmCallback: $e');
+  }
 }

@@ -2,6 +2,8 @@ import 'package:android_intent_plus/android_intent.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import 'native_reminder_bridge.dart';
+
 /// Result of a health check operation.
 class HealthCheckReport {
   const HealthCheckReport({
@@ -90,54 +92,61 @@ class HealthCheck {
   Future<Map<String, PermissionStatus>> _checkPermissions() async {
     final permissions = <String, PermissionStatus>{};
     
-    // Map permission strings to Permission enum for checking
-    for (final permission in requiredPermissions) {
-      // These are the Permission enum values that match our requirements
-      final perm = _stringToPermission(permission);
-      permissions[permission] = await perm.status;
-    }
+    // Check Android-specific capabilities via NativeReminderBridge
+    final canFsi = await NativeReminderBridge.canUseFullScreenIntent();
+    permissions['android.permission.USE_FULL_SCREEN_INTENT'] =
+        canFsi ? PermissionStatus.granted : PermissionStatus.denied;
+
+    final canExact = await NativeReminderBridge.canScheduleExactAlarms();
+    permissions['android.permission.SCHEDULE_EXACT_ALARM'] =
+        canExact ? PermissionStatus.granted : PermissionStatus.denied;
+    permissions['android.permission.USE_EXACT_ALARM'] =
+        canExact ? PermissionStatus.granted : PermissionStatus.denied;
+
+    // Check standard permissions via permission_handler
+    permissions['android.permission.POST_NOTIFICATIONS'] =
+        await Permission.notification.status;
+    permissions['android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS'] =
+        await Permission.ignoreBatteryOptimizations.status;
+    permissions['android.permission.RECORD_AUDIO'] =
+        await Permission.microphone.status;
+    permissions['android.permission.READ_EXTERNAL_STORAGE'] =
+        await Permission.storage.status;
+    
+    // System permissions that are granted on manifest declaration
+    permissions['android.permission.RECEIVE_BOOT_COMPLETED'] =
+        PermissionStatus.granted;
+    permissions['android.permission.WAKE_LOCK'] =
+        PermissionStatus.granted;
     
     return permissions;
-  }
-
-  /// Maps Android permission string to Permission enum.
-  Permission _stringToPermission(String androidPermission) {
-    switch (androidPermission) {
-      case 'android.permission.SCHEDULE_EXACT_ALARM':
-      case 'android.permission.USE_EXACT_ALARM':
-        // These permissions don't have direct enum values in permission_handler 11.4.0
-        // They are Android-specific and may need to be handled differently
-        return Permission.notification; // Placeholder
-      case 'android.permission.RECEIVE_BOOT_COMPLETED':
-        return Permission.ignoreBatteryOptimizations; // Closest match
-      case 'android.permission.WAKE_LOCK':
-        return Permission.notification; // Placeholder
-      case 'android.permission.POST_NOTIFICATIONS':
-        return Permission.notification;
-      case 'android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS':
-        return Permission.ignoreBatteryOptimizations;
-      case 'android.permission.USE_FULL_SCREEN_INTENT':
-        return Permission.notification; // Placeholder
-      case 'android.permission.RECORD_AUDIO':
-        return Permission.microphone;
-      case 'android.permission.READ_EXTERNAL_STORAGE':
-        return Permission.storage;
-      default:
-        return Permission.notification; // Default fallback
-    }
   }
 
   /// Requests all missing permissions.
   Future<void> _requestPermissions(List<String> missing) async {
     if (missing.isEmpty) return;
     
-    // Request available permissions
-    // Note: scheduleExactAlarm and useExactAlarm are not directly available
-    // in permission_handler 11.4.0, they may need platform-specific handling
-    await Permission.ignoreBatteryOptimizations.request();
-    await Permission.notification.request();
-    await Permission.microphone.request();
-    await Permission.storage.request();
+    // Request standard permissions
+    if (missing.contains('android.permission.POST_NOTIFICATIONS')) {
+      await Permission.notification.request();
+    }
+    if (missing.contains('android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS')) {
+      await Permission.ignoreBatteryOptimizations.request();
+    }
+    if (missing.contains('android.permission.RECORD_AUDIO')) {
+      await Permission.microphone.request();
+    }
+    if (missing.contains('android.permission.READ_EXTERNAL_STORAGE')) {
+      await Permission.storage.request();
+    }
+
+    // Request Android 14+ FSI and Android 12+ Exact Alarm settings if needed
+    if (missing.contains('android.permission.USE_FULL_SCREEN_INTENT')) {
+      await NativeReminderBridge.openFullScreenIntentSettings();
+    }
+    if (missing.contains('android.permission.SCHEDULE_EXACT_ALARM')) {
+      await NativeReminderBridge.openExactAlarmSettings();
+    }
   }
 
   /// Opens autostart settings for the detected OEM.

@@ -137,9 +137,14 @@ class AlarmScheduler {
       chosenTimeMin % 60,
     );
 
-    // If today is the target day and the time hasn't passed yet
-    if (today == dayOfWeek && todayTime.isAfter(now)) {
-      return todayTime;
+    // If today is the target day
+    if (today == dayOfWeek) {
+      if (todayTime.isAfter(now)) {
+        return todayTime;
+      } else if (now.difference(todayTime).inMinutes < 2) {
+        // Just scheduled for the current minute or right now - fire in 3 seconds!
+        return now.add(const Duration(seconds: 3));
+      }
     }
 
     // Find the next day of week

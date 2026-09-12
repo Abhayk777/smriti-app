@@ -102,9 +102,39 @@ class SyncEngine {
   /// Last sync timestamp.
   DateTime? get lastSyncAt => _lastSyncAt;
 
+  RealtimeChannel? _realtimeSubscription;
+
+  /// Starts listening to Supabase Realtime for instant updates to medications
+  /// or patient content version added from the Web App.
+  void startRealtimeListener() {
+    try {
+      final client = Supabase.instance.client;
+      _realtimeSubscription?.unsubscribe();
+      _realtimeSubscription = client
+          .channel('patient_content_updates')
+          .onPostgresChanges(
+            event: PostgresChangeEvent.all,
+            schema: 'public',
+            table: 'medications',
+            callback: (payload) {
+              run(trigger: SyncTrigger.manual);
+            },
+          )
+          .onPostgresChanges(
+            event: PostgresChangeEvent.all,
+            schema: 'public',
+            table: 'patients',
+            callback: (payload) {
+              run(trigger: SyncTrigger.manual);
+            },
+          )
+          .subscribe();
+    } catch (_) {}
+  }
+
   /// Initializes the sync engine.
   ///
-  /// Sets up connectivity listener and periodic sync via Workmanager.
+  /// Sets up connectivity listener, realtime updates, and periodic sync via Workmanager.
   Future<void> init() async {
     // Setup connectivity listener
     Connectivity().onConnectivityChanged.listen((result) {
@@ -113,9 +143,8 @@ class SyncEngine {
       }
     });
 
-    // Setup periodic sync via Workmanager
-    // Note: This requires the callback to be set up in main.dart
-    // and the package to be initialized
+    // Start realtime listener for instant web app additions
+    startRealtimeListener();
   }
 
   static SyncEngine? _defaultInstance;

@@ -155,37 +155,42 @@ Future<void> _showFullScreenNotification(String reminderEventId, Medication med)
     // Initialize notifications
     final flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
     
-    final androidPlatformChannelSpecifics = AndroidNotificationDetails(
+    const androidPlatformChannelSpecifics = AndroidNotificationDetails(
       'medication_reminder',
       'Medication Reminder',
       channelDescription: 'Full-screen medication reminders',
       importance: Importance.max,
-      priority: Priority.high,
+      priority: Priority.max,
       fullScreenIntent: true,
+      category: AndroidNotificationCategory.alarm,
+      audioAttributesUsage: AudioAttributesUsage.alarm,
       visibility: NotificationVisibility.public,
+      playSound: true,
+      enableVibration: true,
       showWhen: false,
       autoCancel: false,
       ongoing: true,
+      ticker: 'Medication Reminder',
     );
     
-    final platformChannelSpecifics = NotificationDetails(
+    const platformChannelSpecifics = NotificationDetails(
       android: androidPlatformChannelSpecifics,
     );
     
-    // Show notification
+    // Show notification with payload containing medicationId and reminderEventId
     await flutterLocalNotificationsPlugin.show(
       reminderEventId.hashCode,
       'Time for: ${med.name}',
       med.dose,
       platformChannelSpecifics,
-      payload: 'medication_reminder:$reminderEventId',
+      payload: 'medication_reminder:${med.id}:$reminderEventId',
     );
     
     // Wake up the device
     await WakelockPlus.enable();
     
-  } catch (_) {
-    // Notification failed - may not be configured properly
+  } catch (e) {
+    debugPrint('[reminder_isolate] Notification error: $e');
   }
 }
 
