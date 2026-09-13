@@ -60,9 +60,21 @@ LazyDatabase _openConnection() {
 
     final file = File(p.join(directory.path, 'smriti.sqlite'));
 
-    return NativeDatabase.createInBackground(file);
+    return NativeDatabase.createInBackground(file, setup: _configureConnection);
   });
 }
+
+/// Several isolates open this file at once (main app, alarm callbacks, the
+/// reminder screen's engine). Without a busy timeout, a write that collides
+/// with another connection's write fails immediately with "database is
+/// locked"; WAL also lets readers and a writer work concurrently.
+// A variable, not a declaration: the parameter type lives in package:sqlite3,
+// which is not a direct dependency.
+// ignore: prefer_function_declarations_over_variables
+final DatabaseSetup _configureConnection = (database) {
+  database.execute('PRAGMA busy_timeout = 5000;');
+  database.execute('PRAGMA journal_mode = WAL;');
+};
 
 /// Opens a database connection for use in isolates.
 ///
@@ -74,5 +86,5 @@ LazyDatabase _openConnection() {
 Future<QueryExecutor> openConnectionForIsolate() async {
   final directory = await getApplicationDocumentsDirectory();
   final file = File(p.join(directory.path, 'smriti.sqlite'));
-  return NativeDatabase.createInBackground(file);
+  return NativeDatabase.createInBackground(file, setup: _configureConnection);
 }

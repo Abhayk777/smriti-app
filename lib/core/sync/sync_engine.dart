@@ -171,7 +171,31 @@ class SyncEngine {
   /// - Not authenticated
   ///
   /// Otherwise, runs all sync stages and returns the result.
+  ///
+  /// A manual request that arrives while a sync is in flight (e.g. the elder
+  /// just confirmed a dose) runs once more afterwards, so its new rows aren't
+  /// left waiting for the next periodic sync.
   Future<SyncResult> run({SyncTrigger trigger = SyncTrigger.periodic}) async {
+    if (_inFlight) {
+      if (trigger == SyncTrigger.manual) _rerunRequested = true;
+      return SyncResult.skipped('already running');
+    }
+    _inFlight = true;
+    try {
+      return await _run(trigger);
+    } finally {
+      _inFlight = false;
+      if (_rerunRequested) {
+        _rerunRequested = false;
+        unawaited(run(trigger: SyncTrigger.manual));
+      }
+    }
+  }
+
+  bool _inFlight = false;
+  bool _rerunRequested = false;
+
+  Future<SyncResult> _run(SyncTrigger trigger) async {
     // Guard against concurrent syncs
     if (_running) {
       return SyncResult.skipped('already running');
@@ -345,6 +369,8 @@ class SyncEngine {
   /// Resets sync state.
   Future<void> reset() async {
     _running = false;
+    _inFlight = false;
+    _rerunRequested = false;
     _currentTrigger = null;
     _lastSyncAt = null;
     _eventPusher = null;

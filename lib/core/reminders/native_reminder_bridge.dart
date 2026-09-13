@@ -13,6 +13,14 @@ class NativeReminderBridge {
   static const MethodChannel _channel =
       MethodChannel('com.example.smriti/native_reminders');
 
+  /// Registers what to run when the reminder screen (a separate engine)
+  /// asks this engine to sync after the elder responds.
+  static void onSyncRequested(Future<void> Function() sync) {
+    _channel.setMethodCallHandler((call) async {
+      if (call.method == 'syncNow') await sync();
+    });
+  }
+
   /// Checks if the app has permission to use Full Screen Intents.
   ///
   /// On Android 14+ (API 34), `USE_FULL_SCREEN_INTENT` may be revoked by default

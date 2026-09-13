@@ -86,11 +86,30 @@ Future<void> fireReminderCallback(int id, Map<String, dynamic> params) async {
       return;
     }
 
-    // Step 4: Create ReminderEvent row
     final eventRepo = EventRepo(db);
     final now = DateTime.now();
+    final alarmScheduler = AlarmScheduler(db: db, contentRepo: contentRepo);
+
+    // A duplicate alarm for a reminder that just fired (within 2 minutes)
+    // must not show it again. Snoozes fire 10 minutes later, so pass.
+    final recentFire = await (db.select(db.reminderEvents)
+          ..where((t) =>
+              t.medicationId.equals(medicationId) &
+              t.ladderStep.equals(0) &
+              t.outcome.isNull() &
+              t.firedAt.isBiggerOrEqualValue(
+                  now.subtract(const Duration(minutes: 2)).millisecondsSinceEpoch))
+          ..limit(1))
+        .getSingleOrNull();
+    if (recentFire != null) {
+      await alarmScheduler.scheduleNextOccurrence(med, dayOfWeek);
+      await db.close();
+      return;
+    }
+
+    // Step 4: Create ReminderEvent row
     final reminderEventId = const Uuid().v4();
-    
+
     await eventRepo.insertReminderEvent(
       ReminderEventsCompanion.insert(
         id: reminderEventId,
@@ -122,7 +141,6 @@ Future<void> fireReminderCallback(int id, Map<String, dynamic> params) async {
     );
     
     // Step 8: Schedule next medication occurrence
-    final alarmScheduler = AlarmScheduler(db: db, contentRepo: contentRepo);
     await alarmScheduler.scheduleNextOccurrence(med, dayOfWeek);
     
     // Step 9: Close database connection

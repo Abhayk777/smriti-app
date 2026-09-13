@@ -79,15 +79,7 @@ void main() {
     await tester.tap(find.text('I Have Taken It'));
     await tester.pump();
 
-    // Check DB was updated with confirmed outcome
-    final updatedEvent = await (db.select(db.reminderEvents)
-          ..where((t) => t.id.equals('event_test_1')))
-        .getSingle();
-
-    expect(updatedEvent.outcome, 'confirmed');
-    expect(updatedEvent.respondedAt, isNotNull);
-
-    // Confirmation shows before the screen finishes (after the ladder-cancel
+    // Confirmation shows once the response is written (and the ladder-cancel
     // and notification-dismiss platform calls settle).
     // Drift's real I/O only completes when real time passes (runAsync).
     for (var i = 0; i < 10 && find.text('Thank you!').evaluate().isEmpty; i++) {
@@ -97,6 +89,23 @@ void main() {
       await tester.pump(const Duration(milliseconds: 50));
     }
     expect(find.text('Thank you!'), findsOneWidget);
+
+    // The response is a NEW row (ReminderEvents are insert-only); the fired
+    // row is untouched so its already-uploaded copy stays consistent.
+    final fired = await (db.select(db.reminderEvents)
+          ..where((t) => t.id.equals('event_test_1')))
+        .getSingle();
+    expect(fired.outcome, isNull);
+
+    final response = await (db.select(db.reminderEvents)
+          ..where((t) => t.outcome.equals('confirmed')))
+        .getSingle();
+    expect(response.id, isNot('event_test_1'));
+    expect(response.medicationId, 'med_test_1');
+    expect(response.scheduledAt, fired.scheduledAt);
+    expect(response.respondedAt, isNotNull);
+    expect(response.synced, isFalse);
+
     await tester.pump(const Duration(seconds: 3));
   });
 
@@ -121,10 +130,9 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(seconds: 3));
 
-    final event = await (db.select(db.reminderEvents)
-          ..where((t) => t.id.equals('event_test_1')))
-        .getSingle();
-    expect(event.outcome, isNull);
+    final rows = await db.select(db.reminderEvents).get();
+    expect(rows, hasLength(1), reason: 'only the seeded fired row');
+    expect(rows.single.outcome, isNull);
   });
 
   testWidgets('Portrait phone layout renders without overflow',

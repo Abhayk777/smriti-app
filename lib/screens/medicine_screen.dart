@@ -27,7 +27,8 @@ class MedicineScreen extends StatefulWidget {
   State<MedicineScreen> createState() => _MedicineScreenState();
 }
 
-class _MedicineScreenState extends State<MedicineScreen> {
+class _MedicineScreenState extends State<MedicineScreen>
+    with WidgetsBindingObserver {
   final ContentRepo _repo = ContentRepo(appDatabase);
   final EventRepo _eventRepo = EventRepo(appDatabase);
   final AudioPlayer _audioPlayer = AudioPlayer();
@@ -40,6 +41,7 @@ class _MedicineScreenState extends State<MedicineScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _load();
     // Auto-refresh medications from Supabase in the background
     SyncEngine.defaultInstance.run(trigger: SyncTrigger.manual).then((_) {
@@ -48,7 +50,15 @@ class _MedicineScreenState extends State<MedicineScreen> {
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // A dose confirmed on the full-screen reminder (a separate activity) is
+    // written to the database while this screen sits in the background.
+    if (state == AppLifecycleState.resumed) _load();
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _audioPlayer.dispose();
     _tts.stop();
     super.dispose();

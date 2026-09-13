@@ -91,6 +91,16 @@ class ReminderScreenChannel {
     }
   }
 
+  /// Asks the main app's engine to sync. Returns false if it isn't running
+  /// (or we're not in ReminderActivity); the caller then syncs itself.
+  Future<bool> requestMainAppSync() async {
+    try {
+      return await _channel.invokeMethod<bool>('requestMainAppSync') ?? false;
+    } on MissingPluginException {
+      return false;
+    }
+  }
+
   Future<void> dismissNotification(String reminderEventId) async {
     try {
       await _channel.invokeMethod<void>(

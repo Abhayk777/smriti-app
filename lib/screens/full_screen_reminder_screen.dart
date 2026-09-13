@@ -6,6 +6,7 @@ import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
 import 'package:drift/drift.dart' as drift;
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:uuid/uuid.dart';
 
 import '../app_colors.dart';
 import '../core/auth/supabase_bootstrap.dart';
@@ -14,6 +15,7 @@ import '../core/db/database.dart';
 import '../core/reminders/reminder_isolate.dart';
 import '../core/reminders/reminder_screen_channel.dart';
 import '../core/repo/content_repo.dart';
+import '../core/repo/event_repo.dart';
 import '../core/sync/sync_engine.dart';
 
 /// Full-screen, high-contrast, elder-friendly medication reminder screen.
@@ -182,13 +184,26 @@ class _FullScreenReminderScreenState extends State<FullScreenReminderScreen>
     }
   }
 
+  /// Records the elder's response as a NEW ReminderEvents row.
+  ///
+  /// ReminderEvents are insert-only (AGENTS.md #3): the fired row may already
+  /// be on the server, and the device can only insert there, so editing it
+  /// would never reach the caregiver (and its re-upload would fail as a
+  /// duplicate). The response row copies the fired row's schedule details.
   Future<void> _recordOutcome(String outcome) async {
-    await (appDatabase.update(appDatabase.reminderEvents)
-          ..where((t) => t.id.equals(widget.reminderEventId)))
-        .write(
-      ReminderEventsCompanion(
-        respondedAt: drift.Value(DateTime.now().millisecondsSinceEpoch),
+    final eventRepo = EventRepo(appDatabase);
+    final fired = await eventRepo.getReminderEvent(widget.reminderEventId);
+    final now = DateTime.now().millisecondsSinceEpoch;
+    await eventRepo.insertReminderEvent(
+      ReminderEventsCompanion.insert(
+        id: const Uuid().v4(),
+        medicationId: widget.medicationId,
+        scheduledAt: fired?.scheduledAt ?? now,
+        firedAt: drift.Value(fired?.firedAt ?? now),
+        respondedAt: drift.Value(now),
         outcome: drift.Value(outcome),
+        channel: fired?.channel ?? 'fullscreen',
+        ladderStep: fired?.ladderStep ?? 0,
         synced: const drift.Value(false),
       ),
     );
@@ -278,8 +293,13 @@ class _FullScreenReminderScreenState extends State<FullScreenReminderScreen>
 
   /// Best-effort push so the caregiver's web app updates. Offline or slow is
   /// fine: the event stays unsynced and the main app's sync picks it up.
+  ///
+  /// If the main app's engine is running it owns the Supabase session, so it
+  /// does the sync; starting Supabase here as well could get the device
+  /// signed out (two engines rotating one refresh token).
   Future<void> _syncResponse() async {
     try {
+      if (await ReminderScreenChannel.instance.requestMainAppSync()) return;
       await initSupabase();
       await SyncEngine.defaultInstance
           .run(trigger: SyncTrigger.manual)

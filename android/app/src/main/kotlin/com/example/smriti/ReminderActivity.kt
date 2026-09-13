@@ -56,6 +56,9 @@ class ReminderActivity : FlutterActivity() {
                     voicePlayer?.stop()
                     result.success(null)
                 }
+                "requestMainAppSync" -> {
+                    result.success(MainEngineBridge.requestSync())
+                }
                 "dismissNotification" -> {
                     call.argument<String>("reminderEventId")?.let { ReminderNotifier.cancel(this, it) }
                     result.success(null)

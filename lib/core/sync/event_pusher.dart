@@ -68,10 +68,8 @@ class EventPusher {
           'patient_id': pid,
         }).toList();
         
-        await client.from('sessions').insert(rows);
-        
         await eventRepo.markSessionsSynced(
-          unsyncedSessions.map((s) => s.id).toList(),
+          await _insertSkippingDuplicates(client, 'sessions', rows),
         );
         
         sessionsPushed = unsyncedSessions.length;
@@ -85,12 +83,10 @@ class EventPusher {
           'patient_id': pid,
         }).toList();
         
-        await client.from('events').insert(rows);
-        
         // Mark as synced ONLY if the insert succeeded
         // Per AGENTS.md #4: We don't .select() to verify, we assume success
         await eventRepo.markTrialsSynced(
-          unsyncedTrials.map((t) => t.id).toList(),
+          await _insertSkippingDuplicates(client, 'events', rows),
         );
         
         eventsPushed = unsyncedTrials.length;
@@ -104,10 +100,8 @@ class EventPusher {
           'patient_id': pid,
         }).toList();
         
-        await client.from('reminder_events').insert(rows);
-        
         await eventRepo.markReminderEventsSynced(
-          unsyncedReminderEvents.map((r) => r.id).toList(),
+          await _insertSkippingDuplicates(client, 'reminder_events', rows),
         );
         
         reminderEventsPushed = unsyncedReminderEvents.length;
@@ -127,6 +121,40 @@ class EventPusher {
         error: e.toString(),
       );
     }
+  }
+
+  /// Postgres unique_violation.
+  static const String _uniqueViolation = '23505';
+
+  /// Inserts [rows] and returns the ids now on the server.
+  ///
+  /// A row whose id is already on the server (e.g. a ReminderEvent that older
+  /// builds edited locally after uploading) makes the whole batch fail, which
+  /// used to block every later upload forever. On a duplicate, retry row by
+  /// row and count duplicates as synced. Still a plain insert: the device's
+  /// RLS identity is insert-only (AGENTS.md #4).
+  Future<List<String>> _insertSkippingDuplicates(
+    supabase.SupabaseClient client,
+    String table,
+    List<Map<String, dynamic>> rows,
+  ) async {
+    try {
+      await client.from(table).insert(rows);
+      return rows.map((r) => r['id'] as String).toList();
+    } on supabase.PostgrestException catch (e) {
+      if (e.code != _uniqueViolation) rethrow;
+    }
+
+    final synced = <String>[];
+    for (final row in rows) {
+      try {
+        await client.from(table).insert(row);
+      } on supabase.PostgrestException catch (e) {
+        if (e.code != _uniqueViolation) rethrow;
+      }
+      synced.add(row['id'] as String);
+    }
+    return synced;
   }
 
   /// Converts a TrialEvent to a Map for Supabase upsert.

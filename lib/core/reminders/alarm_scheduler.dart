@@ -1,4 +1,5 @@
 import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
+import 'package:drift/drift.dart';
 
 import '../db/database.dart';
 import '../repo/content_repo.dart';
@@ -69,15 +70,31 @@ class AlarmScheduler {
     return raw.split(',').map(int.tryParse).whereType<int>().toSet();
   }
 
+  /// Whether this medication's reminder has fired within [window]. A reminder
+  /// that already went off must not be "caught up" again by a reschedule
+  /// (e.g. the sync that runs right after the elder taps "I Have Taken It").
+  Future<bool> _firedRecently(String medId, Duration window) async {
+    final since = DateTime.now().subtract(window).millisecondsSinceEpoch;
+    final row = await (db.select(db.reminderEvents)
+          ..where((t) =>
+              t.medicationId.equals(medId) &
+              t.firedAt.isBiggerOrEqualValue(since))
+          ..limit(1))
+        .getSingleOrNull();
+    return row != null;
+  }
+
   /// Schedules alarms for a single medication and returns their IDs.
   Future<List<int>> _scheduleMedicationAlarms(Medication med) async {
     // Parse days of week (1-7, where 1=Monday)
     final days = parseDaysOfWeek(med.daysOfWeek);
     final ids = <int>[];
+    final allowCatchUp = !await _firedRecently(med.id, _catchUpWindow * 2);
 
     for (final day in days) {
       // Calculate next occurrence for this day
-      final nextTime = _nextOccurrence(day, med.chosenTimeMin);
+      final nextTime =
+          _nextOccurrence(day, med.chosenTimeMin, allowCatchUp: allowCatchUp);
       
       if (nextTime == null) {
         // Shouldn't happen, but skip if we can't calculate
@@ -142,10 +159,22 @@ class AlarmScheduler {
         .toList();
   }
 
+  /// How long after its time a reminder that hasn't fired yet (e.g. the
+  /// caregiver just set it for "now") is still fired immediately.
+  static const Duration _catchUpWindow = Duration(minutes: 2);
+
   /// Calculates the next occurrence time for a medication on a given day.
   ///
+  /// With [allowCatchUp], a time that passed less than [_catchUpWindow] ago
+  /// fires in 3 seconds instead of waiting a week. It must be false right
+  /// after a reminder fires, or the reminder re-fires in a loop.
+  ///
   /// Returns null if the medication is not scheduled for any upcoming time.
-  DateTime? _nextOccurrence(int dayOfWeek, int chosenTimeMin) {
+  DateTime? _nextOccurrence(
+    int dayOfWeek,
+    int chosenTimeMin, {
+    bool allowCatchUp = false,
+  }) {
     final now = DateTime.now();
     final today = now.weekday; // 1=Monday, 7=Sunday
 
@@ -162,7 +191,7 @@ class AlarmScheduler {
     if (today == dayOfWeek) {
       if (todayTime.isAfter(now)) {
         return todayTime;
-      } else if (now.difference(todayTime).inMinutes < 2) {
+      } else if (allowCatchUp && now.difference(todayTime) < _catchUpWindow) {
         // Just scheduled for the current minute or right now - fire in 3 seconds!
         return now.add(const Duration(seconds: 3));
       }
@@ -191,7 +220,8 @@ class AlarmScheduler {
 
   /// Schedules the next occurrence of a medication after one fires.
   ///
-  /// Called by the reminder callback after an alarm fires.
+  /// Called by the reminder callback after an alarm fires, so never catches
+  /// up: the time that just passed is the one that fired.
   Future<void> scheduleNextOccurrence(Medication med, int dayOfWeek) async {
     final nextTime = _nextOccurrence(dayOfWeek, med.chosenTimeMin);
     if (nextTime == null) return;

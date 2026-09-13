@@ -83,10 +83,17 @@ class MainActivity : FlutterActivity() {
         return false
     }
 
+    override fun cleanUpFlutterEngine(flutterEngine: FlutterEngine) {
+        MainEngineBridge.channel = null
+        super.cleanUpFlutterEngine(flutterEngine)
+    }
+
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
 
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL).setMethodCallHandler { call, result ->
+        val channel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL)
+        MainEngineBridge.channel = channel
+        channel.setMethodCallHandler { call, result ->
             when (call.method) {
                 "canUseFullScreenIntent" -> {
                     if (Build.VERSION.SDK_INT >= 34) { // Android 14+ (API 34)

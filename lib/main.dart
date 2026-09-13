@@ -6,6 +6,7 @@ import 'package:workmanager/workmanager.dart';
 
 import 'app_colors.dart';
 import 'core/auth/supabase_bootstrap.dart';
+import 'core/reminders/native_reminder_bridge.dart';
 import 'core/sync/sync_engine.dart';
 import 'screens/main_screen.dart';
 import 'screens/reminder_app.dart';
@@ -61,6 +62,11 @@ Future<void> main() async {
   // Initialize Sync Engine & Supabase Realtime for instant medication updates
   try {
     await SyncEngine.defaultInstance.init();
+    // The reminder screen hands its sync to this engine, which owns the
+    // Supabase session.
+    NativeReminderBridge.onSyncRequested(() async {
+      await SyncEngine.defaultInstance.run(trigger: SyncTrigger.manual);
+    });
     // Run initial sync in background to pull any new medications and reschedule alarms
     SyncEngine.defaultInstance.run(trigger: SyncTrigger.manual);
   } catch (e) {
