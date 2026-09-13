@@ -300,9 +300,12 @@ class SyncEngine {
         _lastSyncAt!.millisecondsSinceEpoch.toString(),
       );
 
-      // Clear last sync error on success
+      // Clear last sync error on success; otherwise keep it for the
+      // diagnostics screen (e.g. the server refusing a row).
       if (errors.isEmpty) {
         await db.appConfigsDao.setValue('lastSyncError', '');
+      } else {
+        await _recordSyncError(errors.join('; '));
       }
 
       _running = false;

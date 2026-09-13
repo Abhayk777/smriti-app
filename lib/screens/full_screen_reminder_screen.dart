@@ -202,7 +202,7 @@ class _FullScreenReminderScreenState extends State<FullScreenReminderScreen>
         firedAt: drift.Value(fired?.firedAt ?? now),
         respondedAt: drift.Value(now),
         outcome: drift.Value(outcome),
-        channel: fired?.channel ?? 'fullscreen',
+        channel: fired?.channel ?? reminderChannelInApp,
         ladderStep: fired?.ladderStep ?? 0,
         synced: const drift.Value(false),
       ),

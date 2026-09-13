@@ -59,7 +59,8 @@ class EventPusher {
       int eventsPushed = 0;
       int sessionsPushed = 0;
       int reminderEventsPushed = 0;
-      
+      final rejections = <String>[];
+
       // 1. Push unsynced sessions FIRST (events reference session_id)
       final unsyncedSessions = await eventRepo.unsyncedSessions(limit: 200);
       if (unsyncedSessions.isNotEmpty) {
@@ -67,12 +68,11 @@ class EventPusher {
           ..._sessionToMap(s),
           'patient_id': pid,
         }).toList();
-        
-        await eventRepo.markSessionsSynced(
-          await _insertSkippingDuplicates(client, 'sessions', rows),
-        );
-        
-        sessionsPushed = unsyncedSessions.length;
+
+        final result = await _insertRows(client, 'sessions', rows);
+        await eventRepo.markSessionsSynced(result.synced);
+        rejections.addAll(result.rejections);
+        sessionsPushed = result.synced.length;
       }
 
       // 2. Push unsynced trial events
@@ -82,16 +82,15 @@ class EventPusher {
           ..._trialEventToMap(t),
           'patient_id': pid,
         }).toList();
-        
+
         // Mark as synced ONLY if the insert succeeded
         // Per AGENTS.md #4: We don't .select() to verify, we assume success
-        await eventRepo.markTrialsSynced(
-          await _insertSkippingDuplicates(client, 'events', rows),
-        );
-        
-        eventsPushed = unsyncedTrials.length;
+        final result = await _insertRows(client, 'events', rows);
+        await eventRepo.markTrialsSynced(result.synced);
+        rejections.addAll(result.rejections);
+        eventsPushed = result.synced.length;
       }
-      
+
       // 3. Push unsynced reminder events
       final unsyncedReminderEvents = await eventRepo.unsyncedReminderEvents(limit: 200);
       if (unsyncedReminderEvents.isNotEmpty) {
@@ -99,18 +98,21 @@ class EventPusher {
           ..._reminderEventToMap(r),
           'patient_id': pid,
         }).toList();
-        
-        await eventRepo.markReminderEventsSynced(
-          await _insertSkippingDuplicates(client, 'reminder_events', rows),
-        );
-        
-        reminderEventsPushed = unsyncedReminderEvents.length;
+
+        final result = await _insertRows(client, 'reminder_events', rows);
+        await eventRepo.markReminderEventsSynced(result.synced);
+        rejections.addAll(result.rejections);
+        reminderEventsPushed = result.synced.length;
       }
-      
+
       return EventPushResult(
         eventsPushed: eventsPushed,
         sessionsPushed: sessionsPushed,
         reminderEventsPushed: reminderEventsPushed,
+        error: rejections.isEmpty
+            ? null
+            : 'server refused ${rejections.length} row(s): '
+                '${rejections.take(3).join('; ')}',
       );
       
     } catch (e) {
@@ -126,35 +128,57 @@ class EventPusher {
   /// Postgres unique_violation.
   static const String _uniqueViolation = '23505';
 
-  /// Inserts [rows] and returns the ids now on the server.
+  /// Postgres error classes 22 (data exception: bad value, invalid enum
+  /// text) and 23 (integrity constraint: check, not-null, foreign key,
+  /// unique). These are about a specific row, not the connection or auth.
+  static bool _isRowDataError(supabase.PostgrestException e) {
+    final code = e.code;
+    return code != null && (code.startsWith('22') || code.startsWith('23'));
+  }
+
+  /// Inserts [rows]. Returns the ids now on the server, plus the server's
+  /// reason for each row it refused.
   ///
-  /// A row whose id is already on the server (e.g. a ReminderEvent that older
-  /// builds edited locally after uploading) makes the whole batch fail, which
-  /// used to block every later upload forever. On a duplicate, retry row by
-  /// row and count duplicates as synced. Still a plain insert: the device's
-  /// RLS identity is insert-only (AGENTS.md #4).
-  Future<List<String>> _insertSkippingDuplicates(
+  /// A single bad row used to fail the whole batch and block every later
+  /// upload forever. When the batch is refused for a row-data reason, retry
+  /// row by row: a duplicate id (e.g. a ReminderEvent older builds edited
+  /// after uploading) counts as synced; any other refused row stays unsynced
+  /// and is reported, without holding back the rest. Network, auth and RLS
+  /// errors still abort as before. Still a plain insert: the device's RLS
+  /// identity is insert-only (AGENTS.md #4).
+  Future<({List<String> synced, List<String> rejections})> _insertRows(
     supabase.SupabaseClient client,
     String table,
     List<Map<String, dynamic>> rows,
   ) async {
     try {
       await client.from(table).insert(rows);
-      return rows.map((r) => r['id'] as String).toList();
+      return (
+        synced: rows.map((r) => r['id'] as String).toList(),
+        rejections: const <String>[],
+      );
     } on supabase.PostgrestException catch (e) {
-      if (e.code != _uniqueViolation) rethrow;
+      if (!_isRowDataError(e)) rethrow;
     }
 
     final synced = <String>[];
+    final rejections = <String>[];
     for (final row in rows) {
+      final id = row['id'] as String;
       try {
         await client.from(table).insert(row);
+        synced.add(id);
       } on supabase.PostgrestException catch (e) {
-        if (e.code != _uniqueViolation) rethrow;
+        if (e.code == _uniqueViolation) {
+          synced.add(id);
+        } else if (_isRowDataError(e)) {
+          rejections.add('$table $id: ${e.code} ${e.message}');
+        } else {
+          rethrow;
+        }
       }
-      synced.add(row['id'] as String);
     }
-    return synced;
+    return (synced: synced, rejections: rejections);
   }
 
   /// Converts a TrialEvent to a Map for Supabase upsert.
@@ -214,7 +238,9 @@ class EventPusher {
       'fired_at': event.firedAt,
       'responded_at': event.respondedAt,
       'outcome': event.outcome,
-      'channel': event.channel,
+      // Older builds wrote 'fullscreen' for device-shown reminders; the
+      // backend contract (APP-BUILD-SPEC.md §10) uses 'in_app'.
+      'channel': event.channel == 'fullscreen' ? 'in_app' : event.channel,
       'ladder_step': event.ladderStep,
     };
   }

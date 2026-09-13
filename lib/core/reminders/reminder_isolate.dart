@@ -15,6 +15,11 @@ import 'alarm_scheduler.dart';
 import 'reminder_launcher.dart';
 import 'reminder_screen_channel.dart';
 
+/// `reminder_events.channel` for reminders the device itself shows (ladder
+/// steps 0 and 1), per APP-BUILD-SPEC.md §10. Older builds wrote
+/// 'fullscreen', which EventPusher maps to this on upload.
+const String reminderChannelInApp = 'in_app';
+
 /// Ladder step configuration.
 class LadderConfig {
   /// Step 0: Immediate full-screen notification with caregiver's voice
@@ -116,7 +121,7 @@ Future<void> fireReminderCallback(int id, Map<String, dynamic> params) async {
         medicationId: medicationId,
         scheduledAt: now.millisecondsSinceEpoch,
         firedAt: Value(now.millisecondsSinceEpoch),
-        channel: 'fullscreen',
+        channel: reminderChannelInApp,
         ladderStep: 0,
         synced: const Value(false),
       ),
@@ -319,7 +324,7 @@ Future<void> _fireLadderCallback(int id, Map<String, dynamic> params) async {
         medicationId: medicationId,
         scheduledAt: originalEvent.scheduledAt,
         firedAt: Value(now.millisecondsSinceEpoch),
-        channel: step == 1 ? 'fullscreen' : 'escalation',
+        channel: step == 1 ? reminderChannelInApp : 'escalation',
         ladderStep: step,
         synced: const Value(false),
       ),
