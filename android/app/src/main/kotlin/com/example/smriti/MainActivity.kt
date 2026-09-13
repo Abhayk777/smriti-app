@@ -1,51 +1,86 @@
 package com.example.smriti
 
 import android.app.AlarmManager
-import android.app.KeyguardManager
 import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
-import android.os.Bundle
-import android.os.PowerManager
 import android.provider.Settings
-import android.view.WindowManager
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
+/**
+ * The main app. It is deliberately NOT shown over the lock screen; only
+ * [ReminderActivity] is, so the rest of the app stays behind the PIN.
+ */
 class MainActivity : FlutterActivity() {
     private val CHANNEL = "com.example.smriti/native_reminders"
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        configureLockScreenFlags()
+    override fun onResume() {
+        super.onResume()
+        AppVisibility.onActivityResumed()
     }
 
-    override fun onAttachedToWindow() {
-        super.onAttachedToWindow()
-        configureLockScreenFlags()
+    override fun onPause() {
+        AppVisibility.onActivityPaused()
+        super.onPause()
     }
 
-    override fun onNewIntent(intent: Intent) {
-        super.onNewIntent(intent)
-        setIntent(intent)
-        configureLockScreenFlags()
-    }
-
-    private fun configureLockScreenFlags() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
-            setShowWhenLocked(true)
-            setTurnScreenOn(true)
+    /**
+     * Opens the manufacturer's extra per-app permission page. Xiaomi, Vivo and
+     * Oppo block lock-screen and background activity starts behind toggles that
+     * the standard Android APIs can neither read nor grant. Falls back to the
+     * app's details page.
+     */
+    private fun openOemPermissionSettings(): Boolean {
+        val manufacturer = Build.MANUFACTURER.lowercase()
+        val candidates = mutableListOf<Intent>()
+        when {
+            manufacturer.contains("xiaomi") || manufacturer.contains("redmi") || manufacturer.contains("poco") -> {
+                candidates += Intent("miui.intent.action.APP_PERM_EDITOR").apply {
+                    setClassName(
+                        "com.miui.securitycenter",
+                        "com.miui.permcenter.permissions.PermissionsEditorActivity",
+                    )
+                    putExtra("extra_pkgname", packageName)
+                }
+                candidates += Intent("miui.intent.action.APP_PERM_EDITOR").apply {
+                    putExtra("extra_pkgname", packageName)
+                }
+            }
+            manufacturer.contains("vivo") || manufacturer.contains("iqoo") -> {
+                candidates += Intent().apply {
+                    setClassName(
+                        "com.vivo.permissionmanager",
+                        "com.vivo.permissionmanager.activity.SoftPermissionDetailActivity",
+                    )
+                    putExtra("packagename", packageName)
+                }
+            }
+            manufacturer.contains("oppo") || manufacturer.contains("realme") || manufacturer.contains("oneplus") -> {
+                candidates += Intent().apply {
+                    setClassName(
+                        "com.coloros.safecenter",
+                        "com.coloros.safecenter.permission.PermissionManagerActivity",
+                    )
+                }
+            }
         }
-        @Suppress("DEPRECATION")
-        window.addFlags(
-            WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
-            WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON or
-            WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD or
-            WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
-        )
+        candidates += Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+            data = Uri.parse("package:$packageName")
+        }
+        for (candidate in candidates) {
+            try {
+                candidate.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                startActivity(candidate)
+                return true
+            } catch (_: Exception) {
+                // Not present on this ROM version; try the next one.
+            }
+        }
+        return false
     }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -138,20 +173,8 @@ class MainActivity : FlutterActivity() {
                     }
                 }
 
-                "wakeUpScreen" -> {
-                    try {
-                        configureLockScreenFlags()
-                        val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
-                        @Suppress("DEPRECATION")
-                        val wakeLock = powerManager.newWakeLock(
-                            PowerManager.SCREEN_BRIGHT_WAKE_LOCK or PowerManager.ACQUIRE_CAUSES_WAKEUP,
-                            "smriti:reminder_screen_wakelock"
-                        )
-                        wakeLock.acquire(30000) // 30 seconds
-                        result.success(true)
-                    } catch (e: Exception) {
-                        result.success(false)
-                    }
+                "openOemPermissionSettings" -> {
+                    result.success(openOemPermissionSettings())
                 }
 
                 else -> result.notImplemented()

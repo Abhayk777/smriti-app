@@ -6,15 +6,14 @@ import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
 import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:just_audio/just_audio.dart';
 import 'package:uuid/uuid.dart';
-import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../db/database.dart';
 import '../repo/content_repo.dart';
 import '../repo/event_repo.dart';
 import 'alarm_scheduler.dart';
+import 'reminder_launcher.dart';
+import 'reminder_screen_channel.dart';
 
 /// Ladder step configuration.
 class LadderConfig {
@@ -35,8 +34,8 @@ class LadderConfig {
 /// 2. Gets the medication from the database
 /// 3. If inactive, returns (no action)
 /// 4. Creates a ReminderEvent row
-/// 5. Shows full-screen notification
-/// 6. Plays caregiver audio (med.voicePath)
+/// 5. Shows the full-screen reminder (native ReminderActivity, which also
+///    plays the caregiver's voice note once it is visible)
 /// 7. Schedules ladder steps: Step 1 (15 min later), Step 2 (30 min later)
 /// 8. Schedules next medication occurrence
 /// 9. Closes database connection
@@ -79,7 +78,14 @@ Future<void> fireReminderCallback(int id, Map<String, dynamic> params) async {
       await db.close();
       return;
     }
-    
+
+    // An alarm left over from before the caregiver changed the days must not
+    // fire (or reschedule itself) on a day the medicine is no longer taken.
+    if (!AlarmScheduler.parseDaysOfWeek(med.daysOfWeek).contains(dayOfWeek)) {
+      await db.close();
+      return;
+    }
+
     // Step 4: Create ReminderEvent row
     final eventRepo = EventRepo(db);
     final now = DateTime.now();
@@ -97,12 +103,9 @@ Future<void> fireReminderCallback(int id, Map<String, dynamic> params) async {
       ),
     );
     
-    // Step 5: Show full-screen notification
-    await _showFullScreenNotification(reminderEventId, med);
-    
-    // Step 6: Play caregiver audio
-    await _playCaregiverAudio(med.voicePath);
-    
+    // Step 5: Show the full-screen reminder
+    await ReminderLauncher.showMedication(med, reminderEventId);
+
     // Step 7: Schedule ladder steps
     await _scheduleLadderStep(
       reminderEventId: reminderEventId,
@@ -149,67 +152,53 @@ Future<SmritiDatabase?> _openDatabaseConnection() async {
   }
 }
 
-/// Shows a full-screen notification for the medication reminder.
-Future<void> _showFullScreenNotification(String reminderEventId, Medication med) async {
-  try {
-    // Initialize notifications
-    final flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
-    
-    const androidPlatformChannelSpecifics = AndroidNotificationDetails(
-      'medication_reminder',
-      'Medication Reminder',
-      channelDescription: 'Full-screen medication reminders',
-      importance: Importance.max,
-      priority: Priority.max,
-      fullScreenIntent: true,
-      category: AndroidNotificationCategory.alarm,
-      audioAttributesUsage: AudioAttributesUsage.alarm,
-      visibility: NotificationVisibility.public,
-      playSound: true,
-      enableVibration: true,
-      showWhen: false,
-      autoCancel: false,
-      ongoing: true,
-      ticker: 'Medication Reminder',
-    );
-    
-    const platformChannelSpecifics = NotificationDetails(
-      android: androidPlatformChannelSpecifics,
-    );
-    
-    // Show notification with payload containing medicationId and reminderEventId
-    await flutterLocalNotificationsPlugin.show(
-      reminderEventId.hashCode,
-      'Time for: ${med.name}',
-      med.dose,
-      platformChannelSpecifics,
-      payload: 'medication_reminder:${med.id}:$reminderEventId',
-    );
-    
-    // Wake up the device
-    await WakelockPlus.enable();
-    
-  } catch (e) {
-    debugPrint('[reminder_isolate] Notification error: $e');
-  }
+/// Test alarm ID used by the setup screen and diagnostics.
+const int testReminderAlarmId = 9998;
+
+/// Schedules a test reminder [delay] from now through the real alarm path,
+/// so the caregiver can lock the phone (or open another app) and confirm the
+/// full-screen reminder appears. Writes no ReminderEvent.
+Future<void> scheduleTestReminder({
+  Duration delay = const Duration(seconds: 15),
+}) async {
+  await AndroidAlarmManager.oneShotAt(
+    DateTime.now().add(delay),
+    testReminderAlarmId,
+    fireTestReminderCallback,
+    exact: true,
+    wakeup: true,
+    allowWhileIdle: true,
+    alarmClock: true,
+    params: const {},
+  );
 }
 
-/// Plays the caregiver's voice recording for the medication.
-Future<void> _playCaregiverAudio(String? voicePath) async {
-  if (voicePath == null || voicePath.isEmpty) return;
-  
-  try {
-    final file = File(voicePath);
-    if (!await file.exists()) return;
-    
-    final player = AudioPlayer();
-    await player.setFilePath(voicePath);
-    await player.play();
-    
-    // Don't await - let it play in background
-    // The player will be garbage collected when done
-  } catch (_) {
-    // Audio playback failed
+@pragma('vm:entry-point')
+Future<void> fireTestReminderCallback(int id, Map<String, dynamic> params) async {
+  WidgetsFlutterBinding.ensureInitialized();
+  final testEventId = '${ReminderRequest.testEventPrefix}${const Uuid().v4()}';
+
+  Medication? med;
+  final db = await _openDatabaseConnection();
+  if (db != null) {
+    try {
+      final meds = await ContentRepo(db).getMedications(activeOnly: true);
+      med = meds.isNotEmpty ? meds.first : null;
+    } catch (_) {
+    } finally {
+      await db.close();
+    }
+  }
+
+  if (med != null) {
+    await ReminderLauncher.showMedication(med, testEventId);
+  } else {
+    await ReminderLauncher.show(
+      medicationId: 'test',
+      reminderEventId: testEventId,
+      title: 'Test reminder',
+      body: 'This is how medicine reminders will look',
+    );
   }
 }
 
@@ -236,6 +225,7 @@ Future<void> _scheduleLadderStep({
       exact: true,
       wakeup: true,
       allowWhileIdle: true,
+      alarmClock: true,
       rescheduleOnReboot: true,
       params: {
         'reminderEventId': reminderEventId,
@@ -320,9 +310,9 @@ Future<void> _fireLadderCallback(int id, Map<String, dynamic> params) async {
     // Handle step-specific actions
     switch (step) {
       case 1:
-        // Step 1: Repeat notification, louder
-        await _showFullScreenNotification(reminderEventId, med);
-        await _playCaregiverAudio(med.voicePath);
+        // Step 1: Show the reminder again (same event, so the same
+        // notification is re-alerted and an open screen replays the voice)
+        await ReminderLauncher.showMedication(med, reminderEventId);
         break;
       
       case 2:

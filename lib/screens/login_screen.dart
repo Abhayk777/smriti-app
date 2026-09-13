@@ -6,7 +6,7 @@ import 'package:smriti/core/auth/pairing_service.dart';
 import 'package:smriti/core/db/app_database.dart';
 import 'package:smriti/core/repo/ability_repo.dart';
 import 'package:smriti/core/sync/sync_engine.dart';
-import 'package:smriti/screens/home_screen.dart';
+import 'package:smriti/screens/main_screen.dart';
 import 'package:smriti/screens/pairing/pair_confirm_screen.dart';
 import 'package:smriti/screens/pairing/patient_picker_screen.dart';
 import 'package:smriti/screens/pairing/scan_screen.dart';
@@ -86,7 +86,7 @@ class _LoginScreenState extends State<LoginScreen> {
         passwordController.clear();
         unawaited(SyncEngine.defaultInstance.run(trigger: SyncTrigger.manual));
         Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => const HomeScreen()),
+          MaterialPageRoute(builder: (_) => const MainScreen()),
           (route) => false,
         );
       }
@@ -118,7 +118,7 @@ class _LoginScreenState extends State<LoginScreen> {
     if (paired == true && mounted) {
       unawaited(SyncEngine.defaultInstance.run(trigger: SyncTrigger.manual));
       Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const HomeScreen()),
+        MaterialPageRoute(builder: (_) => const MainScreen()),
         (route) => false,
       );
     }

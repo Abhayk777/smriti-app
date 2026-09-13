@@ -2,10 +2,13 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
-/// Bridge to native Android platform channels for reminder-specific capabilities:
+/// Bridge to MainActivity's platform channel for reminder-related settings:
 /// - Android 14+ (API 34) Full Screen Intent permission check and settings intent
 /// - Android 12+ (API 31) Exact Alarm permission check and settings intent
-/// - Screen wakeup and lock-screen overlay control
+/// - Manufacturer-specific permission pages (Xiaomi, Vivo, Oppo)
+///
+/// Only available in the main app engine. The alarm isolate uses
+/// `ReminderLauncher`; the reminder screen uses `ReminderScreenChannel`.
 class NativeReminderBridge {
   static const MethodChannel _channel =
       MethodChannel('com.example.smriti/native_reminders');
@@ -70,14 +73,16 @@ class NativeReminderBridge {
     }
   }
 
-  /// Force-wakes up the screen using Android PowerManager flags.
-  static Future<bool> wakeUpScreen() async {
+  /// Opens the manufacturer's extra permission page (Xiaomi "Other
+  /// permissions", Vivo/Oppo equivalents), falling back to app details.
+  static Future<bool> openOemPermissionSettings() async {
     if (!Platform.isAndroid) return false;
     try {
-      final bool? result = await _channel.invokeMethod<bool>('wakeUpScreen');
+      final bool? result =
+          await _channel.invokeMethod<bool>('openOemPermissionSettings');
       return result ?? false;
     } catch (e) {
-      debugPrint('[NativeReminderBridge] Error waking screen: $e');
+      debugPrint('[NativeReminderBridge] Error opening OEM settings: $e');
       return false;
     }
   }

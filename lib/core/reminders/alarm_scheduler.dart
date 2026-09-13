@@ -40,22 +40,40 @@ class AlarmScheduler {
   /// 2. Calculates the next occurrence
   /// 3. Schedules a new alarm
   Future<void> rescheduleAll() async {
-    // Cancel all existing alarms first
+    // Cancel everything scheduled last time. This runs after the content swap,
+    // so the current medication list no longer knows about deleted medicines
+    // or removed days; only the stored ID set does.
+    for (final id in await _loadScheduledIds()) {
+      await AndroidAlarmManager.cancel(id);
+    }
     await _cancelAllAlarms();
 
     // Get all active medications
     final medications = await contentRepo.getMedications(activeOnly: true);
 
     // Schedule alarms for each medication
+    final scheduled = <int>{};
     for (final med in medications) {
-      await _scheduleMedicationAlarms(med);
+      scheduled.addAll(await _scheduleMedicationAlarms(med));
     }
+    await db.appConfigsDao.setValue(_scheduledIdsKey, scheduled.join(','));
   }
 
-  /// Schedules alarms for a single medication.
-  Future<void> _scheduleMedicationAlarms(Medication med) async {
+  /// AppConfigs key holding the comma-separated alarm IDs from the last
+  /// [rescheduleAll].
+  static const String _scheduledIdsKey = 'scheduledAlarmIds';
+
+  Future<Set<int>> _loadScheduledIds() async {
+    final raw = await db.appConfigsDao.getValue(_scheduledIdsKey);
+    if (raw == null || raw.isEmpty) return {};
+    return raw.split(',').map(int.tryParse).whereType<int>().toSet();
+  }
+
+  /// Schedules alarms for a single medication and returns their IDs.
+  Future<List<int>> _scheduleMedicationAlarms(Medication med) async {
     // Parse days of week (1-7, where 1=Monday)
-    final days = _parseDaysOfWeek(med.daysOfWeek);
+    final days = parseDaysOfWeek(med.daysOfWeek);
+    final ids = <int>[];
 
     for (final day in days) {
       // Calculate next occurrence for this day
@@ -67,7 +85,7 @@ class AlarmScheduler {
       }
 
       final alarmId = _alarmId(med.id, day);
-      
+
       // Schedule the alarm
       await AndroidAlarmManager.oneShotAt(
         nextTime,
@@ -76,13 +94,16 @@ class AlarmScheduler {
         exact: true,
         wakeup: true,
         allowWhileIdle: true,
+        alarmClock: true,
         rescheduleOnReboot: true,
         params: {
           'medicationId': med.id,
           'dayOfWeek': day,
         },
       );
+      ids.add(alarmId);
     }
+    return ids;
   }
 
   /// Cancels all existing medication alarms.
@@ -90,7 +111,7 @@ class AlarmScheduler {
     final medications = await contentRepo.getMedications(activeOnly: true);
 
     for (final med in medications) {
-      final days = _parseDaysOfWeek(med.daysOfWeek);
+      final days = parseDaysOfWeek(med.daysOfWeek);
       for (final day in days) {
         final alarmId = _alarmId(med.id, day);
         await AndroidAlarmManager.cancel(alarmId);
@@ -103,7 +124,7 @@ class AlarmScheduler {
     final med = await contentRepo.getMedication(medId);
     if (med == null) return;
 
-    final days = _parseDaysOfWeek(med.daysOfWeek);
+    final days = parseDaysOfWeek(med.daysOfWeek);
     for (final day in days) {
       final alarmId = _alarmId(med.id, day);
       await AndroidAlarmManager.cancel(alarmId);
@@ -113,7 +134,7 @@ class AlarmScheduler {
   /// Parses the daysOfWeek string into a list of day indices.
   ///
   /// Format: comma-separated day indices (1-7, where 1=Monday)
-  List<int> _parseDaysOfWeek(String daysOfWeek) {
+  static List<int> parseDaysOfWeek(String daysOfWeek) {
     return daysOfWeek
         .split(',')
         .map((s) => int.tryParse(s.trim()) ?? 0)
@@ -184,6 +205,7 @@ class AlarmScheduler {
       exact: true,
       wakeup: true,
       allowWhileIdle: true,
+      alarmClock: true,
       rescheduleOnReboot: true,
       params: {
         'medicationId': med.id,

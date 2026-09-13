@@ -60,6 +60,7 @@ void main() {
         home: FullScreenReminderScreen(
           medicationId: 'med_test_1',
           reminderEventId: 'event_test_1',
+          syncAfterResponse: false,
         ),
       ),
     );
@@ -85,5 +86,67 @@ void main() {
 
     expect(updatedEvent.outcome, 'confirmed');
     expect(updatedEvent.respondedAt, isNotNull);
+
+    // Confirmation shows before the screen finishes (after the ladder-cancel
+    // and notification-dismiss platform calls settle).
+    // Drift's real I/O only completes when real time passes (runAsync).
+    for (var i = 0; i < 10 && find.text('Thank you!').evaluate().isEmpty; i++) {
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 20)),
+      );
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+    expect(find.text('Thank you!'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 3));
+  });
+
+  testWidgets('Test reminders never write a ReminderEvent outcome',
+      (tester) async {
+    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() => tester.view.resetPhysicalSize());
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: FullScreenReminderScreen(
+          medicationId: 'med_test_1',
+          reminderEventId: 'test-123',
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    await tester.tap(find.text('I Have Taken It'));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 3));
+
+    final event = await (db.select(db.reminderEvents)
+          ..where((t) => t.id.equals('event_test_1')))
+        .getSingle();
+    expect(event.outcome, isNull);
+  });
+
+  testWidgets('Portrait phone layout renders without overflow',
+      (tester) async {
+    tester.view.physicalSize = const Size(400, 860);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() => tester.view.resetPhysicalSize());
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: FullScreenReminderScreen(
+          medicationId: 'med_test_1',
+          reminderEventId: 'event_test_1',
+          syncAfterResponse: false,
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.text('Donepezil'), findsOneWidget);
+    expect(find.text('I Have Taken It'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 }

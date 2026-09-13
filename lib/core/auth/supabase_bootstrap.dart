@@ -11,8 +11,14 @@ const String supabaseUrl = 'https://yzhtgpaekoqaszxgbeyn.supabase.co';
 const String supabaseAnonKey =
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl6aHRncGFla29xYXN6eGdiZXluIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg1NDc0ODksImV4cCI6MjEwNDEyMzQ4OX0.n_o6rWy3ViTKi-EGcRTfPD_9yDS00GSssWRgq7ALRoo';
 
-/// Initializes the Supabase client. Call once, before `runApp()`.
-Future<void> initSupabase() async {
+Future<void>? _initialization;
+
+/// Initializes the Supabase client for this isolate. Safe to call more than
+/// once: the main app calls it before `runApp()`, and the reminder screen
+/// (its own engine, `reminderMain`) calls it lazily when it needs to sync.
+Future<void> initSupabase() => _initialization ??= _initialize();
+
+Future<void> _initialize() async {
   await Supabase.initialize(
     url: supabaseUrl,
     // supabase_flutter 2.17 deprecates `anonKey` in favour of `publishableKey`.

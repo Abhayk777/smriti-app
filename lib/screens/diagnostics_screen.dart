@@ -1,16 +1,15 @@
-import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
-import 'package:drift/drift.dart' as drift;
 import 'package:flutter/material.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:uuid/uuid.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 import '../app_colors.dart';
 import '../core/db/app_database.dart';
 import '../core/db/database.dart';
 import '../core/reminders/native_reminder_bridge.dart';
+import '../core/reminders/reminder_isolate.dart';
 import '../core/repo/content_repo.dart';
 import '../core/repo/event_repo.dart';
 import '../core/sync/sync_engine.dart';
+import 'reminder_setup_screen.dart';
 
 /// Diagnostics screen for caregiver use only.
 ///
@@ -51,6 +50,7 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
   List<Session> _recentSessions = [];
   bool _canUseFsi = true;
   bool _canScheduleExact = true;
+  bool _canDrawOverlays = true;
 
   @override
   void initState() {
@@ -70,6 +70,7 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
     _hasRefreshToken = token != null && token.isNotEmpty;
     _canUseFsi = await NativeReminderBridge.canUseFullScreenIntent();
     _canScheduleExact = await NativeReminderBridge.canScheduleExactAlarms();
+    _canDrawOverlays = await Permission.systemAlertWindow.isGranted;
     try {
       _recentSessions = await _eventRepo.getRecentSessions(limit: 20);
     } catch (_) {}
@@ -144,45 +145,11 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
     }
   }
 
+  /// Fires a test reminder through the real alarm → ReminderActivity path.
+  /// It writes no ReminderEvent, so nothing reaches the caregiver.
   Future<void> _fireTestReminder() async {
     try {
-      final repo = ContentRepo(appDatabase);
-      final meds = await repo.getMedications();
-      final med = meds.isNotEmpty ? meds.first : null;
-      final testEventId = const Uuid().v4();
-
-      if (med != null) {
-        final eventRepo = EventRepo(appDatabase);
-        final now = DateTime.now().millisecondsSinceEpoch;
-        await eventRepo.insertReminderEvent(
-          ReminderEventsCompanion.insert(
-            id: testEventId,
-            medicationId: med.id,
-            scheduledAt: now,
-            firedAt: drift.Value(now),
-            channel: 'fullscreen',
-            ladderStep: 0,
-            synced: const drift.Value(false),
-          ),
-        );
-      }
-
-      final alarmTime = DateTime.now().add(const Duration(seconds: 5));
-      await AndroidAlarmManager.oneShotAt(
-        alarmTime,
-        9999, // Test alarm ID
-        _testAlarmCallback,
-        exact: true,
-        wakeup: true,
-        allowWhileIdle: true,
-        rescheduleOnReboot: true,
-        params: {
-          'medId': med?.id ?? 'test_med',
-          'medName': med?.name ?? 'Test Medicine (Donepezil)',
-          'medDose': med?.dose ?? '1 tablet (5mg)',
-          'reminderEventId': testEventId,
-        },
-      );
+      await scheduleTestReminder(delay: const Duration(seconds: 5));
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -301,6 +268,28 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
               
               // Reminder Test Section
               _buildSectionTitle('Reminders & Permissions'),
+              _buildInfoRow(
+                'Display Over Other Apps',
+                _canDrawOverlays
+                    ? 'Granted'
+                    : 'Off (unlocked phone gets a banner, not full screen)',
+              ),
+              const SizedBox(height: 6),
+              OutlinedButton.icon(
+                onPressed: () async {
+                  await Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (ctx) => ReminderSetupScreen(
+                        onDone: () => Navigator.of(ctx).pop(),
+                      ),
+                    ),
+                  );
+                  await _loadData();
+                },
+                icon: const Icon(Icons.checklist_rounded, size: 18),
+                label: const Text('Open Reminder Setup'),
+              ),
+              const SizedBox(height: 8),
               _buildInfoRow(
                 'Full-Screen Intent (Lock Screen)',
                 _canUseFsi ? 'Granted' : 'Revoked (Android 14+)',
@@ -528,45 +517,5 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
     } catch (_) {
       return 'Invalid';
     }
-  }
-}
-
-@pragma('vm:entry-point')
-Future<void> _testAlarmCallback(int id, Map<String, dynamic> params) async {
-  WidgetsFlutterBinding.ensureInitialized();
-  try {
-    final notifications = FlutterLocalNotificationsPlugin();
-    const androidDetails = AndroidNotificationDetails(
-      'medication_reminder',
-      'Medication Reminder',
-      channelDescription: 'Full-screen medication reminders',
-      importance: Importance.max,
-      priority: Priority.max,
-      fullScreenIntent: true,
-      category: AndroidNotificationCategory.alarm,
-      audioAttributesUsage: AudioAttributesUsage.alarm,
-      visibility: NotificationVisibility.public,
-      playSound: true,
-      enableVibration: true,
-      ticker: 'Medication Reminder (Test)',
-    );
-
-    final medId = params['medId'] as String? ?? 'test_med';
-    final medName = params['medName'] as String?;
-    final medDose = params['medDose'] as String?;
-    final reminderEventId =
-        params['reminderEventId'] as String? ?? 'test_event';
-
-    await notifications.show(
-      9999,
-      medName != null ? 'Time for: $medName' : 'Medication Reminder (Test)',
-      medDose != null
-          ? 'Dose: $medDose'
-          : 'Please take your scheduled medication',
-      const NotificationDetails(android: androidDetails),
-      payload: 'medication_reminder:$medId:$reminderEventId',
-    );
-  } catch (e) {
-    debugPrint('[diagnostics_screen] Error in _testAlarmCallback: $e');
   }
 }
