@@ -6,7 +6,7 @@ import '../db/database.dart';
 ///
 /// AGENTS.md non-negotiable #3: `VoiceMemos` is INSERT-only; the sole permitted
 /// update is flipping `uploaded` once the memo uploader has shipped the file.
-/// The audio itself lives on disk at `<docs>/memos/{memoId}.m4a`; this repo
+/// The audio itself lives on disk at `<docs>/memos/{memoId}.wav`; this repo
 /// stores only the row that points at it.
 class MemoRepo {
   MemoRepo(this.db);

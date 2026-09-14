@@ -111,10 +111,25 @@ class _VoiceMemoScreenState extends State<VoiceMemoScreen> {
       final memoDir = await FilePaths.memos();
       final memoId = const Uuid().v4();
       _currentRecordingMemoId = memoId;
-      final filePath = p.join(memoDir, '$memoId.m4a');
+      final filePath = p.join(memoDir, '$memoId.wav');
 
       await _audioRecorder.start(
-        const RecordConfig(encoder: AudioEncoder.aacLc),
+        // WAV/PCM, not an AAC encoder: AAC recording goes through the
+        // device's native MediaCodec, and which codec implementation gets
+        // picked (and whether it can honor the requested stereo/sample-rate
+        // config) varies by chipset — cheaper/mid-range SoCs (e.g. the
+        // MediaTek chips in many Redmi phones) can silently fall onto a
+        // device-specific path that produces a file that "loads" (container
+        // and duration are readable) but won't actually decode elsewhere,
+        // even after recording in mono. WAV is raw PCM with a plain header —
+        // no codec negotiation at all, so it plays back identically on every
+        // device and in every browser. Voice messages are short, so the
+        // larger file size doesn't matter.
+        const RecordConfig(
+          encoder: AudioEncoder.wav,
+          numChannels: 1,
+          sampleRate: 16000,
+        ),
         path: filePath,
       );
 

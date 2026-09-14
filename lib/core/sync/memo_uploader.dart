@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:path/path.dart' as p;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../db/database.dart';
@@ -52,6 +53,20 @@ class MemoUploader {
   /// Storage bucket for elder voice memos
   static const String _memosBucket = 'patient-memos';
 
+  /// The real MIME type for a recorded memo's extension, so the web app's
+  /// audio player recognizes it. Defaults to WAV, the current recording
+  /// format; also covers `.m4a` for memos recorded before that format
+  /// changed, still sitting unsynced on some device.
+  String _contentTypeFor(String ext) {
+    switch (ext.toLowerCase()) {
+      case '.m4a':
+        return 'audio/mp4';
+      case '.wav':
+      default:
+        return 'audio/wav';
+    }
+  }
+
   /// Uploads all pending voice memos to Supabase.
   ///
   /// Uploads storage first, then creates the row. This ensures we never have
@@ -77,16 +92,20 @@ class MemoUploader {
         }
         
         try {
-          // Upload to Supabase storage - path convention {patient_id}/{filename}
-          final storagePath = '$pid/${memo.id}.m4a';
+          // Upload to Supabase storage - path convention {patient_id}/{filename}.
+          // The extension (and content type) follow the actual recorded file
+          // rather than being hardcoded, so this stays correct if the
+          // recording format ever changes again.
+          final ext = p.extension(localPath); // e.g. '.wav'
+          final storagePath = '$pid/${memo.id}$ext';
           try {
             await Supabase.instance.client.storage
                 .from(_memosBucket)
                 .upload(
                   storagePath,
                   file,
-                  fileOptions: const FileOptions(
-                    contentType: 'audio/m4a',
+                  fileOptions: FileOptions(
+                    contentType: _contentTypeFor(ext),
                   ),
                 );
           } catch (storageErr) {
@@ -156,12 +175,17 @@ class MemoUploader {
       }
       
       final pid = await _getPatientId();
-      final fileName = 'memos/${memo.id}.m4a';
-      
+      final ext = p.extension(localPath);
+      final fileName = 'memos/${memo.id}$ext';
+
       // Upload to storage
       await Supabase.instance.client.storage
           .from(_memosBucket)
-          .upload(fileName, file);
+          .upload(
+            fileName,
+            file,
+            fileOptions: FileOptions(contentType: _contentTypeFor(ext)),
+          );
       
       // Create metadata row
       await Supabase.instance.client.from('memos').insert({
