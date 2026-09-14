@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smriti/core/db/database.dart';
@@ -138,6 +140,46 @@ void main() {
     expect((await repo.getPeople()).map((p) => p.id), ['new']);
     expect(await repo.getPerson('old'), isNull);
     expect(await repo.getContentVersion(), '2');
+  });
+
+  test('watchRoutineItems starts empty and emits the pulled routine', () async {
+    final emissions = <List<String>>[];
+    final firstEmission = Completer<void>();
+    final pulled = Completer<void>();
+    final sub = repo.watchRoutineItems().listen((items) {
+      emissions.add(items.map((r) => r.id).toList());
+      if (!firstEmission.isCompleted) firstEmission.complete();
+      if (items.isNotEmpty && !pulled.isCompleted) pulled.complete();
+    });
+    addTearDown(sub.cancel);
+
+    // Nothing pulled yet: the screen must see an empty routine, not mock data.
+    await firstEmission.future;
+    expect(emissions, [<String>[]]);
+
+    await repo.replaceContent(
+      people: const [],
+      medications: const [],
+      routineItems: [
+        RoutineItemsCompanion.insert(
+          id: 'r_lunch',
+          timeMin: 720,
+          labelKey: 'Lunch',
+          iconAsset: '🍛',
+        ),
+        RoutineItemsCompanion.insert(
+          id: 'r_wake',
+          timeMin: 360,
+          labelKey: 'Wake Up',
+          iconAsset: '☀️',
+        ),
+      ],
+      contentVersion: '3',
+    );
+
+    // The open subscription picks up the swap, ordered by time.
+    await pulled.future;
+    expect(emissions.last, ['r_wake', 'r_lunch']);
   });
 
   test('a failed swap rolls back and keeps the previous content', () async {

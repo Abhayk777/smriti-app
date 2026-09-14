@@ -59,6 +59,14 @@ class ContentRepo {
         .get();
   }
 
+  /// Emits the routine now and again after every content swap, so a screen
+  /// left open picks up a routine the caregiver just added on the web app.
+  Stream<List<RoutineItem>> watchRoutineItems() {
+    return (db.select(db.routineItems)
+          ..orderBy([(t) => OrderingTerm(expression: t.timeMin)]))
+        .watch();
+  }
+
   // CONTENT VERSION
 
   Future<String?> getContentVersion() =>

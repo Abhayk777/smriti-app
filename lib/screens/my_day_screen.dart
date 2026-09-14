@@ -1,17 +1,18 @@
-import 'dart:convert';
+import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../app_colors.dart';
 import '../core/db/app_database.dart';
+import '../core/db/database.dart';
 import '../core/repo/content_repo.dart';
 import '../core/sync/sync_engine.dart';
 
 /// Shows the elder's daily routine as a warm timeline.
 ///
-/// Reads `RoutineItems` from local SQLite. Falls back to the bundled
-/// mock_content.json if the table is empty (content not yet pulled from server).
+/// Reads `RoutineItems` from local SQLite — only the routine the caregiver
+/// set on the web app, never placeholder data. Until one arrives, a gentle
+/// "will be updated soon" message is shown instead.
 /// Highlights the current / next item. Past items are dimmed.
 /// No medication items are shown here — those live in MedicineScreen.
 class MyDayScreen extends StatefulWidget {
@@ -23,7 +24,8 @@ class MyDayScreen extends StatefulWidget {
 
 class _MyDayScreenState extends State<MyDayScreen> {
   final ContentRepo _repo = ContentRepo(appDatabase);
-  List<_RoutineEntry> _items = [];
+  StreamSubscription<List<RoutineItem>>? _routineSub;
+  List<RoutineItem> _items = [];
   bool _loading = true;
   late DateTime _now;
   late int _nowMin; // minutes from midnight
@@ -33,54 +35,22 @@ class _MyDayScreenState extends State<MyDayScreen> {
     super.initState();
     _now = DateTime.now();
     _nowMin = _now.hour * 60 + _now.minute;
-    _load();
-    // Auto-refresh routine items from Supabase in the background
-    SyncEngine.defaultInstance.run(trigger: SyncTrigger.manual).then((_) {
-      if (mounted) _load();
+    _routineSub = _repo.watchRoutineItems().listen((items) {
+      if (!mounted) return;
+      setState(() {
+        _items = items;
+        _loading = false;
+      });
     });
+    // Pull the latest routine in the background; the subscription above
+    // redraws the timeline whenever a sync (this one or any other) lands.
+    unawaited(SyncEngine.defaultInstance.run(trigger: SyncTrigger.manual));
   }
 
-  Future<void> _load() async {
-    final dbItems = await _repo.getRoutineItems();
-    if (dbItems.isNotEmpty) {
-      setState(() {
-        _items = dbItems
-            .map((r) => _RoutineEntry(
-                  id: r.id,
-                  timeMin: r.timeMin,
-                  label: r.labelKey,
-                  icon: r.iconAsset,
-                ))
-            .toList();
-        _loading = false;
-      });
-    } else {
-      // Fall back to mock JSON
-      await _loadMock();
-    }
-  }
-
-  Future<void> _loadMock() async {
-    try {
-      final raw = await rootBundle.loadString('assets/mock_content/mock_content.json');
-      final data = jsonDecode(raw) as Map<String, dynamic>;
-      final routine = (data['routineItems'] as List<dynamic>)
-          .cast<Map<String, dynamic>>();
-      setState(() {
-        _items = routine
-            .map((r) => _RoutineEntry(
-                  id: r['id'] as String,
-                  timeMin: r['timeMin'] as int,
-                  label: r['labelKey'] as String,
-                  icon: r['iconAsset'] as String,
-                ))
-            .toList()
-          ..sort((a, b) => a.timeMin.compareTo(b.timeMin));
-        _loading = false;
-      });
-    } catch (_) {
-      setState(() => _loading = false);
-    }
+  @override
+  void dispose() {
+    _routineSub?.cancel();
+    super.dispose();
   }
 
   String _formatTime(int min) {
@@ -164,16 +134,30 @@ class _MyDayScreenState extends State<MyDayScreen> {
 
   Widget _buildEmpty() {
     return const Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text('📅', style: TextStyle(fontSize: 72)),
-          SizedBox(height: 16),
-          Text(
-            'Your daily schedule will appear here.',
-            style: TextStyle(fontSize: 20, color: AppColors.secondaryText),
-          ),
-        ],
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: 32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text('🌼', style: TextStyle(fontSize: 72)),
+            SizedBox(height: 16),
+            Text(
+              'Your routine will be updated soon',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.w700,
+                color: AppColors.primaryText,
+              ),
+            ),
+            SizedBox(height: 8),
+            Text(
+              'Your family will add your daily plan here.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 18, color: AppColors.secondaryText),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -220,20 +204,6 @@ class _MyDayScreenState extends State<MyDayScreen> {
   }
 }
 
-class _RoutineEntry {
-  const _RoutineEntry({
-    required this.id,
-    required this.timeMin,
-    required this.label,
-    required this.icon,
-  });
-
-  final String id;
-  final int timeMin;
-  final String label;
-  final String icon;
-}
-
 class _TimelineItem extends StatelessWidget {
   const _TimelineItem({
     required this.entry,
@@ -243,7 +213,7 @@ class _TimelineItem extends StatelessWidget {
     required this.isLast,
   });
 
-  final _RoutineEntry entry;
+  final RoutineItem entry;
   final bool isPast;
   final bool isActive;
   final String timeLabel;
@@ -311,7 +281,7 @@ class _TimelineItem extends StatelessWidget {
                 child: Row(
                   children: [
                     Text(
-                      entry.icon,
+                      entry.iconAsset,
                       style: TextStyle(fontSize: isActive ? 32 : 26),
                     ),
                     const SizedBox(width: 14),
@@ -320,7 +290,7 @@ class _TimelineItem extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            entry.label,
+                            entry.labelKey,
                             style: TextStyle(
                               fontSize: isActive ? 20 : 17,
                               fontWeight: isActive
