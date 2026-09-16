@@ -10,8 +10,13 @@ import '../ghost_hand.dart';
 /// My Day: MMSE orientation subscale.
 ///
 /// Domain: memory + attention.
-/// Order the day's events, then conversational orientation questions —
+/// Order the day's events, then conversational orientation questions:
 /// what day, what season, what comes after lunch.
+///
+/// Everything about the day comes from the elder's own routine, as set by the
+/// caregiver in the web app. With fewer than three routine items there is
+/// nothing meaningful to order, so the game asks calendar questions instead;
+/// questions about lunch and dinner are only asked when the routine has them.
 ///
 /// Difficulty: item count → question specificity (season → month → date)
 class MyDayGame implements CognitiveGame {
@@ -44,18 +49,8 @@ class MyDayGame implements CognitiveGame {
     ]);
   }
 
-  /// Default routine if none from content.
-  static const List<Map<String, Object>> _defaultRoutine = [
-    {'id': 'wake_up', 'timeMin': 360, 'label': 'Wake Up', 'icon': '☀️'},
-    {'id': 'morning_tea', 'timeMin': 390, 'label': 'Morning Tea', 'icon': '🍵'},
-    {'id': 'breakfast', 'timeMin': 480, 'label': 'Breakfast', 'icon': '🍳'},
-    {'id': 'morning_walk', 'timeMin': 540, 'label': 'Morning Walk', 'icon': '🚶'},
-    {'id': 'lunch', 'timeMin': 720, 'label': 'Lunch', 'icon': '🍛'},
-    {'id': 'afternoon_rest', 'timeMin': 840, 'label': 'Rest', 'icon': '😴'},
-    {'id': 'evening_tea', 'timeMin': 960, 'label': 'Evening Tea', 'icon': '🍵'},
-    {'id': 'dinner', 'timeMin': 1140, 'label': 'Dinner', 'icon': '🍽️'},
-    {'id': 'sleep', 'timeMin': 1260, 'label': 'Sleep', 'icon': '🌙'},
-  ];
+  /// Fewest routine items worth putting in order.
+  static const int minOrderingEvents = 3;
 
   /// Orientation questions with increasing specificity.
   static const List<Map<String, Object>> _orientationQuestions = [
@@ -99,26 +94,67 @@ class MyDayGame implements CognitiveGame {
   static String modeFor(double difficulty) =>
       difficulty < 0.5 ? 'ordering' : 'orientation';
 
+  /// The elder's routine, earliest first.
+  static List<Map<String, Object>> _routineFrom(GameContent content) {
+    final pool = content.routineItems
+        .map((r) => <String, Object>{
+              'id': r.id,
+              'timeMin': r.timeMin,
+              'label': r.labelKey,
+              'icon': r.iconAsset,
+            })
+        .toList();
+    pool.sort((a, b) => (a['timeMin'] as int).compareTo(b['timeMin'] as int));
+    return pool;
+  }
+
+  /// Answer and choices for a routine question, or null when the routine
+  /// cannot answer it (no lunch or dinner entry, or too few other items).
+  ({String answer, List<String> options})? _routineQuestion(
+    String questionId,
+    List<Map<String, Object>> routine,
+  ) {
+    final String anchor;
+    final int offset;
+    switch (questionId) {
+      case 'after_lunch':
+        anchor = 'lunch';
+        offset = 1;
+      case 'before_dinner':
+        anchor = 'dinner';
+        offset = -1;
+      default:
+        return null;
+    }
+
+    final labels = routine.map((r) => r['label'] as String).toList();
+    final at = labels.indexWhere((l) => l.toLowerCase().contains(anchor));
+    final target = at + offset;
+    if (at < 0 || target < 0 || target >= labels.length) return null;
+
+    final answer = labels[target];
+    final others = labels
+        .where((l) => l != answer && !l.toLowerCase().contains(anchor))
+        .toSet()
+        .toList()
+      ..shuffle(_random);
+    if (others.isEmpty) return null;
+
+    final options = [answer, ...others.take(3)]..shuffle(_random);
+    return (answer: answer, options: options);
+  }
+
   @override
   GameItem generateItem(double difficulty, GameContent content) {
-    final mode = modeFor(difficulty);
+    final routine = _routineFrom(content);
+    final mode = routine.length >= minOrderingEvents
+        ? modeFor(difficulty)
+        : 'orientation';
 
     if (mode == 'ordering') {
       // Pick routine items and shuffle them for the elder to reorder
-      final routinePool = content.routineItems.isNotEmpty
-          ? content.routineItems
-              .map((r) => {
-                    'id': r.id,
-                    'timeMin': r.timeMin,
-                    'label': r.labelKey,
-                    'icon': r.iconAsset,
-                  })
-              .toList()
-          : _defaultRoutine.toList();
-
+      final routinePool = routine;
       final count = min(eventCountFor(difficulty), routinePool.length);
-      routinePool.sort(
-          (a, b) => (a['timeMin'] as int).compareTo(b['timeMin'] as int));
 
       // Pick evenly spaced items so the ordering is clear
       final step = routinePool.length / count;
@@ -146,14 +182,23 @@ class MyDayGame implements CognitiveGame {
         },
       );
     } else {
-      // Orientation question
-      final eligible = _orientationQuestions
-          .where((q) => difficulty >= (q['difficulty_min'] as double))
-          .toList();
-      if (eligible.isEmpty) {
-        return generateItem(difficulty - 1, content);
+      // Orientation question. Routine questions need an answer from the
+      // elder's own routine; calendar questions are always available.
+      final eligible = <(Map<String, Object>, ({String answer, List<String> options})?)>[];
+      var minDifficulty = double.infinity;
+      for (final q in _orientationQuestions) {
+        final routineAnswer = _routineQuestion(q['id'] as String, routine);
+        final needsRoutine =
+            q['id'] == 'after_lunch' || q['id'] == 'before_dinner';
+        if (needsRoutine && routineAnswer == null) continue;
+        final qMin = q['difficulty_min'] as double;
+        minDifficulty = min(minDifficulty, qMin);
+        if (difficulty >= qMin) eligible.add((q, routineAnswer));
       }
-      final question = eligible[_random.nextInt(eligible.length)];
+      if (eligible.isEmpty) {
+        return generateItem(minDifficulty, content);
+      }
+      final (question, routineAnswer) = eligible[_random.nextInt(eligible.length)];
 
       return GameItem(
         id: 'myday_orient_${question['id']}',
@@ -161,11 +206,14 @@ class MyDayGame implements CognitiveGame {
         context: {
           'mode': 'orientation',
           'questionId': question['id'],
+          if (routineAnswer != null) 'answer': routineAnswer.answer,
           'contentVersion': content.version,
         },
         payload: {
           'question': question,
           'mode': 'orientation',
+          if (routineAnswer != null) 'answer': routineAnswer.answer,
+          if (routineAnswer != null) 'options': routineAnswer.options,
         },
       );
     }

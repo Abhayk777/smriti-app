@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../app_colors.dart';
 
@@ -42,6 +43,7 @@ class MaxWidth extends StatelessWidget {
   Widget build(BuildContext context) {
     return Align(
       alignment: Alignment.topCenter,
+      heightFactor: 1,
       child: ConstrainedBox(
         constraints: BoxConstraints(maxWidth: maxWidth),
         child: child,
@@ -439,10 +441,15 @@ class _PressableCardState extends State<PressableCard> {
         onTapDown: (_) => _setPressed(true),
         onTapUp: (_) => _setPressed(false),
         onTapCancel: () => _setPressed(false),
-        onTap: widget.onTap,
+        onTap: widget.onTap == null
+            ? null
+            : () {
+                HapticFeedback.selectionClick();
+                widget.onTap!();
+              },
         child: AnimatedScale(
-          scale: _pressed ? 0.98 : 1.0,
-          duration: const Duration(milliseconds: 110),
+          scale: _pressed ? 0.97 : 1.0,
+          duration: const Duration(milliseconds: 120),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 110),
             padding: widget.padding,
@@ -619,24 +626,64 @@ class _GamosaPainter extends CustomPainter {
 }
 
 /// Rolling hills under a morning sun, a quiet nod to the North-East
-/// landscape.
-class HillsScene extends StatelessWidget {
-  const HillsScene({super.key, this.showSun = true});
+/// landscape. When [animate] is on, the sun's rays breathe very slowly.
+class HillsScene extends StatefulWidget {
+  const HillsScene({super.key, this.showSun = true, this.animate = false});
 
   final bool showSun;
+  final bool animate;
+
+  @override
+  State<HillsScene> createState() => _HillsSceneState();
+}
+
+class _HillsSceneState extends State<HillsScene>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(seconds: 4),
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.animate) _controller.repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
+    final still = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
     return ExcludeSemantics(
-      child: CustomPaint(painter: _HillsPainter(showSun: showSun)),
+      child: RepaintBoundary(
+        child: AnimatedBuilder(
+          animation: _controller,
+          builder: (context, _) => CustomPaint(
+            painter: _HillsPainter(
+              showSun: widget.showSun,
+              glow: still || !widget.animate
+                  ? 0.5
+                  : Curves.easeInOut.transform(_controller.value),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
 
 class _HillsPainter extends CustomPainter {
-  _HillsPainter({required this.showSun});
+  _HillsPainter({required this.showSun, required this.glow});
 
   final bool showSun;
+
+  /// 0 to 1; lengthens the rays a little.
+  final double glow;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -650,11 +697,11 @@ class _HillsPainter extends CustomPainter {
         ..color = AppColors.marigold
         ..strokeWidth = math.max(2.5, r * 0.14)
         ..strokeCap = StrokeCap.round;
+      final reach = 1.70 + glow * 0.18;
       for (var i = 0; i < 7; i++) {
         final a = math.pi + (math.pi / 6) * i;
-        final from = sunCenter + Offset(math.cos(a), math.sin(a)) * r * 1.35;
-        final to = sunCenter + Offset(math.cos(a), math.sin(a)) * r * 1.75;
-        canvas.drawLine(from, to, rays);
+        final dir = Offset(math.cos(a), math.sin(a));
+        canvas.drawLine(sunCenter + dir * r * 1.35, sunCenter + dir * r * reach, rays);
       }
       canvas.drawCircle(sunCenter, r, Paint()..color = AppColors.marigold);
     }
@@ -683,7 +730,7 @@ class _HillsPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _HillsPainter oldDelegate) =>
-      oldDelegate.showSun != showSun;
+      oldDelegate.showSun != showSun || oldDelegate.glow != glow;
 }
 
 /// Formats minutes from midnight as "8:05 AM".
@@ -691,4 +738,139 @@ String formatClock(int hour, int minute) {
   final period = hour >= 12 ? 'PM' : 'AM';
   final h = hour == 0 ? 12 : (hour > 12 ? hour - 12 : hour);
   return '$h:${minute.toString().padLeft(2, '0')} $period';
+}
+
+// ---------------------------------------------------------------------------
+// Gentle motion
+// ---------------------------------------------------------------------------
+
+/// Fades and slides its child up into place once, after [delay]. Motion is
+/// slow and short so it reads as calm, and is skipped when the system asks
+/// for reduced animations.
+class FadeSlideIn extends StatefulWidget {
+  const FadeSlideIn({
+    super.key,
+    required this.child,
+    this.delay = Duration.zero,
+    this.offset = 28,
+  });
+
+  final Widget child;
+  final Duration delay;
+  final double offset;
+
+  @override
+  State<FadeSlideIn> createState() => _FadeSlideInState();
+}
+
+class _FadeSlideInState extends State<FadeSlideIn>
+    with SingleTickerProviderStateMixin {
+  static const _run = Duration(milliseconds: 520);
+
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: widget.delay + _run,
+  )..forward();
+
+  late final Animation<double> _t = CurvedAnimation(
+    parent: _controller,
+    curve: Interval(
+      widget.delay.inMilliseconds / (widget.delay + _run).inMilliseconds,
+      1,
+      curve: Curves.easeOutCubic,
+    ),
+  );
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (MediaQuery.maybeDisableAnimationsOf(context) ?? false) {
+      return widget.child;
+    }
+    return AnimatedBuilder(
+      animation: _t,
+      child: widget.child,
+      builder: (context, child) => Opacity(
+        opacity: _t.value,
+        child: Transform.translate(
+          offset: Offset(0, widget.offset * (1 - _t.value)),
+          child: child,
+        ),
+      ),
+    );
+  }
+}
+
+/// Makes any child feel touchable: it sinks slightly while pressed and gives
+/// a light haptic tick when tapped.
+class BouncyTap extends StatefulWidget {
+  const BouncyTap({
+    super.key,
+    required this.child,
+    required this.onTap,
+    this.pressedScale = 0.93,
+  });
+
+  final Widget child;
+  final VoidCallback? onTap;
+  final double pressedScale;
+
+  @override
+  State<BouncyTap> createState() => _BouncyTapState();
+}
+
+class _BouncyTapState extends State<BouncyTap> {
+  bool _pressed = false;
+
+  void _set(bool value) {
+    if (_pressed != value) setState(() => _pressed = value);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTapDown: widget.onTap == null ? null : (_) => _set(true),
+      onTapUp: (_) => _set(false),
+      onTapCancel: () => _set(false),
+      onTap: widget.onTap == null
+          ? null
+          : () {
+              HapticFeedback.selectionClick();
+              widget.onTap!();
+            },
+      child: AnimatedScale(
+        scale: _pressed ? widget.pressedScale : 1.0,
+        duration: const Duration(milliseconds: 130),
+        curve: Curves.easeOut,
+        child: widget.child,
+      ),
+    );
+  }
+}
+
+/// Grows its child in with a soft overshoot, for moments of success.
+class PopIn extends StatelessWidget {
+  const PopIn({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.4, end: 1),
+      duration: const Duration(milliseconds: 460),
+      curve: Curves.easeOutBack,
+      child: child,
+      builder: (context, v, child) => Opacity(
+        opacity: ((v - 0.4) / 0.6).clamp(0.0, 1.0),
+        child: Transform.scale(scale: v, child: child),
+      ),
+    );
+  }
 }

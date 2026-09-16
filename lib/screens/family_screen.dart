@@ -3,33 +3,18 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:just_audio/just_audio.dart';
-import 'package:path/path.dart' as p;
 
 import '../app_colors.dart';
 import '../core/db/app_database.dart';
 import '../core/db/database.dart';
 import '../core/files/file_paths.dart';
+import '../core/files/local_media.dart';
 import '../core/repo/content_repo.dart';
 import '../core/sync/sync_engine.dart';
 import '../ui/smriti_ui.dart';
 
-/// Resolves a local file checking rawPath, then fallback directory.
-Future<File?> _resolveFile(String rawPath, Future<String> Function() getDir, String id, [List<String> exts = const ['.jpg', '.jpeg', '.png']]) async {
-  if (rawPath.isNotEmpty) {
-    final direct = File(rawPath);
-    if (direct.existsSync() && direct.lengthSync() > 0) return direct;
-  }
-  final dir = await getDir();
-  if (rawPath.isNotEmpty) {
-    final byBase = File(p.join(dir, p.basename(rawPath)));
-    if (byBase.existsSync() && byBase.lengthSync() > 0) return byBase;
-  }
-  for (final ext in exts) {
-    final byId = File(p.join(dir, '$id$ext'));
-    if (byId.existsSync() && byId.lengthSync() > 0) return byId;
-  }
-  return null;
-}
+Future<File?> _resolveFile(String rawPath, Future<String> Function() getDir, String id, [List<String> exts = photoExtensions]) =>
+    resolveLocalMedia(rawPath, getDir, id, exts);
 
 /// Calm placeholder colours for people without a photo.
 Color _placeholderColor(String name) {

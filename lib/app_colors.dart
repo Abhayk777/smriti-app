@@ -43,7 +43,16 @@ class AppColors {
   static const Color riverTeal = Color(0xFF2F6A6D);
   static const Color riverTealDark = Color(0xFF1D4749);
 
-  // Gamosa red, for the woven accent band only
+  // Orchid (Meghalaya and Manipur orchids)
+  static const Color orchid = Color(0xFF7A4E8C);
+
+  // Bamboo
+  static const Color bamboo = Color(0xFF647330);
+
+  // Tea brown
+  static const Color teaBrown = Color(0xFF7A5234);
+
+  // Gamosa red, for woven accents
   static const Color gamosaRed = Color(0xFFA8322A);
 
   // Supporting

@@ -4,129 +4,22 @@ import '../app_colors.dart';
 import '../core/db/app_database.dart';
 import '../core/db/database.dart';
 import '../core/repo/event_repo.dart';
+import '../games/game_catalog.dart';
+import '../ui/smriti_ui.dart';
 import 'diagnostics_screen.dart';
 import 'game_screen.dart';
-import '../ui/smriti_ui.dart';
-
-/// Game data for display.
-class _GameInfo {
-  const _GameInfo({
-    required this.id,
-    required this.name,
-    required this.description,
-    required this.domain,
-    required this.icon,
-    required this.color,
-    required this.tier,
-  });
-
-  final String id;
-  final String name;
-  final String description;
-  final String domain;
-  final IconData icon;
-  final Color color;
-  final int tier; // 1 = must ship, 2 = if schedule holds, 3 = if you can
-}
-
-/// All 9 games in the roster.
-const _games = <_GameInfo>[
-  // Tier 1 — must ship
-  _GameInfo(
-    id: 'faces_of_family',
-    name: 'Faces of My Family',
-    description: 'Recognise your family members',
-    domain: 'Memory',
-    icon: Icons.people_alt_rounded,
-    color: AppColors.terracotta,
-    tier: 1,
-  ),
-  _GameInfo(
-    id: 'market_basket',
-    name: 'Market Basket',
-    description: 'Remember items from a shopping list',
-    domain: 'Memory',
-    icon: Icons.shopping_basket_rounded,
-    color: AppColors.marigoldDark,
-    tier: 1,
-  ),
-  _GameInfo(
-    id: 'sort_harvest',
-    name: 'Sort the Harvest',
-    description: 'Sort produce by type, colour, or size',
-    domain: 'Executive',
-    icon: Icons.category_rounded,
-    color: AppColors.leafGreen,
-    tier: 1,
-  ),
-  _GameInfo(
-    id: 'trace_path',
-    name: 'Trace the Path',
-    description: 'Connect the stones in order',
-    domain: 'Visuospatial',
-    icon: Icons.route_rounded,
-    color: AppColors.indigo,
-    tier: 1,
-  ),
-  _GameInfo(
-    id: 'my_day',
-    name: 'My Day',
-    description: 'Order daily events and answer questions',
-    domain: 'Orientation',
-    icon: Icons.wb_sunny_rounded,
-    color: AppColors.riverTeal,
-    tier: 1,
-  ),
-  // Tier 2 — build if schedule holds
-  _GameInfo(
-    id: 'lamps_festival',
-    name: 'Lamps of the Festival',
-    description: 'Remember the lamp sequence',
-    domain: 'Spatial Memory',
-    icon: Icons.emoji_objects_rounded,
-    color: AppColors.terracottaDark,
-    tier: 2,
-  ),
-  _GameInfo(
-    id: 'name_harvest',
-    name: 'Name the Harvest',
-    description: 'Name as many items as you can',
-    domain: 'Language',
-    icon: Icons.record_voice_over_rounded,
-    color: AppColors.leafGreenDark,
-    tier: 2,
-  ),
-  // Tier 3 — ship if you can
-  _GameInfo(
-    id: 'weaving_patterns',
-    name: 'Weaving Patterns',
-    description: 'Match the textile pattern',
-    domain: 'Visual Perception',
-    icon: Icons.texture_rounded,
-    color: AppColors.gamosaRed,
-    tier: 3,
-  ),
-  _GameInfo(
-    id: 'sounds_home',
-    name: 'Sounds of Home',
-    description: 'Tap the drum when you hear the bird',
-    domain: 'Attention',
-    icon: Icons.hearing_rounded,
-    color: AppColors.indigoDark,
-    tier: 3,
-  ),
-];
 
 /// Game selection screen with all 9 cognitive games.
 ///
-/// Calm cards with a clear icon, the game name and what it exercises.
-/// The grid adapts: two columns on phones, three or four on tablets.
+/// Each game has its own colour and icon. Phones show one large tile per
+/// game with a short description; tablets show a colourful grid.
 class GameSelectScreen extends StatelessWidget {
   const GameSelectScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final compact = MediaQuery.sizeOf(context).width < 520;
+    final width = MediaQuery.sizeOf(context).width;
+    final compact = width < 520;
     final gutter = Screen.gutter(context);
 
     return Scaffold(
@@ -136,6 +29,7 @@ class GameSelectScreen extends StatelessWidget {
           children: [
             ScreenHeader(
               title: 'Choose a Game',
+              subtitle: compact ? null : 'Pick any game you like',
               icon: Icons.extension_rounded,
               color: AppColors.terracotta,
               actions: [
@@ -165,25 +59,37 @@ class GameSelectScreen extends StatelessWidget {
                       ),
               ],
             ),
-
-            // Game grid
             Expanded(
-              child: GridView.builder(
-                padding: EdgeInsets.fromLTRB(gutter, 20, gutter, 24),
-                gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
-                  maxCrossAxisExtent: compact ? 240 : 300,
-                  mainAxisExtent: compact ? 196 : 196,
-                  crossAxisSpacing: compact ? 12 : 18,
-                  mainAxisSpacing: compact ? 12 : 18,
-                ),
-                itemCount: _games.length,
-                itemBuilder: (context, index) {
-                  return _GameCard(
-                    info: _games[index],
-                    onTap: () => _launchGame(context, _games[index]),
-                  );
-                },
-              ),
+              child: compact
+                  ? ListView.separated(
+                      padding: EdgeInsets.fromLTRB(gutter, 18, gutter, 28),
+                      itemCount: gameCatalog.length,
+                      separatorBuilder: (_, _) => const SizedBox(height: 14),
+                      itemBuilder: (context, index) => FadeSlideIn(
+                        delay: Duration(milliseconds: 40 * index.clamp(0, 6)),
+                        child: _GameTile(
+                          info: gameCatalog[index],
+                          onTap: () => _launchGame(context, gameCatalog[index]),
+                        ),
+                      ),
+                    )
+                  : GridView.builder(
+                      padding: EdgeInsets.fromLTRB(gutter, 20, gutter, 28),
+                      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                        maxCrossAxisExtent: 340,
+                        mainAxisExtent: 210,
+                        crossAxisSpacing: 18,
+                        mainAxisSpacing: 18,
+                      ),
+                      itemCount: gameCatalog.length,
+                      itemBuilder: (context, index) => FadeSlideIn(
+                        delay: Duration(milliseconds: 40 * index),
+                        child: _GameCard(
+                          info: gameCatalog[index],
+                          onTap: () => _launchGame(context, gameCatalog[index]),
+                        ),
+                      ),
+                    ),
             ),
           ],
         ),
@@ -191,7 +97,7 @@ class GameSelectScreen extends StatelessWidget {
     );
   }
 
-  void _launchGame(BuildContext context, _GameInfo info) {
+  void _launchGame(BuildContext context, GameInfo info) {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => GameScreen(gameId: info.id),
@@ -207,27 +113,97 @@ class GameSelectScreen extends StatelessWidget {
   }
 }
 
-class _GameCard extends StatelessWidget {
-  const _GameCard({required this.info, required this.onTap});
+/// Phone tile: coloured band with icon, name and a one-line description.
+class _GameTile extends StatelessWidget {
+  const _GameTile({required this.info, required this.onTap});
 
-  final _GameInfo info;
+  final GameInfo info;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     return PressableCard(
       onTap: onTap,
-      borderColor: AppColors.border,
+      color: info.color,
+      radius: 26,
       semanticLabel: info.name,
-      padding: const EdgeInsets.fromLTRB(16, 18, 16, 16),
+      padding: const EdgeInsets.fromLTRB(14, 14, 10, 14),
+      child: Row(
+        children: [
+          IconMedallion(icon: info.icon, color: info.color, size: 72),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  info.name,
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.onColor,
+                    height: 1.15,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  info.description,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.onColor.withValues(alpha: 0.9),
+                    height: 1.25,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Icon(Icons.play_circle_fill_rounded,
+              color: AppColors.onColor, size: 40),
+        ],
+      ),
+    );
+  }
+}
+
+/// Tablet card: coloured card with a large icon, name and description.
+class _GameCard extends StatelessWidget {
+  const _GameCard({required this.info, required this.onTap});
+
+  final GameInfo info;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return PressableCard(
+      onTap: onTap,
+      color: info.color,
+      radius: 28,
+      semanticLabel: info.name,
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          IconMedallion(
-            icon: info.icon,
-            color: info.color,
-            size: 64,
-            background: info.color.withValues(alpha: 0.12),
+          Row(
+            children: [
+              IconMedallion(icon: info.icon, color: info.color, size: 72),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Color.lerp(info.color, Colors.black, 0.22),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  info.domain,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.onColor,
+                  ),
+                ),
+              ),
+            ],
           ),
           const Spacer(),
           Text(
@@ -235,37 +211,22 @@ class _GameCard extends StatelessWidget {
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
-              fontSize: 19,
-              fontWeight: FontWeight.w700,
-              color: AppColors.primaryText,
-              height: 1.2,
+              fontSize: 23,
+              fontWeight: FontWeight.w800,
+              color: AppColors.onColor,
+              height: 1.15,
             ),
           ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Container(
-                width: 8,
-                height: 8,
-                decoration: BoxDecoration(
-                  color: info.color,
-                  shape: BoxShape.circle,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  info.domain,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.secondaryText,
-                  ),
-                ),
-              ),
-            ],
+          const SizedBox(height: 4),
+          Text(
+            info.description,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+              color: AppColors.onColor.withValues(alpha: 0.9),
+            ),
           ),
         ],
       ),
@@ -329,9 +290,8 @@ class _PlayHistoryDialogState extends State<_PlayHistoryDialog> {
 
   String _gameDisplayName(String gameIds) {
     final first = gameIds.split(',').first.trim();
-    for (final g in _games) {
-      if (g.id == first) return g.name;
-    }
+    final info = gameInfoFor(first);
+    if (info != null) return info.name;
     return first.replaceAll('_', ' ').toUpperCase();
   }
 

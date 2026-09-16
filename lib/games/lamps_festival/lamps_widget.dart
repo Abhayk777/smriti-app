@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../ui/smriti_ui.dart';
 import '../cognitive_game.dart';
 import 'lamps_game.dart';
 
@@ -193,7 +194,8 @@ class _LampsWidgetState extends State<LampsWidget> {
                       return Positioned(
                         left: x - 30,
                         top: y - 30,
-                        child: GestureDetector(
+                        child: BouncyTap(
+                          pressedScale: 0.85,
                           onTap: () => _onLampTap(idx),
                           child: _buildLamp(isLit, isTapped),
                         ),

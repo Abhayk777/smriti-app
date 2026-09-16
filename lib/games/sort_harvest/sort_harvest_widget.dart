@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../app_colors.dart';
+import '../../ui/smriti_ui.dart';
 import '../cognitive_game.dart';
 import 'sort_harvest_game.dart';
 
@@ -111,8 +112,10 @@ class _SortHarvestWidgetState extends State<SortHarvestWidget> {
             )
           else
             const Center(
-              child: Icon(Icons.check_circle_rounded,
-                  size: 56, color: AppColors.leafGreen),
+              child: PopIn(
+                child: Icon(Icons.check_circle_rounded,
+                    size: 64, color: AppColors.leafGreen),
+              ),
             ),
         ],
       ),
@@ -152,7 +155,7 @@ class _SortHarvestWidgetState extends State<SortHarvestWidget> {
 
   Widget _buildMat(String mat, bool isCompact) {
     final color = _colorForMat(mat);
-    return GestureDetector(
+    return BouncyTap(
       onTap: () => _onMatTap(mat),
       child: Container(
         width: isCompact ? 96 : 130,

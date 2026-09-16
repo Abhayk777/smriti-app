@@ -7,9 +7,11 @@ import 'package:flutter/services.dart';
 import '../app_colors.dart';
 import '../core/db/app_database.dart';
 import '../core/repo/ability_repo.dart';
+import '../core/repo/content_repo.dart';
 import '../core/repo/event_repo.dart';
 import '../core/sync/sync_engine.dart';
 import '../games/cognitive_game.dart';
+import '../games/game_catalog.dart';
 import '../games/session_runner.dart';
 import '../ui/smriti_ui.dart';
 
@@ -60,6 +62,14 @@ class _GameScreenState extends State<GameScreen> {
   bool _loading = true;
   StreamSubscription<TrialFeedback>? _feedbackSub;
   TrialFeedback? _lastFeedback;
+  int _feedbackCount = 0;
+
+  /// Faces of My Family is played with the elder's real family, so it needs
+  /// at least two people from the caregiver before it can start.
+  bool _needsFamily = false;
+
+  GameInfo? get _info => gameInfoFor(widget.gameId);
+  Color get _color => _info?.color ?? AppColors.terracotta;
   Timer? _timerUpdate;
   Duration _elapsed = Duration.zero;
 
@@ -85,6 +95,17 @@ class _GameScreenState extends State<GameScreen> {
     // Load content
     final content = await _loadGameContent();
 
+    if (widget.gameId == 'faces_of_family' &&
+        content.people.where((p) => !p.isDeceased).length < 2) {
+      if (mounted) {
+        setState(() {
+          _needsFamily = true;
+          _loading = false;
+        });
+      }
+      return;
+    }
+
     // Create game
     final game = _createGame(widget.gameId);
     if (game == null) {
@@ -105,10 +126,13 @@ class _GameScreenState extends State<GameScreen> {
     // Listen to feedback
     _feedbackSub = runner.feedback.listen((feedback) {
       if (mounted) {
+        final shown = ++_feedbackCount;
         setState(() => _lastFeedback = feedback);
-        // Clear feedback after 2 seconds
+        // Clear feedback after 2 seconds, unless a newer one replaced it
         Future.delayed(const Duration(seconds: 2), () {
-          if (mounted) setState(() => _lastFeedback = null);
+          if (mounted && shown == _feedbackCount) {
+            setState(() => _lastFeedback = null);
+          }
         });
       }
     });
@@ -155,15 +179,61 @@ class _GameScreenState extends State<GameScreen> {
     }
   }
 
+  /// Game content: the bundled item catalogue, with the family and the daily
+  /// routine taken from the elder's own People and RoutineItems tables
+  /// (pulled from the caregiver's web app).
   Future<GameContent> _loadGameContent() async {
+    GameContent base;
     try {
       final jsonStr = await rootBundle
           .loadString('assets/mock_content/mock_content.json');
       final json = jsonDecode(jsonStr) as Map<String, Object?>;
-      return GameContent.fromJson(json);
+      base = GameContent.fromJson(json);
     } catch (_) {
-      return GameContent(version: '1.0', marketItems: const []);
+      base = GameContent(version: '1.0', marketItems: const []);
     }
+
+    List<PersonItem> family = const [];
+    try {
+      final people = await ContentRepo(appDatabase).getPeople();
+      family = [
+        for (final person in people)
+          PersonItem(
+            id: person.id,
+            name: person.name,
+            relationship: person.relationship,
+            photoPath: person.photoPath,
+            voicePath: person.voicePath,
+            memoryPrompt: person.memoryPrompt,
+            isDeceased: person.isDeceased,
+          ),
+      ];
+    } catch (e) {
+      debugPrint('Could not load family for games: $e');
+    }
+
+    List<RoutineEntry> routine = const [];
+    try {
+      final items = await ContentRepo(appDatabase).getRoutineItems();
+      routine = [
+        for (final item in items)
+          RoutineEntry(
+            id: item.id,
+            timeMin: item.timeMin,
+            labelKey: item.labelKey,
+            iconAsset: item.iconAsset,
+          ),
+      ];
+    } catch (e) {
+      debugPrint('Could not load routine for games: $e');
+    }
+
+    return GameContent(
+      version: base.version,
+      marketItems: base.marketItems,
+      people: family,
+      routineItems: routine,
+    );
   }
 
   Future<void> _nextItem() async {
@@ -200,78 +270,98 @@ class _GameScreenState extends State<GameScreen> {
         barrierDismissible: false,
         builder: (ctx) {
           final isCompact = MediaQuery.of(ctx).size.height < 500;
-          return AlertDialog(
-            contentPadding: EdgeInsets.fromLTRB(28, isCompact ? 20 : 32, 28, 24),
-            content: SizedBox(
-              width: 380,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconMedallion(
-                    icon: Icons.check_rounded,
-                    color: AppColors.leafGreen,
-                    size: isCompact ? 64 : 88,
-                    background: AppColors.leafGreen.withValues(alpha: 0.12),
-                  ),
-                  SizedBox(height: isCompact ? 12 : 18),
-                  Text(
-                    completed ? 'Session Complete' : 'Great Effort',
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontSize: 26,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.primaryText,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    name,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.terracottaDark,
-                    ),
-                  ),
-                  SizedBox(height: isCompact ? 14 : 20),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-                    decoration: BoxDecoration(
-                      color: AppColors.pageBackground,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: AppColors.border),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.schedule_rounded, color: AppColors.secondaryText, size: 24),
-                        const SizedBox(width: 10),
-                        Flexible(
-                          child: Text(
-                            'Time Played: $durationStr',
+          return Dialog(
+            clipBehavior: Clip.antiAlias,
+            insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 420),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Container(
+                      color: _color,
+                      padding: EdgeInsets.symmetric(vertical: isCompact ? 16 : 26),
+                      child: Column(
+                        children: [
+                          PopIn(
+                            child: IconMedallion(
+                              icon: Icons.emoji_events_rounded,
+                              color: _color,
+                              size: isCompact ? 64 : 88,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            completed ? 'Session Complete' : 'Great Effort',
+                            textAlign: TextAlign.center,
                             style: const TextStyle(
-                              fontSize: 18,
+                              fontSize: 28,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.onColor,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const GamosaBand(height: 10),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+                      child: Column(
+                        children: [
+                          Text(
+                            name,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              fontSize: 20,
                               fontWeight: FontWeight.w700,
                               color: AppColors.primaryText,
                             ),
                           ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  SizedBox(height: isCompact ? 16 : 24),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 60,
-                    child: ElevatedButton(
-                      onPressed: () => Navigator.of(ctx).pop(),
-                      child: const Text(
-                        'Back to Games',
-                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+                          const SizedBox(height: 14),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                            decoration: BoxDecoration(
+                              color: AppColors.pageBackground,
+                              borderRadius: BorderRadius.circular(40),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.schedule_rounded, color: _color, size: 26),
+                                const SizedBox(width: 10),
+                                Flexible(
+                                  child: Text(
+                                    'Time Played: $durationStr',
+                                    style: const TextStyle(
+                                      fontSize: 19,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.primaryText,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          SizedBox(height: isCompact ? 16 : 22),
+                          SizedBox(
+                            width: double.infinity,
+                            height: 64,
+                            child: ElevatedButton(
+                              onPressed: () => Navigator.of(ctx).pop(),
+                              style: ElevatedButton.styleFrom(backgroundColor: _color),
+                              child: const Text(
+                                'Back to Games',
+                                style: TextStyle(fontSize: 21, fontWeight: FontWeight.w800),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           );
@@ -287,8 +377,79 @@ class _GameScreenState extends State<GameScreen> {
     if (_loading) {
       return Scaffold(
         backgroundColor: AppColors.pageBackground,
-        body: const Center(
-          child: CircularProgressIndicator(color: AppColors.terracotta),
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconMedallion(
+                icon: _info?.icon ?? Icons.extension_rounded,
+                color: _color,
+                size: 96,
+                background: _color.withValues(alpha: 0.12),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                'Getting ready...',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w700,
+                  color: _color,
+                ),
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: 160,
+                child: LinearProgressIndicator(
+                  color: _color,
+                  backgroundColor: _color.withValues(alpha: 0.15),
+                  minHeight: 6,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (_needsFamily) {
+      return Scaffold(
+        backgroundColor: AppColors.pageBackground,
+        body: SafeArea(
+          child: Column(
+            children: [
+              ScreenHeader(
+                title: _gameName(widget.gameId),
+                icon: _info?.icon ?? Icons.people_alt_rounded,
+                color: _color,
+              ),
+              Expanded(
+                child: EmptyState(
+                  icon: Icons.people_alt_rounded,
+                  color: _color,
+                  title: 'Your family photos are on their way',
+                  message: 'This game uses your own family. It will be ready '
+                      'once your caregiver adds at least two family members.',
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+                child: SizedBox(
+                  width: double.infinity,
+                  height: 64,
+                  child: ElevatedButton.icon(
+                    onPressed: () => Navigator.of(context).pop(),
+                    style: ElevatedButton.styleFrom(backgroundColor: _color),
+                    icon: const Icon(Icons.arrow_back_rounded, size: 28),
+                    label: const Text(
+                      'Back to Games',
+                      style: TextStyle(fontSize: 21, fontWeight: FontWeight.w800),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       );
     }
@@ -306,10 +467,15 @@ class _GameScreenState extends State<GameScreen> {
                 // Game content
                 Expanded(
                   child: _currentItem != null
-                      ? _buildGameWidget()
-                      : const Center(
-                          child: CircularProgressIndicator(
-                              color: AppColors.terracotta),
+                      ? AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 350),
+                          child: KeyedSubtree(
+                            key: ValueKey(_currentItem),
+                            child: _buildGameWidget(),
+                          ),
+                        )
+                      : Center(
+                          child: CircularProgressIndicator(color: _color),
                         ),
                 ),
               ],
@@ -327,19 +493,24 @@ class _GameScreenState extends State<GameScreen> {
     final isCompact = MediaQuery.of(context).size.height < 500;
     final minutes = _elapsed.inMinutes;
     final seconds = _elapsed.inSeconds % 60;
-    final remaining = 6 - minutes;
     final progress = _elapsed.inSeconds / 360.0;
-    final nearEnd = remaining <= 1;
+    final deep = Color.lerp(_color, Colors.black, 0.22)!;
 
     return Container(
-      color: AppColors.raisedSurface,
+      color: _color,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Padding(
-            padding: EdgeInsets.fromLTRB(16, isCompact ? 6 : 10, 12, isCompact ? 6 : 10),
+            padding: EdgeInsets.fromLTRB(12, isCompact ? 6 : 10, 12, isCompact ? 6 : 10),
             child: Row(
               children: [
+                IconMedallion(
+                  icon: _info?.icon ?? Icons.extension_rounded,
+                  color: _color,
+                  size: 48,
+                ),
+                const SizedBox(width: 12),
                 // Game name
                 Expanded(
                   child: Text(
@@ -347,43 +518,33 @@ class _GameScreenState extends State<GameScreen> {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.primaryText,
+                      fontSize: 21,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.onColor,
                     ),
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 10),
 
                 // Timer
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                   decoration: BoxDecoration(
-                    color: nearEnd
-                        ? AppColors.terracotta.withValues(alpha: 0.10)
-                        : AppColors.pageBackground,
+                    color: deep,
                     borderRadius: BorderRadius.circular(40),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(
-                        Icons.schedule_rounded,
-                        size: 22,
-                        color: nearEnd
-                            ? AppColors.terracottaDark
-                            : AppColors.secondaryText,
-                      ),
+                      const Icon(Icons.schedule_rounded, size: 22, color: AppColors.onColor),
                       const SizedBox(width: 6),
                       Text(
                         '$minutes:${seconds.toString().padLeft(2, '0')}',
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 19,
                           fontWeight: FontWeight.w700,
-                          fontFeatures: const [FontFeature.tabularFigures()],
-                          color: nearEnd
-                              ? AppColors.terracottaDark
-                              : AppColors.primaryText,
+                          fontFeatures: [FontFeature.tabularFigures()],
+                          color: AppColors.onColor,
                         ),
                       ),
                     ],
@@ -398,7 +559,7 @@ class _GameScreenState extends State<GameScreen> {
                   iconSize: 30,
                   style: IconButton.styleFrom(
                     minimumSize: const Size(52, 52),
-                    backgroundColor: AppColors.pageBackground,
+                    backgroundColor: AppColors.raisedSurface,
                   ),
                   icon: const Icon(Icons.close_rounded),
                   color: AppColors.primaryText,
@@ -410,9 +571,9 @@ class _GameScreenState extends State<GameScreen> {
           // Progress through the 6-minute session
           LinearProgressIndicator(
             value: progress.clamp(0.0, 1.0),
-            backgroundColor: AppColors.border,
-            valueColor: const AlwaysStoppedAnimation(AppColors.terracotta),
-            minHeight: 5,
+            backgroundColor: deep,
+            valueColor: const AlwaysStoppedAnimation(AppColors.marigold),
+            minHeight: 6,
           ),
         ],
       ),
@@ -491,38 +652,34 @@ class _GameScreenState extends State<GameScreen> {
   Widget _buildFeedbackOverlay() {
     final isPraise = _lastFeedback!.tone == FeedbackTone.praise;
     return Positioned(
-      top: 84,
+      top: 96,
       left: 16,
       right: 16,
       child: IgnorePointer(
         child: Center(
-          child: AnimatedOpacity(
-            opacity: _lastFeedback != null ? 1.0 : 0.0,
-            duration: const Duration(milliseconds: 300),
+          child: PopIn(
+            key: ValueKey(_feedbackCount),
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
+              padding: const EdgeInsets.fromLTRB(12, 10, 26, 10),
               decoration: BoxDecoration(
-                color: isPraise ? AppColors.leafGreen : AppColors.raisedSurface,
-                borderRadius: BorderRadius.circular(40),
-                border: isPraise
-                    ? null
-                    : Border.all(color: AppColors.border, width: 1.5),
+                color: isPraise ? AppColors.leafGreen : AppColors.indigo,
+                borderRadius: BorderRadius.circular(48),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(
-                    isPraise ? Icons.check_circle_rounded : Icons.thumb_up_alt_rounded,
-                    color: isPraise ? AppColors.onColor : AppColors.indigo,
-                    size: 26,
+                  IconMedallion(
+                    icon: isPraise ? Icons.star_rounded : Icons.thumb_up_alt_rounded,
+                    color: isPraise ? AppColors.marigoldDark : AppColors.indigo,
+                    size: 48,
                   ),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: 12),
                   Text(
                     isPraise ? 'Well done!' : 'Nice try!',
-                    style: TextStyle(
-                      fontSize: 21,
-                      fontWeight: FontWeight.w700,
-                      color: isPraise ? AppColors.onColor : AppColors.primaryText,
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.onColor,
                     ),
                   ),
                 ],
@@ -534,18 +691,5 @@ class _GameScreenState extends State<GameScreen> {
     );
   }
 
-  String _gameName(String id) {
-    const names = {
-      'market_basket': 'Market Basket',
-      'faces_of_family': 'Faces of My Family',
-      'sort_harvest': 'Sort the Harvest',
-      'trace_path': 'Trace the Path',
-      'my_day': 'My Day',
-      'lamps_festival': 'Lamps of the Festival',
-      'name_harvest': 'Name the Harvest',
-      'weaving_patterns': 'Weaving Patterns',
-      'sounds_home': 'Sounds of Home',
-    };
-    return names[id] ?? id;
-  }
+  String _gameName(String id) => gameInfoFor(id)?.name ?? id;
 }

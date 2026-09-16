@@ -2,16 +2,22 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:just_audio/just_audio.dart';
 
 import '../../app_colors.dart';
+import '../../ui/smriti_ui.dart';
 import '../cognitive_game.dart';
 import 'sounds_home_game.dart';
 
 /// Playable Sounds of Home widget.
 ///
-/// 90-second continuous performance test. Village sounds play at irregular
-/// intervals. Elder taps the drum when they hear the target (bird).
-/// Fully usable with significant visual impairment.
+/// 90-second continuous performance test. Real recordings of village sounds
+/// (bundled in `assets/sounds/`, credits in `CREDITS.md` there) play at
+/// irregular intervals. The elder taps the drum when they hear the bird.
+///
+/// Before the timed part starts, the elder can listen to the bird as often as
+/// they like; the 90 seconds only begin when they tap Start.
 class SoundsHomeWidget extends StatefulWidget {
   const SoundsHomeWidget({
     super.key,
@@ -28,11 +34,37 @@ class SoundsHomeWidget extends StatefulWidget {
   State<SoundsHomeWidget> createState() => _SoundsHomeWidgetState();
 }
 
+/// How each sound looks on screen while it plays.
+class _SoundLook {
+  const _SoundLook(this.label, this.icon, this.color);
+
+  final String label;
+
+  /// Null draws the bird silhouette.
+  final IconData? icon;
+  final Color color;
+}
+
+const _looks = <String, _SoundLook>{
+  'bird': _SoundLook('Bird', null, AppColors.marigold),
+  'rain': _SoundLook('Rain', Icons.water_drop_rounded, Color(0xFF8FB3D9)),
+  'wind': _SoundLook('Wind', Icons.air_rounded, Color(0xFFB8C7C9)),
+  'cow': _SoundLook('Cow', Icons.graphic_eq_rounded, Color(0xFFD9B38C)),
+  'dog': _SoundLook('Dog', Icons.pets_rounded, Color(0xFFD9A68C)),
+  'river': _SoundLook('River', Icons.waves_rounded, Color(0xFF7FB7B9)),
+  'thunder': _SoundLook('Thunder', Icons.thunderstorm_rounded, Color(0xFFB9A6D1)),
+  'cricket': _SoundLook('Cricket', Icons.grass_rounded, Color(0xFFA9C78F)),
+  'bell': _SoundLook('Bell', Icons.notifications_rounded, Color(0xFFE3C07A)),
+  'rooster': _SoundLook('Rooster', Icons.graphic_eq_rounded, Color(0xFFE39A7A)),
+  'temple_bell': _SoundLook('Temple bell', Icons.temple_hindu_rounded, Color(0xFFE3B36F)),
+};
+
 class _SoundsHomeWidgetState extends State<SoundsHomeWidget>
     with TickerProviderStateMixin {
   late final List<Map<String, Object>> _stimuli;
   late final int _durationSeconds;
 
+  bool _started = false;
   String _currentSound = '';
   bool _isTarget = false;
 
@@ -48,11 +80,15 @@ class _SoundsHomeWidgetState extends State<SoundsHomeWidget>
   bool _taskComplete = false;
 
   Timer? _timer;
-  Timer? _stimulusTimer;
+  final List<Timer> _stimulusTimers = [];
   int _elapsedSeconds = 0;
+
+  /// One preloaded player per sound, so a sound starts the moment it is due.
+  final Map<String, AudioPlayer> _players = {};
 
   late AnimationController _pulseController;
   late AnimationController _drumController;
+  late AnimationController _ringController;
 
   @override
   void initState() {
@@ -64,24 +100,79 @@ class _SoundsHomeWidgetState extends State<SoundsHomeWidget>
 
     _pulseController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 500),
+      duration: const Duration(milliseconds: 700),
     );
     _drumController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 200),
+      duration: const Duration(milliseconds: 220),
     );
+    _ringController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1400),
+    )..repeat();
 
-    // Start the task
-    _startTask();
+    _preloadSounds();
   }
 
   @override
   void dispose() {
     _timer?.cancel();
-    _stimulusTimer?.cancel();
+    for (final t in _stimulusTimers) {
+      t.cancel();
+    }
+    for (final player in _players.values) {
+      player.dispose();
+    }
     _pulseController.dispose();
     _drumController.dispose();
+    _ringController.dispose();
     super.dispose();
+  }
+
+  Future<void> _preloadSounds() async {
+    final names = {
+      SoundsHomeGame.targetSound,
+      for (final s in _stimuli) s['sound'] as String,
+    };
+    for (final name in names) {
+      try {
+        final player = AudioPlayer();
+        _players[name] = player;
+        await player.setAsset('assets/sounds/$name.mp3');
+      } catch (e) {
+        debugPrint('Sounds of Home: could not load $name: $e');
+      }
+    }
+  }
+
+  Future<void> _playSound(String name) async {
+    final player = _players[name];
+    if (player == null) return;
+    try {
+      await player.seek(Duration.zero);
+      await player.play();
+    } catch (e) {
+      debugPrint('Sounds of Home: could not play $name: $e');
+    }
+  }
+
+  Future<void> _previewBird() async {
+    setState(() => _currentSound = SoundsHomeGame.targetSound);
+    _pulseController.forward(from: 0);
+    await _playSound(SoundsHomeGame.targetSound);
+    Future.delayed(const Duration(milliseconds: 1600), () {
+      if (mounted && !_started) setState(() => _currentSound = '');
+    });
+  }
+
+  void _start() {
+    if (_started) return;
+    HapticFeedback.mediumImpact();
+    setState(() {
+      _started = true;
+      _currentSound = '';
+    });
+    _startTask();
   }
 
   void _startTask() {
@@ -101,10 +192,10 @@ class _SoundsHomeWidgetState extends State<SoundsHomeWidget>
     // Schedule stimuli
     for (final stimulus in _stimuli) {
       final timeMs = stimulus['timeMs'] as int;
-      _stimulusTimer = Timer(Duration(milliseconds: timeMs), () {
+      _stimulusTimers.add(Timer(Duration(milliseconds: timeMs), () {
         if (!mounted || _taskComplete) return;
         _showStimulus(stimulus);
-      });
+      }));
     }
   }
 
@@ -124,6 +215,7 @@ class _SoundsHomeWidgetState extends State<SoundsHomeWidget>
       _stimulusShownAt = DateTime.now();
     });
 
+    _playSound(sound);
     _pulseController.forward(from: 0);
 
     // Clear stimulus after 1 second
@@ -137,6 +229,7 @@ class _SoundsHomeWidgetState extends State<SoundsHomeWidget>
   void _onDrumTap() {
     if (_taskComplete) return;
 
+    HapticFeedback.lightImpact();
     _drumController.forward(from: 0);
 
     if (_isTarget && !_respondedToCurrentStimulus) {
@@ -193,145 +286,345 @@ class _SoundsHomeWidgetState extends State<SoundsHomeWidget>
     Future.delayed(const Duration(milliseconds: 800), widget.onComplete);
   }
 
-  String _emojiForSound(String sound) {
-    const map = {
-      'bird': '🐦',
-      'rain': '🌧️',
-      'wind': '💨',
-      'cow': '🐄',
-      'dog': '🐕',
-      'river': '🌊',
-      'thunder': '⛈️',
-      'cricket': '🦗',
-      'bell': '🔔',
-      'rooster': '🐓',
-      'temple_bell': '🛕',
-    };
-    return map[sound] ?? '🔊';
-  }
+  static const _ground = Color(0xFF24422D);
 
   @override
   Widget build(BuildContext context) {
+    return Container(
+      color: _ground,
+      child: _started ? _buildTask(context) : _buildIntro(context),
+    );
+  }
+
+  // ── Intro ──────────────────────────────────────────────────────────────────
+
+  Widget _buildIntro(BuildContext context) {
+    final playing = _currentSound.isNotEmpty;
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 520),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Listen for the bird',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 30,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.onColor,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                'You will hear sounds from the village. Tap the drum each '
+                'time you hear the bird.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 20,
+                  height: 1.4,
+                  color: AppColors.onColor.withValues(alpha: 0.85),
+                ),
+              ),
+              const SizedBox(height: 28),
+              _buildSoundBubble(
+                _looks[SoundsHomeGame.targetSound]!,
+                active: playing,
+                size: 150,
+              ),
+              const SizedBox(height: 28),
+              SizedBox(
+                width: double.infinity,
+                height: 68,
+                child: OutlinedButton.icon(
+                  onPressed: _previewBird,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.onColor,
+                    side: const BorderSide(color: AppColors.marigold, width: 2.5),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(22),
+                    ),
+                  ),
+                  icon: const Icon(Icons.volume_up_rounded, size: 32),
+                  label: const Text(
+                    'Hear the bird',
+                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+              SizedBox(
+                width: double.infinity,
+                height: 76,
+                child: ElevatedButton.icon(
+                  onPressed: _start,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.marigold,
+                    foregroundColor: AppColors.primaryText,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(22),
+                    ),
+                  ),
+                  icon: const Icon(Icons.play_arrow_rounded, size: 40),
+                  label: const Text(
+                    'Start',
+                    style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── Timed task ─────────────────────────────────────────────────────────────
+
+  Widget _buildTask(BuildContext context) {
     final isCompact = MediaQuery.of(context).size.height < 500;
     final remaining = _durationSeconds - _elapsedSeconds;
     final progress = _elapsedSeconds / _durationSeconds;
-    final drumSize = isCompact ? 96.0 : 160.0;
+    final drumSize = isCompact ? 120.0 : 190.0;
+    final look = _looks[_currentSound];
 
-    return Container(
-      decoration: const BoxDecoration(color: AppColors.leafGreenDark),
-      child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: 16, vertical: isCompact ? 8 : 20),
-        child: Column(
-          children: [
-            // Timer
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  '${remaining ~/ 60}:${(remaining % 60).toString().padLeft(2, '0')}',
-                  style: TextStyle(
-                    fontSize: isCompact ? 20 : 28,
-                    fontWeight: FontWeight.w300,
-                    color: Colors.green.shade200,
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 20, vertical: isCompact ? 8 : 20),
+      child: Column(
+        children: [
+          // Timer
+          Row(
+            children: [
+              const Icon(Icons.schedule_rounded, color: AppColors.onColor, size: 26),
+              const SizedBox(width: 8),
+              Text(
+                '${remaining ~/ 60}:${(remaining % 60).toString().padLeft(2, '0')}',
+                style: TextStyle(
+                  fontSize: isCompact ? 22 : 28,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.onColor,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
+                  child: LinearProgressIndicator(
+                    value: progress,
+                    backgroundColor: Colors.white.withValues(alpha: 0.15),
+                    valueColor: const AlwaysStoppedAnimation(AppColors.marigold),
+                    minHeight: 10,
                   ),
                 ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            // Progress bar
-            ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: LinearProgressIndicator(
-                value: progress,
-                backgroundColor: Colors.green.shade900,
-                valueColor: AlwaysStoppedAnimation(Colors.green.shade400),
-                minHeight: isCompact ? 4 : 6,
               ),
-            ),
-            SizedBox(height: isCompact ? 8 : 16),
+            ],
+          ),
+          SizedBox(height: isCompact ? 8 : 18),
 
-            // Instruction
-            Text(
-              'Tap the drum when you hear the bird 🐦',
-              style: TextStyle(
-                fontSize: isCompact ? 16 : 20,
-                fontWeight: FontWeight.w600,
-                color: Colors.green.shade100,
+          // Instruction
+          Text(
+            'Tap the drum when you hear the bird',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: isCompact ? 19 : 23,
+              fontWeight: FontWeight.w700,
+              color: AppColors.onColor.withValues(alpha: 0.92),
+            ),
+          ),
+          const Spacer(),
+
+          // Current sound display
+          SizedBox(
+            height: isCompact ? 110 : 170,
+            child: Center(
+              child: look == null
+                  ? Icon(
+                      Icons.hearing_rounded,
+                      size: isCompact ? 44 : 64,
+                      color: AppColors.onColor.withValues(alpha: 0.35),
+                    )
+                  : _buildSoundBubble(look, active: true, size: isCompact ? 96 : 140),
+            ),
+          ),
+
+          const Spacer(),
+
+          // Drum button
+          if (!_taskComplete)
+            Semantics(
+              button: true,
+              label: 'Drum',
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTapDown: (_) => _onDrumTap(),
+                child: AnimatedBuilder(
+                  animation: _drumController,
+                  builder: (context, child) {
+                    final t = _drumController.value;
+                    final scale = 1.0 - sin(t * pi) * 0.08;
+                    return Transform.scale(scale: scale, child: child);
+                  },
+                  child: _buildDrum(drumSize),
+                ),
               ),
+            )
+          else
+            const PopIn(
+              child: Icon(Icons.check_circle_rounded,
+                  size: 72, color: AppColors.onColor),
             ),
-            SizedBox(height: isCompact ? 6 : 14),
+          const Spacer(),
+        ],
+      ),
+    );
+  }
 
-            // Current sound display
+  Widget _buildDrum(double size) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: const BoxDecoration(
+        shape: BoxShape.circle,
+        color: AppColors.marigold,
+      ),
+      padding: EdgeInsets.all(size * 0.06),
+      child: Container(
+        decoration: const BoxDecoration(
+          shape: BoxShape.circle,
+          color: AppColors.terracottaDark,
+        ),
+        padding: EdgeInsets.all(size * 0.08),
+        child: Container(
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: AppColors.terracotta,
+            border: Border.all(color: AppColors.onColor.withValues(alpha: 0.5), width: 2),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.touch_app_rounded, size: size * 0.24, color: AppColors.onColor),
+              Text(
+                'Tap',
+                style: TextStyle(
+                  fontSize: size * 0.12,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.onColor,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// A round badge for a sound, with rings rippling out while it plays.
+  Widget _buildSoundBubble(_SoundLook look, {required bool active, required double size}) {
+    return SizedBox(
+      width: size * 1.5,
+      height: size * 1.5,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          if (active)
             AnimatedBuilder(
-              animation: _pulseController,
-              builder: (context, child) {
-                return Opacity(
-                  opacity: _currentSound.isNotEmpty
-                      ? 1.0 - _pulseController.value * 0.3
-                      : 0.3,
-                  child: Text(
-                    _currentSound.isNotEmpty
-                        ? _emojiForSound(_currentSound)
-                        : '...',
-                    style: TextStyle(
-                      fontSize: isCompact ? 36 : 60,
-                      color: Colors.green.shade100,
+              animation: _ringController,
+              builder: (context, _) {
+                final t = _ringController.value;
+                return Container(
+                  width: size * (1 + t * 0.5),
+                  height: size * (1 + t * 0.5),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: look.color.withValues(alpha: (1 - t) * 0.8),
+                      width: 4,
                     ),
                   ),
                 );
               },
             ),
-
-            if (!isCompact) const Spacer() else const SizedBox(height: 10),
-
-            // Drum button
-            if (!_taskComplete)
-              GestureDetector(
-                onTap: _onDrumTap,
-                child: AnimatedBuilder(
-                  animation: _drumController,
-                  builder: (context, child) {
-                    final scale = 1.0 - _drumController.value * 0.1;
-                    return Transform.scale(
-                      scale: scale,
-                      child: Container(
-                        width: drumSize,
-                        height: drumSize,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: AppColors.terracottaDark,
-                          border: Border.all(
-                            color: AppColors.marigold,
-                            width: isCompact ? 4 : 6,
-                          ),
-                        ),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.touch_app_rounded,
-                                size: isCompact ? 26 : 44, color: AppColors.onColor),
-                            Text(
-                              'Tap!',
-                              style: TextStyle(
-                                fontSize: isCompact ? 13 : 16,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.onColor,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              )
-            else
-              const Icon(Icons.check_circle_rounded,
-                  size: 56, color: AppColors.onColor),
-            if (!isCompact) const Spacer(),
-          ],
-        ),
+          ScaleTransition(
+            scale: Tween(begin: 0.85, end: 1.0).animate(
+              CurvedAnimation(parent: _pulseController, curve: Curves.easeOutBack),
+            ),
+            child: Container(
+              width: size,
+              height: size,
+              decoration: BoxDecoration(shape: BoxShape.circle, color: look.color),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  look.icon == null
+                      ? CustomPaint(
+                          size: Size.square(size * 0.46),
+                          painter: _BirdPainter(_ground),
+                        )
+                      : Icon(look.icon, size: size * 0.42, color: _ground),
+                  Text(
+                    look.label,
+                    style: TextStyle(
+                      fontSize: (size * 0.14).clamp(14.0, 22.0),
+                      fontWeight: FontWeight.w800,
+                      color: _ground,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
+}
+
+/// Simple perched-bird silhouette facing right.
+class _BirdPainter extends CustomPainter {
+  _BirdPainter(this.color);
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width;
+    final h = size.height;
+    final paint = Paint()..color = color;
+
+    // Body and tail
+    final body = Path()
+      ..moveTo(w * 0.05, h * 0.78)
+      ..lineTo(w * 0.30, h * 0.58)
+      ..quadraticBezierTo(w * 0.30, h * 0.36, w * 0.55, h * 0.36)
+      ..quadraticBezierTo(w * 0.80, h * 0.40, w * 0.74, h * 0.66)
+      ..quadraticBezierTo(w * 0.62, h * 0.82, w * 0.36, h * 0.74)
+      ..close();
+    canvas.drawPath(body, paint);
+
+    // Head
+    canvas.drawCircle(Offset(w * 0.70, h * 0.30), w * 0.14, paint);
+
+    // Beak
+    final beak = Path()
+      ..moveTo(w * 0.82, h * 0.25)
+      ..lineTo(w * 0.98, h * 0.31)
+      ..lineTo(w * 0.82, h * 0.36)
+      ..close();
+    canvas.drawPath(beak, paint);
+
+    // Legs
+    final leg = Paint()
+      ..color = color
+      ..strokeWidth = w * 0.04
+      ..strokeCap = StrokeCap.round;
+    canvas.drawLine(Offset(w * 0.50, h * 0.76), Offset(w * 0.46, h * 0.94), leg);
+    canvas.drawLine(Offset(w * 0.60, h * 0.74), Offset(w * 0.60, h * 0.94), leg);
+  }
+
+  @override
+  bool shouldRepaint(covariant _BirdPainter oldDelegate) =>
+      oldDelegate.color != color;
 }

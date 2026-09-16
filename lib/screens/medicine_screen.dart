@@ -302,13 +302,13 @@ class _MedicineScreenState extends State<MedicineScreen>
             Row(
               children: [
                 const Icon(Icons.schedule_rounded,
-                    size: 20, color: AppColors.leafGreenDark),
+                    size: 22, color: AppColors.leafGreenDark),
                 const SizedBox(width: 6),
                 Flexible(
                   child: Text(
                     '${_timeOfDayLabel(med.chosenTimeMin)}, ${_formatTime(med.chosenTimeMin)}',
                     style: const TextStyle(
-                      fontSize: 18,
+                      fontSize: 20,
                       fontWeight: FontWeight.w700,
                       color: AppColors.leafGreenDark,
                     ),
@@ -320,8 +320,9 @@ class _MedicineScreenState extends State<MedicineScreen>
             Text(
               'Dose: ${med.dose}',
               style: const TextStyle(
-                fontSize: 18,
-                color: AppColors.secondaryText,
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: AppColors.primaryText,
               ),
             ),
           ],

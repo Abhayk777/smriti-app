@@ -1,8 +1,19 @@
 import 'package:flutter/material.dart';
 
 import '../../app_colors.dart';
+import '../../ui/smriti_ui.dart';
 import '../cognitive_game.dart';
 import 'my_day_game.dart';
+
+/// Soft tints that give each card its own colour.
+const _tints = [
+  Color(0xFFFBE3D6), // terracotta
+  Color(0xFFDDE6F2), // hill blue
+  Color(0xFFF7EACB), // mustard
+  Color(0xFFDDEBDF), // tea green
+  Color(0xFFEADFF0), // orchid
+  Color(0xFFD9ECEC), // river
+];
 
 /// Playable My Day widget.
 ///
@@ -70,11 +81,12 @@ class _MyDayWidgetState extends State<MyDayWidget> {
         ]);
         _orientationAnswer = _monthName(now.month);
       case 'after_lunch':
-        _orientationOptions.addAll(['Rest', 'Walk', 'Tea', 'Games']);
-        _orientationAnswer = 'Rest';
       case 'before_dinner':
-        _orientationOptions.addAll(['Evening Tea', 'Walk', 'Prayer', 'Games']);
-        _orientationAnswer = 'Evening Tea';
+        // Answer and choices come from the elder's own routine.
+        _orientationOptions.addAll(
+            (widget.item.payload['options'] as List<Object?>? ?? const [])
+                .cast<String>());
+        _orientationAnswer = widget.item.payload['answer'] as String?;
       case 'date':
         // Show nearby dates
         for (var d = now.day - 2; d <= now.day + 2; d++) {
@@ -265,24 +277,28 @@ class _MyDayWidgetState extends State<MyDayWidget> {
               runSpacing: isCompact ? 8 : 12,
               alignment: WrapAlignment.center,
               children: _orientationOptions.map((option) {
-                return GestureDetector(
+                final tint = _tints[_orientationOptions.indexOf(option) % _tints.length];
+                return BouncyTap(
                   onTap: () => _onOrientationAnswer(option),
                   child: Container(
-                    constraints: BoxConstraints(minWidth: isCompact ? 80 : 100),
+                    constraints: BoxConstraints(
+                      minWidth: isCompact ? 96 : 120,
+                      minHeight: isCompact ? 52 : 64,
+                    ),
                     padding: EdgeInsets.symmetric(
-                      horizontal: isCompact ? 14 : 20,
-                      vertical: isCompact ? 10 : 14,
+                      horizontal: isCompact ? 16 : 22,
+                      vertical: isCompact ? 12 : 16,
                     ),
                     decoration: BoxDecoration(
-                      color: AppColors.raisedSurface,
-                      borderRadius: BorderRadius.circular(14),
+                      color: tint,
+                      borderRadius: BorderRadius.circular(18),
                       border: Border.all(color: AppColors.border, width: 1.5),
                     ),
                     child: Text(
                       option,
                       style: TextStyle(
-                        fontSize: isCompact ? 15 : 18,
-                        fontWeight: FontWeight.w600,
+                        fontSize: isCompact ? 18 : 21,
+                        fontWeight: FontWeight.w700,
                         color: AppColors.primaryText,
                       ),
                       textAlign: TextAlign.center,
@@ -292,7 +308,7 @@ class _MyDayWidgetState extends State<MyDayWidget> {
               }).toList(),
             )
           else
-            Icon(Icons.check_circle_rounded, size: isCompact ? 40 : 60, color: AppColors.leafGreen),
+            PopIn(child: Icon(Icons.check_circle_rounded, size: isCompact ? 44 : 64, color: AppColors.leafGreen)),
         ],
       ),
     );

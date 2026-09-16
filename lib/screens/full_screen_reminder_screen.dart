@@ -26,7 +26,7 @@ import '../ui/smriti_ui.dart';
 /// - Prominently displays the medicine pill photo, name, and dose
 /// - Automatically plays the caregiver's voice recording on the alarm stream
 /// - Provides large, unmistakable action buttons: "I Have Taken It", "Remind in 10 Mins", "Hear Voice Again"
-/// - Lays out as a row on landscape tablets and a column on portrait phones
+/// - One calm column on phones; photo beside the buttons on landscape tablets
 class FullScreenReminderScreen extends StatefulWidget {
   const FullScreenReminderScreen({
     super.key,
@@ -341,41 +341,49 @@ class _FullScreenReminderScreenState extends State<FullScreenReminderScreen>
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final portrait = constraints.maxHeight > constraints.maxWidth;
-        return Padding(
-          padding: portrait
-              ? const EdgeInsets.all(16)
-              : const EdgeInsets.symmetric(horizontal: 32.0, vertical: 20.0),
-          child: Column(
-            children: [
-              _buildBanner(hasVoice: hasVoice, compact: portrait),
-              SizedBox(height: portrait ? 14 : 20),
-              Expanded(
-                child: portrait
-                    ? Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Expanded(
-                            child: _buildPhotoCard(med, hasPhoto, hasVoice),
-                          ),
-                          const SizedBox(height: 14),
-                          _buildDetailsCard(med),
-                        ],
-                      )
-                    : Row(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Expanded(
-                            flex: 4,
-                            child: _buildPhotoCard(med, hasPhoto, hasVoice),
-                          ),
-                          const SizedBox(width: 24),
-                          Expanded(flex: 6, child: _buildDetailsCard(med)),
-                        ],
+        final wide = constraints.maxWidth > constraints.maxHeight &&
+            constraints.maxWidth >= 640;
+        final pad = wide ? 32.0 : 20.0;
+
+        if (wide) {
+          return Padding(
+            padding: EdgeInsets.all(pad),
+            child: Column(
+              children: [
+                _buildHeading(med, large: true),
+                const SizedBox(height: 20),
+                Expanded(
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: _buildMedicine(med, hasPhoto, hasVoice),
                       ),
-              ),
-              SizedBox(height: portrait ? 14 : 20),
-              _buildActions(portrait: portrait),
+                      const SizedBox(width: 32),
+                      Expanded(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [_buildActions()],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        return Padding(
+          padding: EdgeInsets.fromLTRB(pad, pad, pad, pad),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _buildHeading(med, large: false),
+              const SizedBox(height: 12),
+              Expanded(child: _buildMedicine(med, hasPhoto, hasVoice)),
+              const SizedBox(height: 16),
+              _buildActions(),
             ],
           ),
         );
@@ -390,17 +398,19 @@ class _FullScreenReminderScreenState extends State<FullScreenReminderScreen>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              width: 168,
-              height: 168,
-              decoration: BoxDecoration(
-                color: AppColors.leafGreen.withValues(alpha: 0.12),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.check_circle_rounded,
-                size: 120,
-                color: AppColors.leafGreen,
+            PopIn(
+              child: Container(
+                width: 168,
+                height: 168,
+                decoration: BoxDecoration(
+                  color: AppColors.leafGreen.withValues(alpha: 0.14),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.check_circle_rounded,
+                  size: 120,
+                  color: AppColors.leafGreen,
+                ),
               ),
             ),
             const SizedBox(height: 28),
@@ -419,264 +429,208 @@ class _FullScreenReminderScreenState extends State<FullScreenReminderScreen>
     );
   }
 
-  // Top alert banner with warm, comforting elder styling
-  Widget _buildBanner({required bool hasVoice, required bool compact}) {
-    return Container(
-      width: double.infinity,
-      clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        color: AppColors.terracotta,
-        borderRadius: BorderRadius.circular(24),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Padding(
-            padding: EdgeInsets.symmetric(
-              horizontal: compact ? 14 : 24,
-              vertical: compact ? 12 : 16,
-            ),
-            child: Row(
-              children: [
-                IconMedallion(
-                  icon: Icons.alarm_rounded,
-                  color: AppColors.terracottaDark,
-                  size: compact ? 48 : 56,
+  /// "Time for Your Medicine" with the scheduled time underneath.
+  Widget _buildHeading(Medication? med, {required bool large}) {
+    return Row(
+      children: [
+        ScaleTransition(
+          scale: _pulseAnimation,
+          child: IconMedallion(
+            icon: Icons.alarm_rounded,
+            color: AppColors.onColor,
+            background: AppColors.terracotta,
+            size: large ? 64 : 56,
+          ),
+        ),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Time for Your Medicine',
+                style: TextStyle(
+                  fontSize: large ? 32 : 26,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.primaryText,
+                  height: 1.15,
                 ),
-                SizedBox(width: compact ? 12 : 16),
-                Expanded(
-                  child: Text(
-                    'Time for Your Medicine',
-                    style: TextStyle(
-                      color: AppColors.onColor,
-                      fontSize: compact ? 23 : 28,
-                      fontWeight: FontWeight.w800,
-                    ),
+              ),
+              if (med != null)
+                Text(
+                  formatClock(med.chosenTimeMin ~/ 60, med.chosenTimeMin % 60),
+                  style: TextStyle(
+                    fontSize: large ? 22 : 19,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.terracottaDark,
                   ),
                 ),
-                // Voice status pill
-                if (hasVoice)
-                  ScaleTransition(
-                    scale: _isPlayingAudio
-                        ? _pulseAnimation
-                        : const AlwaysStoppedAnimation(1.0),
-                    child: Container(
-                      padding:
-                          const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: _isPlayingAudio
-                            ? AppColors.leafGreen
-                            : AppColors.terracottaDark,
-                        borderRadius: BorderRadius.circular(24),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            _isPlayingAudio
-                                ? Icons.volume_up_rounded
-                                : Icons.volume_mute_rounded,
-                            color: AppColors.onColor,
-                            size: 22,
-                          ),
-                          if (!compact) ...[
-                            const SizedBox(width: 8),
-                            Text(
-                              _isPlayingAudio
-                                  ? "Caregiver Speaking..."
-                                  : "Voice Note Ready",
-                              style: const TextStyle(
-                                color: AppColors.onColor,
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                  ),
-              ],
-            ),
+            ],
           ),
-          const ColoredBox(
-            color: AppColors.raisedSurface,
-            child: GamosaBand(height: 10, opacity: 0.7),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
-  BoxDecoration get _cardDecoration => BoxDecoration(
-        color: AppColors.raisedSurface,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.border, width: 1.5),
-      );
+  /// Photo, name, dose and the single "hear again" control, centred.
+  Widget _buildMedicine(Medication? med, bool hasPhoto, bool hasVoice) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Room left for the photo after name, dose and voice button.
+        final textBlock = hasVoice ? 190.0 : 120.0;
+        final photoSize = (constraints.maxHeight - textBlock)
+            .clamp(0.0, constraints.maxWidth * 0.75)
+            .clamp(0.0, 300.0);
 
-  // Pill photo card & Hear Voice Again button
-  Widget _buildPhotoCard(Medication? med, bool hasPhoto, bool hasVoice) {
-    return Container(
-      decoration: _cardDecoration,
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        children: [
-          Expanded(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(18),
-              child: hasPhoto
-                  ? Image.file(
-                      File(med!.pillPhotoPath!),
-                      fit: BoxFit.cover,
-                      width: double.infinity,
-                    )
-                  : Container(
+        return SingleChildScrollView(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: constraints.maxHeight),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (photoSize >= 72) ...[
+                  Container(
+                    width: photoSize,
+                    height: photoSize,
+                    decoration: BoxDecoration(
                       color: AppColors.medicineBlush,
-                      width: double.infinity,
-                      child: const Center(
-                        child: Icon(
-                          Icons.medication_rounded,
-                          size: 88,
-                          color: AppColors.terracotta,
-                        ),
-                      ),
+                      borderRadius: BorderRadius.circular(photoSize * 0.16),
+                      border: Border.all(color: AppColors.raisedSurface, width: 6),
                     ),
-            ),
-          ),
-          if (hasVoice) ...[
-            const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              height: 56,
-              child: ElevatedButton.icon(
-                onPressed: _actionCompleted ? null : _replayVoice,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.indigo,
-                  foregroundColor: AppColors.onColor,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
+                    clipBehavior: Clip.antiAlias,
+                    child: hasPhoto
+                        ? Image.file(File(med!.pillPhotoPath!), fit: BoxFit.cover)
+                        : Icon(
+                            Icons.medication_rounded,
+                            size: photoSize * 0.45,
+                            color: AppColors.terracotta,
+                          ),
+                  ),
+                  const SizedBox(height: 18),
+                ],
+                Text(
+                  med?.name ?? 'Scheduled Medication',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: AppColors.primaryText,
+                    fontSize: 36,
+                    fontWeight: FontWeight.w800,
+                    height: 1.1,
                   ),
                 ),
-                icon: const Icon(Icons.replay_rounded, size: 26),
-                label: const Text(
-                  'Hear Voice Again',
-                  style: TextStyle(fontSize: 19, fontWeight: FontWeight.w700),
+                const SizedBox(height: 6),
+                Text(
+                  'Dose: ${med?.dose ?? "As directed"}',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 23,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.secondaryText,
+                  ),
                 ),
+                if (hasVoice) ...[
+                  const SizedBox(height: 16),
+                  _buildVoiceButton(),
+                ],
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  /// One control for the caregiver's voice: shows when it is playing and
+  /// replays it on tap.
+  Widget _buildVoiceButton() {
+    final playing = _isPlayingAudio;
+    return BouncyTap(
+      onTap: _actionCompleted ? null : _replayVoice,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
+        padding: const EdgeInsets.fromLTRB(10, 10, 22, 10),
+        decoration: BoxDecoration(
+          color: playing ? AppColors.indigo : AppColors.raisedSurface,
+          borderRadius: BorderRadius.circular(40),
+          border: Border.all(color: AppColors.indigo, width: 2),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ScaleTransition(
+              scale: playing
+                  ? _pulseAnimation
+                  : const AlwaysStoppedAnimation(1.0),
+              child: IconMedallion(
+                icon: playing ? Icons.graphic_eq_rounded : Icons.volume_up_rounded,
+                color: playing ? AppColors.indigo : AppColors.onColor,
+                background: playing ? AppColors.onColor : AppColors.indigo,
+                size: 44,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Text(
+              playing ? 'Listening...' : 'Hear Voice Again',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: playing ? AppColors.onColor : AppColors.indigo,
               ),
             ),
           ],
-        ],
-      ),
-    );
-  }
-
-  // Medicine name and dose
-  Widget _buildDetailsCard(Medication? med) {
-    return Container(
-      decoration: _cardDecoration,
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            med?.name ?? 'Scheduled Medication',
-            style: const TextStyle(
-              color: AppColors.primaryText,
-              fontSize: 36,
-              fontWeight: FontWeight.w800,
-              height: 1.1,
-            ),
-          ),
-          const SizedBox(height: 14),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            decoration: BoxDecoration(
-              color: AppColors.medicineBlush,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.medication_liquid_rounded,
-                    size: 28, color: AppColors.terracottaDark),
-                const SizedBox(width: 10),
-                Flexible(
-                  child: Text(
-                    'Dose: ${med?.dose ?? "As directed"}',
-                    style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.terracottaDeep,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
 
   // Large "I Have Taken It" & "Remind in 10 Mins" buttons
-  Widget _buildActions({required bool portrait}) {
-    final snooze = SizedBox(
-      height: 72,
-      child: OutlinedButton.icon(
-        onPressed: _actionCompleted ? null : _onSnooze,
-        style: OutlinedButton.styleFrom(
-          side: const BorderSide(color: AppColors.marigoldDark, width: 2.5),
-          backgroundColor: AppColors.raisedSurface,
-          foregroundColor: AppColors.marigoldDark,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-        ),
-        icon: const Icon(Icons.snooze_rounded, size: 30),
-        label: const Text(
-          'Remind in 10 Mins',
-          style: TextStyle(fontSize: 21, fontWeight: FontWeight.w700),
-        ),
-      ),
-    );
-
-    final taken = SizedBox(
-      height: 80,
-      child: ElevatedButton.icon(
-        onPressed: _actionCompleted ? null : _onTaken,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.leafGreen,
-          foregroundColor: AppColors.onColor,
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-        ),
-        icon: const Icon(Icons.check_circle_rounded,
-            size: 38, color: AppColors.onColor),
-        label: const Text(
-          'I Have Taken It',
-          style: TextStyle(
-            fontSize: 26,
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-      ),
-    );
-
-    if (portrait) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [taken, const SizedBox(height: 12), snooze],
-      );
-    }
-    return Row(
+  Widget _buildActions() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
       children: [
-        Expanded(flex: 4, child: snooze),
-        const SizedBox(width: 20),
-        Expanded(flex: 6, child: taken),
+        SizedBox(
+          height: 84,
+          child: ElevatedButton.icon(
+            onPressed: _actionCompleted ? null : _onTaken,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.leafGreen,
+              foregroundColor: AppColors.onColor,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(24),
+              ),
+            ),
+            icon: const Icon(Icons.check_circle_rounded,
+                size: 40, color: AppColors.onColor),
+            label: const Text(
+              'I Have Taken It',
+              style: TextStyle(
+                fontSize: 27,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 64,
+          child: TextButton.icon(
+            onPressed: _actionCompleted ? null : _onSnooze,
+            style: TextButton.styleFrom(
+              foregroundColor: AppColors.marigoldDark,
+              backgroundColor: AppColors.marigold.withValues(alpha: 0.14),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(24),
+              ),
+            ),
+            icon: const Icon(Icons.snooze_rounded, size: 30),
+            label: const Text(
+              'Remind in 10 Mins',
+              style: TextStyle(fontSize: 21, fontWeight: FontWeight.w700),
+            ),
+          ),
+        ),
       ],
     );
   }

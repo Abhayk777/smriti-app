@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../app_colors.dart';
+import '../../ui/smriti_ui.dart';
 import '../cognitive_game.dart';
 import 'trace_path_game.dart';
 
@@ -130,7 +131,8 @@ class _TracePathWidgetState extends State<TracePathWidget> {
                       return Positioned(
                         left: x - 28,
                         top: y - 28,
-                        child: GestureDetector(
+                        child: BouncyTap(
+                          pressedScale: 0.85,
                           onTap: () => _onNodeTap(idx),
                           child: _buildNode(
                             node['label'] as String,

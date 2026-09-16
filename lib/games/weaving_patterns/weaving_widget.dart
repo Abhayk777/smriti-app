@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../app_colors.dart';
+import '../../ui/smriti_ui.dart';
 import '../cognitive_game.dart';
 import 'weaving_game.dart';
 
@@ -107,7 +108,7 @@ class _WeavingWidgetState extends State<WeavingWidget> {
                       final optionPattern = (option['pattern'] as List<Object?>)
                           .cast<int>();
                       final optionId = option['id'] as String;
-                      return GestureDetector(
+                      return BouncyTap(
                         onTap: () => _onOptionTap(optionId),
                         child: ConstrainedBox(
                           constraints: BoxConstraints(

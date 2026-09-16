@@ -3,8 +3,19 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../app_colors.dart';
+import '../../ui/smriti_ui.dart';
 import '../cognitive_game.dart';
 import 'market_basket_game.dart';
+
+/// Soft tints that give each card its own colour.
+const _tints = [
+  Color(0xFFFBE3D6), // terracotta
+  Color(0xFFDDE6F2), // hill blue
+  Color(0xFFF7EACB), // mustard
+  Color(0xFFDDEBDF), // tea green
+  Color(0xFFEADFF0), // orchid
+  Color(0xFFD9ECEC), // river
+];
 
 /// Playable Market Basket widget.
 ///
@@ -233,14 +244,15 @@ class _MarketBasketWidgetState extends State<MarketBasketWidget>
   }
 
   Widget _buildShelfItem(MarketItem item, bool isPicked) {
-    return GestureDetector(
+    final tint = _tints[_shelf.indexOf(item) % _tints.length];
+    return BouncyTap(
       onTap: () => _onItemTap(item),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         decoration: BoxDecoration(
           color: isPicked
-              ? AppColors.leafGreen.withValues(alpha: 0.2)
-              : AppColors.raisedSurface,
+              ? AppColors.leafGreen.withValues(alpha: 0.25)
+              : tint,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: isPicked ? AppColors.leafGreen : AppColors.border,
@@ -269,7 +281,9 @@ class _MarketBasketWidgetState extends State<MarketBasketWidget>
               overflow: TextOverflow.ellipsis,
             ),
             if (isPicked)
-              const Icon(Icons.check_circle_rounded, color: AppColors.leafGreen, size: 22),
+              const PopIn(
+                child: Icon(Icons.check_circle_rounded, color: AppColors.leafGreen, size: 26),
+              ),
           ],
         ),
       ),
@@ -277,11 +291,12 @@ class _MarketBasketWidgetState extends State<MarketBasketWidget>
   }
 
   Widget _buildItemCard(MarketItem item, {bool large = false}) {
-    return Container(
-      width: large ? 120 : 90,
-      height: large ? 120 : 90,
+    return PopIn(
+      child: Container(
+      width: large ? 130 : 100,
+      height: large ? 130 : 100,
       decoration: BoxDecoration(
-        color: AppColors.raisedSurface,
+        color: _tints[_targets.indexOf(item) % _tints.length],
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: AppColors.marigold, width: 2.5),
       ),
@@ -293,13 +308,14 @@ class _MarketBasketWidgetState extends State<MarketBasketWidget>
           Text(
             item.labelKey.replaceFirst('item.', ''),
             style: TextStyle(
-              fontSize: large ? 14 : 12,
-              fontWeight: FontWeight.w600,
+              fontSize: large ? 17 : 15,
+              fontWeight: FontWeight.w700,
               color: AppColors.primaryText,
             ),
             textAlign: TextAlign.center,
           ),
         ],
+      ),
       ),
     );
   }
