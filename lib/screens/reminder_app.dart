@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../app_colors.dart';
 import '../core/reminders/reminder_screen_channel.dart';
+import '../ui/smriti_ui.dart';
 import 'full_screen_reminder_screen.dart';
 
 /// Root widget of the `reminderMain` engine that runs inside the native
@@ -79,9 +80,7 @@ class _ReminderAppState extends State<ReminderApp> {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Smriti',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: AppColors.terracotta),
-      ),
+      theme: SmritiTheme.light(),
       home: current == null
           ? const Scaffold(backgroundColor: AppColors.pageBackground)
           : FullScreenReminderScreen(

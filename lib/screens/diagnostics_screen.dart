@@ -114,7 +114,7 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
             onPressed: () => Navigator.of(ctx).pop(true),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.terracotta,
-              foregroundColor: Colors.white,
+              foregroundColor: AppColors.onColor,
             ),
             child: const Text('Re-pair'),
           ),
@@ -157,7 +157,7 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
             content: Text(
               'Test alarm in 5s! Lock your screen now to verify full-screen alert & voice playback.',
             ),
-            backgroundColor: Colors.green,
+            backgroundColor: AppColors.leafGreen,
             duration: Duration(seconds: 5),
           ),
         );
@@ -167,7 +167,7 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Failed to schedule test reminder: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.terracottaDark,
           ),
         );
       }
@@ -177,10 +177,10 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.pageBackground,
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
+        backgroundColor: AppColors.pageBackground,
+        foregroundColor: AppColors.primaryText,
         elevation: 0,
         title: const Text('Diagnostics'),
         leading: IconButton(
@@ -223,7 +223,7 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
                       onPressed: _isSyncing ? null : _runSync,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.terracotta,
-                        foregroundColor: Colors.white,
+                        foregroundColor: AppColors.onColor,
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -259,8 +259,8 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
                   _syncResult!,
                   style: TextStyle(
                     color: _syncResult!.contains('successfully') 
-                        ? Colors.green
-                        : Colors.red,
+                        ? AppColors.leafGreen
+                        : AppColors.terracottaDark,
                   ),
                 ),
               ],
@@ -305,8 +305,8 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
                   icon: const Icon(Icons.settings, size: 18),
                   label: const Text('Grant Full-Screen Intent in Settings'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.orange[800],
-                    foregroundColor: Colors.white,
+                    backgroundColor: AppColors.marigoldDark,
+                    foregroundColor: AppColors.onColor,
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -326,8 +326,8 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
                   icon: const Icon(Icons.alarm, size: 18),
                   label: const Text('Grant Exact Alarm Permission'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.orange[800],
-                    foregroundColor: Colors.white,
+                    backgroundColor: AppColors.marigoldDark,
+                    foregroundColor: AppColors.onColor,
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -337,7 +337,7 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
                 'Schedule a 5-second test reminder to verify that full-screen alerts appear over the lock screen and play voice audio.',
                 style: TextStyle(
                   fontSize: 14,
-                  color: Colors.grey[600],
+                  color: AppColors.secondaryText,
                 ),
               ),
               const SizedBox(height: 12),
@@ -371,7 +371,7 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
                 'Alarms will appear here when medications are scheduled.',
                 style: TextStyle(
                   fontSize: 14,
-                  color: Colors.grey[600],
+                  color: AppColors.secondaryText,
                 ),
               ),
               const SizedBox(height: 20),
@@ -391,7 +391,7 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
     if (_recentSessions.isEmpty) {
       return Text(
         'No games played yet on this device.',
-        style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+        style: TextStyle(fontSize: 14, color: AppColors.secondaryText),
       );
     }
 
@@ -451,7 +451,7 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
                 const SizedBox(width: 12),
                 Text(
                   '${dt.day}/${dt.month} $timeStr',
-                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                  style: TextStyle(fontSize: 12, color: AppColors.secondaryText),
                 ),
               ],
             ),
@@ -469,7 +469,7 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
         style: const TextStyle(
           fontSize: 18,
           fontWeight: FontWeight.w700,
-          color: Colors.black,
+          color: AppColors.primaryText,
         ),
       ),
     );
@@ -487,7 +487,7 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
               label,
               style: TextStyle(
                 fontSize: 14,
-                color: Colors.grey[600],
+                color: AppColors.secondaryText,
               ),
             ),
           ),
@@ -497,7 +497,7 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
               value,
               style: const TextStyle(
                 fontSize: 14,
-                color: Colors.black,
+                color: AppColors.primaryText,
               ),
             ),
           ),

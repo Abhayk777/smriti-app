@@ -6,6 +6,7 @@ import '../core/db/database.dart';
 import '../core/repo/event_repo.dart';
 import 'diagnostics_screen.dart';
 import 'game_screen.dart';
+import '../ui/smriti_ui.dart';
 
 /// Game data for display.
 class _GameInfo {
@@ -17,7 +18,6 @@ class _GameInfo {
     required this.icon,
     required this.color,
     required this.tier,
-    required this.emoji,
   });
 
   final String id;
@@ -27,7 +27,6 @@ class _GameInfo {
   final IconData icon;
   final Color color;
   final int tier; // 1 = must ship, 2 = if schedule holds, 3 = if you can
-  final String emoji;
 }
 
 /// All 9 games in the roster.
@@ -38,50 +37,45 @@ const _games = <_GameInfo>[
     name: 'Faces of My Family',
     description: 'Recognise your family members',
     domain: 'Memory',
-    icon: Icons.family_restroom,
+    icon: Icons.people_alt_rounded,
     color: AppColors.terracotta,
     tier: 1,
-    emoji: '👨‍👩‍👧‍👦',
   ),
   _GameInfo(
     id: 'market_basket',
     name: 'Market Basket',
     description: 'Remember items from a shopping list',
     domain: 'Memory',
-    icon: Icons.shopping_basket,
-    color: AppColors.marigold,
+    icon: Icons.shopping_basket_rounded,
+    color: AppColors.marigoldDark,
     tier: 1,
-    emoji: '🧺',
   ),
   _GameInfo(
     id: 'sort_harvest',
     name: 'Sort the Harvest',
     description: 'Sort produce by type, colour, or size',
     domain: 'Executive',
-    icon: Icons.agriculture,
+    icon: Icons.category_rounded,
     color: AppColors.leafGreen,
     tier: 1,
-    emoji: '🌾',
   ),
   _GameInfo(
     id: 'trace_path',
     name: 'Trace the Path',
     description: 'Connect the stones in order',
     domain: 'Visuospatial',
-    icon: Icons.route,
+    icon: Icons.route_rounded,
     color: AppColors.indigo,
     tier: 1,
-    emoji: '🗺️',
   ),
   _GameInfo(
     id: 'my_day',
     name: 'My Day',
     description: 'Order daily events and answer questions',
     domain: 'Orientation',
-    icon: Icons.wb_sunny,
-    color: AppColors.marigoldDark,
+    icon: Icons.wb_sunny_rounded,
+    color: AppColors.riverTeal,
     tier: 1,
-    emoji: '☀️',
   ),
   // Tier 2 — build if schedule holds
   _GameInfo(
@@ -89,20 +83,18 @@ const _games = <_GameInfo>[
     name: 'Lamps of the Festival',
     description: 'Remember the lamp sequence',
     domain: 'Spatial Memory',
-    icon: Icons.local_fire_department,
-    color: Color(0xFFE67E22),
+    icon: Icons.emoji_objects_rounded,
+    color: AppColors.terracottaDark,
     tier: 2,
-    emoji: '🪔',
   ),
   _GameInfo(
     id: 'name_harvest',
     name: 'Name the Harvest',
     description: 'Name as many items as you can',
     domain: 'Language',
-    icon: Icons.record_voice_over,
+    icon: Icons.record_voice_over_rounded,
     color: AppColors.leafGreenDark,
     tier: 2,
-    emoji: '🗣️',
   ),
   // Tier 3 — ship if you can
   _GameInfo(
@@ -110,106 +102,87 @@ const _games = <_GameInfo>[
     name: 'Weaving Patterns',
     description: 'Match the textile pattern',
     domain: 'Visual Perception',
-    icon: Icons.grid_on,
-    color: AppColors.terracottaDark,
+    icon: Icons.texture_rounded,
+    color: AppColors.gamosaRed,
     tier: 3,
-    emoji: '🧶',
   ),
   _GameInfo(
     id: 'sounds_home',
     name: 'Sounds of Home',
     description: 'Tap the drum when you hear the bird',
     domain: 'Attention',
-    icon: Icons.hearing,
-    color: Color(0xFF2C5F2D),
+    icon: Icons.hearing_rounded,
+    color: AppColors.indigoDark,
     tier: 3,
-    emoji: '🐦',
   ),
 ];
 
 /// Game selection screen with all 9 cognitive games.
 ///
-/// Shows tier-grouped game cards with cultural icons and domain labels.
-/// Large touch targets for elderly users.
+/// Calm cards with a clear icon, the game name and what it exercises.
+/// The grid adapts: two columns on phones, three or four on tablets.
 class GameSelectScreen extends StatelessWidget {
   const GameSelectScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final isCompact = MediaQuery.of(context).size.height < 500;
+    final compact = MediaQuery.sizeOf(context).width < 520;
+    final gutter = Screen.gutter(context);
 
     return Scaffold(
       backgroundColor: AppColors.pageBackground,
       body: SafeArea(
         child: Column(
           children: [
-            // Header
-            Padding(
-              padding: EdgeInsets.fromLTRB(24, isCompact ? 10 : 20, 24, 0),
-              child: Row(
-                children: [
-                  IconButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    icon: const Icon(Icons.arrow_back_rounded,
-                        size: 28, color: AppColors.primaryText),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Choose a Game',
-                    style: TextStyle(
-                      fontSize: isCompact ? 22 : 26,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.primaryText,
-                    ),
-                  ),
-                  const Spacer(),
-                  IconButton(
-                    tooltip: 'Sync & Diagnostics',
-                    onPressed: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(builder: (_) => const DiagnosticsScreen()),
-                      );
-                    },
-                    icon: const Icon(Icons.sync_rounded, color: AppColors.terracotta, size: 26),
-                  ),
-                  const SizedBox(width: 4),
-                  TextButton.icon(
-                    onPressed: () => _showHistoryDialog(context),
-                    icon: const Icon(Icons.bar_chart_rounded,
-                        color: AppColors.terracotta),
-                    label: Text(
-                      'Play History',
-                      style: TextStyle(
-                        fontSize: isCompact ? 14 : 16,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.terracotta,
+            ScreenHeader(
+              title: 'Choose a Game',
+              icon: Icons.extension_rounded,
+              color: AppColors.terracotta,
+              actions: [
+                IconButton(
+                  tooltip: 'Sync & Diagnostics',
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const DiagnosticsScreen()),
+                    );
+                  },
+                  iconSize: 28,
+                  icon: const Icon(Icons.sync_rounded, color: AppColors.secondaryText),
+                ),
+                const SizedBox(width: 4),
+                compact
+                    ? IconButton(
+                        tooltip: 'Play History',
+                        onPressed: () => _showHistoryDialog(context),
+                        iconSize: 28,
+                        icon: const Icon(Icons.bar_chart_rounded,
+                            color: AppColors.terracottaDark),
+                      )
+                    : OutlinedButton.icon(
+                        onPressed: () => _showHistoryDialog(context),
+                        icon: const Icon(Icons.bar_chart_rounded, size: 24),
+                        label: const Text('Play History'),
                       ),
-                    ),
-                  ),
-                ],
-              ),
+              ],
             ),
-            SizedBox(height: isCompact ? 10 : 20),
 
             // Game grid
             Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: GridView.builder(
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: isCompact ? 4 : 3,
-                    crossAxisSpacing: isCompact ? 12 : 16,
-                    mainAxisSpacing: isCompact ? 12 : 16,
-                    childAspectRatio: isCompact ? 1.3 : 1.1,
-                  ),
-                  itemCount: _games.length,
-                  itemBuilder: (context, index) {
-                    return _GameCard(
-                      info: _games[index],
-                      onTap: () => _launchGame(context, _games[index]),
-                    );
-                  },
+              child: GridView.builder(
+                padding: EdgeInsets.fromLTRB(gutter, 20, gutter, 24),
+                gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+                  maxCrossAxisExtent: compact ? 240 : 300,
+                  mainAxisExtent: compact ? 196 : 196,
+                  crossAxisSpacing: compact ? 12 : 18,
+                  mainAxisSpacing: compact ? 12 : 18,
                 ),
+                itemCount: _games.length,
+                itemBuilder: (context, index) {
+                  return _GameCard(
+                    info: _games[index],
+                    onTap: () => _launchGame(context, _games[index]),
+                  );
+                },
               ),
             ),
           ],
@@ -234,119 +207,67 @@ class GameSelectScreen extends StatelessWidget {
   }
 }
 
-class _GameCard extends StatefulWidget {
+class _GameCard extends StatelessWidget {
   const _GameCard({required this.info, required this.onTap});
 
   final _GameInfo info;
   final VoidCallback onTap;
 
   @override
-  State<_GameCard> createState() => _GameCardState();
-}
-
-class _GameCardState extends State<_GameCard>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _hoverController;
-  bool _pressed = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _hoverController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 150),
-    );
-  }
-
-  @override
-  void dispose() {
-    _hoverController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final info = widget.info;
-    final isCompact = MediaQuery.of(context).size.height < 500;
-
-    return GestureDetector(
-      onTapDown: (_) => setState(() => _pressed = true),
-      onTapUp: (_) {
-        setState(() => _pressed = false);
-        widget.onTap();
-      },
-      onTapCancel: () => setState(() => _pressed = false),
-      child: AnimatedScale(
-        scale: _pressed ? 0.95 : 1.0,
-        duration: const Duration(milliseconds: 100),
-        child: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                info.color,
-                info.color.withValues(alpha: 0.8),
-              ],
+    return PressableCard(
+      onTap: onTap,
+      borderColor: AppColors.border,
+      semanticLabel: info.name,
+      padding: const EdgeInsets.fromLTRB(16, 18, 16, 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          IconMedallion(
+            icon: info.icon,
+            color: info.color,
+            size: 64,
+            background: info.color.withValues(alpha: 0.12),
+          ),
+          const Spacer(),
+          Text(
+            info.name,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 19,
+              fontWeight: FontWeight.w700,
+              color: AppColors.primaryText,
+              height: 1.2,
             ),
-            borderRadius: BorderRadius.circular(24),
-            boxShadow: [
-              BoxShadow(
-                color: info.color.withValues(alpha: 0.3),
-                blurRadius: 12,
-                offset: const Offset(0, 6),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: info.color,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  info.domain,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.secondaryText,
+                  ),
+                ),
               ),
             ],
           ),
-          child: Padding(
-            padding: EdgeInsets.all(isCompact ? 8 : 16),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                // Emoji
-                Text(
-                  info.emoji,
-                  style: TextStyle(fontSize: isCompact ? 28 : 40),
-                ),
-                SizedBox(height: isCompact ? 4 : 10),
-
-                // Game name
-                Text(
-                  info.name,
-                  style: TextStyle(
-                    fontSize: isCompact ? 13 : 16,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                  ),
-                  textAlign: TextAlign.center,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                SizedBox(height: isCompact ? 2 : 4),
-
-                // Domain tag
-                Container(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: isCompact ? 6 : 10,
-                    vertical: isCompact ? 2 : 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    info.domain,
-                    style: TextStyle(
-                      fontSize: isCompact ? 9 : 11,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white.withValues(alpha: 0.9),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
+        ],
       ),
     );
   }
@@ -409,7 +330,7 @@ class _PlayHistoryDialogState extends State<_PlayHistoryDialog> {
   String _gameDisplayName(String gameIds) {
     final first = gameIds.split(',').first.trim();
     for (final g in _games) {
-      if (g.id == first) return '${g.emoji} ${g.name}';
+      if (g.id == first) return g.name;
     }
     return first.replaceAll('_', ' ').toUpperCase();
   }
@@ -428,37 +349,41 @@ class _PlayHistoryDialogState extends State<_PlayHistoryDialog> {
     }
     final totalMins = totalPlaySeconds ~/ 60;
 
+    final screen = MediaQuery.sizeOf(context);
     return AlertDialog(
-      backgroundColor: Colors.white,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      titlePadding: const EdgeInsets.fromLTRB(24, 20, 12, 0),
+      contentPadding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
       title: Row(
         children: [
-          const Icon(Icons.history_edu_rounded, color: AppColors.terracotta, size: 28),
+          const Icon(Icons.bar_chart_rounded, color: AppColors.terracotta, size: 28),
           const SizedBox(width: 10),
-          const Text(
-            'Play Activity History',
-            style: TextStyle(
-              fontWeight: FontWeight.w700,
-              fontSize: 20,
-              color: AppColors.primaryText,
+          const Expanded(
+            child: Text(
+              'Play History',
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 22,
+                color: AppColors.primaryText,
+              ),
             ),
           ),
-          const Spacer(),
           IconButton(
-            icon: const Icon(Icons.close),
+            tooltip: 'Close',
+            icon: const Icon(Icons.close_rounded, size: 28),
             onPressed: () => Navigator.of(context).pop(),
           ),
         ],
       ),
       content: SizedBox(
-        width: 600,
-        height: isCompact ? 240 : 380,
+        width: screen.width < 640 ? screen.width - 32 : 600,
+        height: isCompact ? 240 : (screen.height * 0.6).clamp(240.0, 480.0),
         child: _loading
             ? const Center(child: CircularProgressIndicator(color: AppColors.terracotta))
             : _sessions.isEmpty
                 ? const Center(
                     child: Text(
-                      'No games played yet.\nPlay a game to see your activity here!',
+                      'No games played yet.\nPlay a game to see your activity here.',
                       textAlign: TextAlign.center,
                       style: TextStyle(fontSize: 16, color: AppColors.secondaryText),
                     ),
@@ -470,7 +395,8 @@ class _PlayHistoryDialogState extends State<_PlayHistoryDialog> {
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                         decoration: BoxDecoration(
                           color: AppColors.pageBackground,
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: AppColors.border),
                         ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceAround,

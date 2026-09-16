@@ -3,8 +3,9 @@ import 'package:flutter/services.dart';
 
 import '../../app_colors.dart';
 import '../../core/auth/pairing_service.dart';
+import '../../ui/smriti_ui.dart';
 
-/// Typed-code fallback when the QR scan will not work — bad light, cracked
+/// Typed-code fallback when the QR scan will not work: bad light, cracked
 /// camera, code read aloud over the phone.
 ///
 /// Caregiver-facing setup screen, so it uses normal density and does show
@@ -21,10 +22,14 @@ class CodeEntryScreen extends StatefulWidget {
 class _CodeEntryScreenState extends State<CodeEntryScreen> {
   static const int _boxes = PairingService.codeLength;
 
-  late final List<TextEditingController> _controllers =
-      List.generate(_boxes, (_) => TextEditingController());
-  late final List<FocusNode> _focusNodes =
-      List.generate(_boxes, (_) => FocusNode());
+  late final List<TextEditingController> _controllers = List.generate(
+    _boxes,
+    (_) => TextEditingController(),
+  );
+  late final List<FocusNode> _focusNodes = List.generate(
+    _boxes,
+    (_) => FocusNode(),
+  );
 
   bool _isSubmitting = false;
   String? _error;
@@ -107,72 +112,78 @@ class _CodeEntryScreenState extends State<CodeEntryScreen> {
         title: const Text('Enter pairing code'),
       ),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(28, 24, 28, 28),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Type the 8-character code shown in the web app.',
-                style: TextStyle(fontSize: 16, color: AppColors.secondaryText),
-              ),
-              const SizedBox(height: 24),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  for (var i = 0; i < _boxes; i++) _buildBox(i),
-                ],
-              ),
-              const SizedBox(height: 20),
-              if (_error != null)
-                Text(
-                  _error!,
-                  key: const Key('pairing_error'),
-                  style: const TextStyle(
-                    fontSize: 15,
-                    color: AppColors.terracottaDark,
+        child: MaxWidth(
+          maxWidth: 600,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(24, 24, 24, 28),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Type the 8-character code shown in the web app.',
+                  style: TextStyle(
+                    fontSize: 17,
+                    color: AppColors.secondaryText,
                   ),
                 ),
-              const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                height: 60,
-                child: ElevatedButton(
-                  key: const Key('pairing_submit'),
-                  onPressed: _isComplete && !_isSubmitting ? _submit : null,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.terracotta,
-                    foregroundColor: AppColors.onColor,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(18),
+                const SizedBox(height: 24),
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    const gap = 6.0;
+                    final boxWidth =
+                        ((constraints.maxWidth - gap * (_boxes - 1)) / _boxes)
+                            .clamp(30.0, 60.0);
+                    return Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        for (var i = 0; i < _boxes; i++) _buildBox(i, boxWidth),
+                      ],
+                    );
+                  },
+                ),
+                const SizedBox(height: 20),
+                if (_error != null)
+                  Text(
+                    _error!,
+                    key: const Key('pairing_error'),
+                    style: const TextStyle(
+                      fontSize: 15,
+                      color: AppColors.terracottaDark,
                     ),
                   ),
-                  child: _isSubmitting
-                      ? const SizedBox(
-                          width: 26,
-                          height: 26,
-                          child: CircularProgressIndicator(strokeWidth: 3),
-                        )
-                      : const Text(
-                          'Pair this tablet',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w700,
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  height: 60,
+                  child: ElevatedButton(
+                    key: const Key('pairing_submit'),
+                    onPressed: _isComplete && !_isSubmitting ? _submit : null,
+                    child: _isSubmitting
+                        ? const SizedBox(
+                            width: 26,
+                            height: 26,
+                            child: CircularProgressIndicator(strokeWidth: 3),
+                          )
+                        : const Text(
+                            'Pair this device',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
-                        ),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildBox(int index) {
+  Widget _buildBox(int index, double width) {
     return SizedBox(
-      width: 38,
+      width: width,
       child: TextField(
         key: Key('code_box_$index'),
         controller: _controllers[index],

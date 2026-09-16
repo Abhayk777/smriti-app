@@ -7,7 +7,7 @@ import 'code_entry_screen.dart';
 
 /// Scans the pairing QR shown by the caregiver web app, then redeems it.
 ///
-/// Caregiver-facing setup screen — it shows progress and errors, which the
+/// Caregiver-facing setup screen: it shows progress and errors, which the
 /// elder-facing app never does (AGENTS.md non-negotiable #9).
 class ScanScreen extends StatefulWidget {
   const ScanScreen({super.key, required this.pairingService});
@@ -37,7 +37,10 @@ class _ScanScreenState extends State<ScanScreen> {
 
     final raw = capture.barcodes
         .map((b) => b.rawValue)
-        .firstWhere((v) => v != null && v.trim().isNotEmpty, orElse: () => null);
+        .firstWhere(
+          (v) => v != null && v.trim().isNotEmpty,
+          orElse: () => null,
+        );
     if (raw == null) return;
 
     _handled = true;
@@ -106,10 +109,7 @@ class _ScanScreenState extends State<ScanScreen> {
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  MobileScanner(
-                    controller: _controller,
-                    onDetect: _onDetect,
-                  ),
+                  MobileScanner(controller: _controller, onDetect: _onDetect),
                   if (_isRedeeming)
                     Container(
                       color: AppColors.pageBackground.withValues(alpha: 0.85),
@@ -122,7 +122,7 @@ class _ScanScreenState extends State<ScanScreen> {
               padding: const EdgeInsets.fromLTRB(28, 20, 28, 24),
               child: Column(
                 children: [
-                  Text(
+                  const Text(
                     'Point the camera at the code in the web app.',
                     textAlign: TextAlign.center,
                     style: TextStyle(

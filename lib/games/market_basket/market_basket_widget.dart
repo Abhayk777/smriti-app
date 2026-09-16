@@ -131,7 +131,7 @@ class _MarketBasketWidgetState extends State<MarketBasketWidget>
         return _buildPickingPhase(isCompact);
       case 'done':
         return const Center(
-          child: Icon(Icons.check_circle, size: 80, color: AppColors.leafGreen),
+          child: Icon(Icons.check_circle_rounded, size: 80, color: AppColors.leafGreen),
         );
       default:
         return const SizedBox();
@@ -168,7 +168,7 @@ class _MarketBasketWidgetState extends State<MarketBasketWidget>
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.hourglass_top, size: 60, color: AppColors.marigold),
+          Icon(Icons.hourglass_top_rounded, size: 64, color: AppColors.marigoldDark),
           SizedBox(height: 16),
           Text(
             'Get ready...',
@@ -196,11 +196,11 @@ class _MarketBasketWidgetState extends State<MarketBasketWidget>
         SizedBox(height: isCompact ? 8 : 20),
         Expanded(
           child: GridView.builder(
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: isCompact ? 4 : 4,
-              crossAxisSpacing: isCompact ? 10 : 16,
-              mainAxisSpacing: isCompact ? 10 : 16,
-              childAspectRatio: isCompact ? 1.3 : 1.0,
+            gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+              maxCrossAxisExtent: isCompact ? 150 : 180,
+              mainAxisExtent: isCompact ? 112 : 140,
+              crossAxisSpacing: isCompact ? 10 : 14,
+              mainAxisSpacing: isCompact ? 10 : 14,
             ),
             itemCount: _shelf.length,
             itemBuilder: (context, index) {
@@ -215,21 +215,16 @@ class _MarketBasketWidgetState extends State<MarketBasketWidget>
         ElevatedButton(
           onPressed: _picked.isNotEmpty ? _submitResult : null,
           style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.terracotta,
-            foregroundColor: AppColors.onColor,
             padding: EdgeInsets.symmetric(
-              horizontal: isCompact ? 28 : 40,
-              vertical: isCompact ? 10 : 16,
-            ),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
+              horizontal: isCompact ? 28 : 44,
+              vertical: isCompact ? 12 : 18,
             ),
           ),
           child: Text(
             'Done (${_picked.length} picked)',
             style: TextStyle(
-              fontSize: isCompact ? 15 : 18,
-              fontWeight: FontWeight.w600,
+              fontSize: isCompact ? 17 : 20,
+              fontWeight: FontWeight.w700,
             ),
           ),
         ),
@@ -246,20 +241,11 @@ class _MarketBasketWidgetState extends State<MarketBasketWidget>
           color: isPicked
               ? AppColors.leafGreen.withValues(alpha: 0.2)
               : AppColors.raisedSurface,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: isPicked ? AppColors.leafGreen : AppColors.border,
             width: isPicked ? 3 : 1.5,
           ),
-          boxShadow: isPicked
-              ? []
-              : [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.08),
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -272,16 +258,18 @@ class _MarketBasketWidgetState extends State<MarketBasketWidget>
             Text(
               item.labelKey.replaceFirst('item.', ''),
               style: TextStyle(
-                fontSize: 14,
+                fontSize: 16,
                 fontWeight: FontWeight.w600,
                 color: isPicked
-                    ? AppColors.leafGreen
+                    ? AppColors.leafGreenDark
                     : AppColors.primaryText,
               ),
               textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
             if (isPicked)
-              const Icon(Icons.check_circle, color: AppColors.leafGreen, size: 20),
+              const Icon(Icons.check_circle_rounded, color: AppColors.leafGreen, size: 22),
           ],
         ),
       ),
@@ -294,8 +282,8 @@ class _MarketBasketWidgetState extends State<MarketBasketWidget>
       height: large ? 120 : 90,
       decoration: BoxDecoration(
         color: AppColors.raisedSurface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.marigold, width: 2),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.marigold, width: 2.5),
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,

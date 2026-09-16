@@ -132,17 +132,7 @@ class _LampsWidgetState extends State<LampsWidget> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            Color(0xFF1A1A2E),
-            Color(0xFF16213E),
-            Color(0xFF0F3460),
-          ],
-        ),
-      ),
+      decoration: const BoxDecoration(color: Color(0xFF1C2638)),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -156,9 +146,10 @@ class _LampsWidgetState extends State<LampsWidget> {
                           ? 'Now tap them in REVERSE order'
                           : 'Now tap them in the same order'
                       : 'Well done!',
+              textAlign: TextAlign.center,
               style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.w600,
+                fontSize: 23,
+                fontWeight: FontWeight.w700,
                 color: Colors.amber.shade200,
               ),
             ),

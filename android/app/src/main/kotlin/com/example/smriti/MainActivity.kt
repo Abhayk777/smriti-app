@@ -4,8 +4,11 @@ import android.app.AlarmManager
 import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ActivityInfo
+import android.content.res.Configuration
 import android.net.Uri
 import android.os.Build
+import android.os.Bundle
 import android.provider.Settings
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -17,6 +20,31 @@ import io.flutter.plugin.common.MethodChannel
  */
 class MainActivity : FlutterActivity() {
     private val CHANNEL = "com.example.smriti/native_reminders"
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        applyDeviceOrientation(resources.configuration)
+        super.onCreate(savedInstanceState)
+    }
+
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        // A foldable opening or closing changes the smallest width.
+        applyDeviceOrientation(newConfig)
+    }
+
+    /**
+     * Phones open in portrait, tablets in landscape. Uses the smallest screen
+     * width (the standard `sw600dp` tablet rule), which does not change when
+     * the device rotates, so it works the same on every manufacturer.
+     */
+    private fun applyDeviceOrientation(config: Configuration) {
+        val wanted = if (config.smallestScreenWidthDp >= 600) {
+            ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+        } else {
+            ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+        }
+        if (requestedOrientation != wanted) requestedOrientation = wanted
+    }
 
     override fun onResume() {
         super.onResume()

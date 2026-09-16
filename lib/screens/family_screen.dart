@@ -11,6 +11,7 @@ import '../core/db/database.dart';
 import '../core/files/file_paths.dart';
 import '../core/repo/content_repo.dart';
 import '../core/sync/sync_engine.dart';
+import '../ui/smriti_ui.dart';
 
 /// Resolves a local file checking rawPath, then fallback directory.
 Future<File?> _resolveFile(String rawPath, Future<String> Function() getDir, String id, [List<String> exts = const ['.jpg', '.jpeg', '.png']]) async {
@@ -30,9 +31,26 @@ Future<File?> _resolveFile(String rawPath, Future<String> Function() getDir, Str
   return null;
 }
 
+/// Calm placeholder colours for people without a photo.
+Color _placeholderColor(String name) {
+  const colors = [
+    AppColors.indigo,
+    AppColors.terracotta,
+    AppColors.leafGreen,
+    AppColors.riverTeal,
+    AppColors.marigoldDark,
+    AppColors.indigoDark,
+  ];
+  if (name.isEmpty) return colors.first;
+  return colors[name.codeUnitAt(0) % colors.length];
+}
+
+String _capitalize(String s) =>
+    s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
+
 /// Shows the elder's family as a warm photo grid.
 ///
-/// Reads from the local `People` Drift table — never from the network.
+/// Reads from the local `People` Drift table, never from the network.
 /// Tapping a card opens a full-screen portrait with the memory prompt
 /// read aloud via TTS or caregiver voice.
 class FamilyScreen extends StatefulWidget {
@@ -74,7 +92,12 @@ class _FamilyScreenState extends State<FamilyScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            _buildHeader(context),
+            const ScreenHeader(
+              title: 'My Family',
+              subtitle: 'The people who love you',
+              icon: Icons.people_alt_rounded,
+              color: AppColors.indigo,
+            ),
             Expanded(
               child: _loading
                   ? const Center(
@@ -90,70 +113,25 @@ class _FamilyScreenState extends State<FamilyScreen> {
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-      decoration: const BoxDecoration(
-        color: AppColors.raisedSurface,
-        border: Border(bottom: BorderSide(color: AppColors.border, width: 1)),
-      ),
-      child: Row(
-        children: [
-          GestureDetector(
-            onTap: () => Navigator.of(context).pop(),
-            child: Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: AppColors.indigo.withValues(alpha: 0.12),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.arrow_back, color: AppColors.indigo, size: 24),
-            ),
-          ),
-          const SizedBox(width: 16),
-          const Text(
-            '👨‍👩‍👧‍👦  My Family',
-            style: TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.w700,
-              color: AppColors.primaryText,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildEmpty() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Text('👨‍👩‍👧‍👦', style: TextStyle(fontSize: 72)),
-          const SizedBox(height: 16),
-          const Text(
-            'Your family photos will appear here\nonce your caregiver sets them up.',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 20,
-              color: AppColors.secondaryText,
-              height: 1.5,
-            ),
-          ),
-        ],
-      ),
+    return const EmptyState(
+      icon: Icons.people_alt_rounded,
+      color: AppColors.indigo,
+      title: 'Your family will appear here',
+      message: 'Photos show up once your caregiver adds them.',
     );
   }
 
   Widget _buildGrid() {
+    final gutter = Screen.gutter(context);
+    final compact = MediaQuery.sizeOf(context).width < 520;
     return GridView.builder(
-      padding: const EdgeInsets.all(20),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        crossAxisSpacing: 16,
-        mainAxisSpacing: 16,
-        childAspectRatio: 0.8,
+      padding: EdgeInsets.fromLTRB(gutter, 20, gutter, 24),
+      gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+        maxCrossAxisExtent: compact ? 240 : 280,
+        crossAxisSpacing: compact ? 12 : 18,
+        mainAxisSpacing: compact ? 12 : 18,
+        childAspectRatio: 0.78,
       ),
       itemCount: _people.length,
       itemBuilder: (context, index) {
@@ -183,102 +161,85 @@ class _PersonCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return PressableCard(
       onTap: onTap,
-      child: Container(
-        decoration: BoxDecoration(
-          color: AppColors.raisedSurface,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: AppColors.border, width: 1.5),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.indigo.withValues(alpha: 0.08),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
+      borderColor: AppColors.border,
+      semanticLabel: person.name,
+      padding: const EdgeInsets.all(8),
+      child: Column(
+        children: [
+          Expanded(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(18),
+              child: FutureBuilder<File?>(
+                future: _resolveFile(person.photoPath, FilePaths.peoplePhotos, person.id),
+                builder: (context, snapshot) {
+                  final file = snapshot.data;
+                  if (file != null) {
+                    return Image.file(
+                      file,
+                      fit: BoxFit.cover,
+                      width: double.infinity,
+                      height: double.infinity,
+                    );
+                  }
+                  return _buildPlaceholder();
+                },
+              ),
             ),
-          ],
-        ),
-        child: Column(
-          children: [
-            Expanded(
-              child: ClipRRect(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
-                child: FutureBuilder<File?>(
-                  future: _resolveFile(person.photoPath, FilePaths.peoplePhotos, person.id),
-                  builder: (context, snapshot) {
-                    final file = snapshot.data;
-                    if (file != null) {
-                      return Image.file(file, fit: BoxFit.cover, width: double.infinity);
-                    }
-                    return _buildPlaceholder();
-                  },
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(6, 10, 6, 6),
+            child: Column(
+              children: [
+                Text(
+                  person.name,
+                  style: const TextStyle(
+                    fontSize: 19,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.primaryText,
+                  ),
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(8, 8, 8, 10),
-              child: Column(
-                children: [
-                  Text(
-                    person.name,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.primaryText,
-                    ),
-                    textAlign: TextAlign.center,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                const SizedBox(height: 2),
+                Text(
+                  _capitalize(person.relationship),
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.secondaryText,
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    _capitalize(person.relationship),
-                    style: const TextStyle(
-                      fontSize: 13,
-                      color: AppColors.secondaryText,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildPlaceholder() {
+    final color = _placeholderColor(person.name);
     return Container(
-      color: _placeholderColor(),
+      color: color.withValues(alpha: 0.14),
       width: double.infinity,
       child: Center(
         child: Text(
           person.name.isNotEmpty ? person.name[0].toUpperCase() : '?',
-          style: const TextStyle(
-            fontSize: 52,
+          style: TextStyle(
+            fontSize: 56,
             fontWeight: FontWeight.w700,
-            color: Colors.white,
+            color: color,
           ),
         ),
       ),
     );
   }
-
-  Color _placeholderColor() {
-    final colors = [
-      AppColors.indigo,
-      AppColors.terracotta,
-      AppColors.marigold,
-      AppColors.leafGreen,
-      const Color(0xFF7B5EA7),
-      const Color(0xFF3D7A8A),
-    ];
-    return colors[person.name.codeUnitAt(0) % colors.length];
-  }
-
-  String _capitalize(String s) =>
-      s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
 }
 
 // ── Full-screen person detail ─────────────────────────────────────────────────
@@ -371,166 +332,146 @@ class _PersonDetailScreenState extends State<_PersonDetailScreen> {
         (person.memoryPrompt != null && person.memoryPrompt!.isNotEmpty);
 
     return Scaffold(
-      backgroundColor: AppColors.primaryText,
+      backgroundColor: AppColors.pageBackground,
       body: SafeArea(
-        child: Stack(
-          children: [
-            // Full-screen photo or placeholder
-            Positioned.fill(
-              child: _photoFile != null
-                  ? Image.file(_photoFile!, fit: BoxFit.cover)
-                  : Container(
-                      color: _placeholderColor(person),
-                      child: Center(
-                        child: Text(
-                          person.name.isNotEmpty
-                              ? person.name[0].toUpperCase()
-                              : '?',
-                          style: const TextStyle(
-                            fontSize: 160,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ),
-            ),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final wide = constraints.maxWidth > constraints.maxHeight &&
+                constraints.maxWidth >= 640;
+            final photo = _buildPhoto(person);
+            final details = _buildDetails(person, hasAudio);
 
-            // Gradient overlay at bottom
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              height: 280,
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.transparent,
-                      Colors.black.withValues(alpha: 0.85),
-                    ],
-                  ),
+            final gutter = constraints.maxWidth >= 600 ? 32.0 : 18.0;
+            return Column(
+              children: [
+                Padding(
+                  padding: EdgeInsets.fromLTRB(gutter, 14, gutter, 14),
+                  child: const Row(children: [RoundBackButton()]),
                 ),
-              ),
-            ),
-
-            // Name + relationship + prompt + Audio button
-            Positioned(
-              left: 32,
-              right: 32,
-              bottom: 32,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    person.name,
-                    style: const TextStyle(
-                      fontSize: 40,
-                      fontWeight: FontWeight.w800,
-                      color: Colors.white,
-                    ),
-                  ),
-                  Text(
-                    _capitalize(person.relationship),
-                    style: TextStyle(
-                      fontSize: 22,
-                      color: Colors.white.withValues(alpha: 0.8),
-                    ),
-                  ),
-                  if (person.memoryPrompt != null &&
-                      person.memoryPrompt!.isNotEmpty) ...[
-                    const SizedBox(height: 12),
-                    Text(
-                      person.memoryPrompt!,
-                      style: TextStyle(
-                        fontSize: 18,
-                        color: Colors.white.withValues(alpha: 0.75),
-                        height: 1.4,
-                      ),
-                    ),
-                  ],
-                  if (hasAudio) ...[
-                    const SizedBox(height: 20),
-                    GestureDetector(
-                      onTap: _toggleAudio,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 24,
-                          vertical: 14,
-                        ),
-                        decoration: BoxDecoration(
-                          color: _playing
-                              ? AppColors.terracotta
-                              : Colors.white.withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(40),
-                          border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.5),
-                            width: 1.5,
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              _playing ? Icons.stop : Icons.volume_up,
-                              color: Colors.white,
-                              size: 22,
-                            ),
-                            const SizedBox(width: 10),
-                            Text(
-                              _playing
-                                  ? 'Stop'
-                                  : (_voiceFile != null ? 'Hear Voice Message' : 'Hear Prompt'),
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.white,
+                Expanded(
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(gutter, 0, gutter, gutter),
+                    child: wide
+                        ? Row(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Expanded(flex: 5, child: photo),
+                              const SizedBox(width: 28),
+                              Expanded(
+                                flex: 5,
+                                child: Center(
+                                  child: SingleChildScrollView(child: details),
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-
-            // Back button
-            Positioned(
-              top: 16,
-              left: 16,
-              child: GestureDetector(
-                onTap: () => Navigator.of(context).pop(),
-                child: Container(
-                  width: 52,
-                  height: 52,
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.4),
-                    shape: BoxShape.circle,
+                            ],
+                          )
+                        : Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Expanded(child: photo),
+                              const SizedBox(height: 20),
+                              ConstrainedBox(
+                                constraints: BoxConstraints(
+                                  maxHeight: constraints.maxHeight * 0.45,
+                                ),
+                                child: SingleChildScrollView(child: details),
+                              ),
+                            ],
+                          ),
                   ),
-                  child: const Icon(Icons.arrow_back, color: Colors.white, size: 26),
                 ),
-              ),
-            ),
-          ],
+              ],
+            );
+          },
         ),
       ),
     );
   }
 
-  Color _placeholderColor(PeopleData p) {
-    final colors = [
-      AppColors.indigo,
-      AppColors.terracotta,
-      AppColors.marigold,
-      AppColors.leafGreen,
-    ];
-    return colors[p.name.codeUnitAt(0) % colors.length];
+  Widget _buildPhoto(PeopleData person) {
+    final color = _placeholderColor(person.name);
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(28),
+      child: _photoFile != null
+          ? Image.file(_photoFile!, fit: BoxFit.cover)
+          : Container(
+              color: color.withValues(alpha: 0.14),
+              child: Center(
+                child: Text(
+                  person.name.isNotEmpty ? person.name[0].toUpperCase() : '?',
+                  style: TextStyle(
+                    fontSize: 140,
+                    fontWeight: FontWeight.w700,
+                    color: color,
+                  ),
+                ),
+              ),
+            ),
+    );
   }
 
-  String _capitalize(String s) =>
-      s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
+  Widget _buildDetails(PeopleData person, bool hasAudio) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          person.name,
+          style: const TextStyle(
+            fontSize: 40,
+            fontWeight: FontWeight.w800,
+            color: AppColors.primaryText,
+            height: 1.1,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          _capitalize(person.relationship),
+          style: const TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.w600,
+            color: AppColors.indigo,
+          ),
+        ),
+        if (person.memoryPrompt != null && person.memoryPrompt!.isNotEmpty) ...[
+          const SizedBox(height: 14),
+          Text(
+            person.memoryPrompt!,
+            style: const TextStyle(
+              fontSize: 21,
+              color: AppColors.secondaryText,
+              height: 1.45,
+            ),
+          ),
+        ],
+        if (hasAudio) ...[
+          const SizedBox(height: 22),
+          SizedBox(
+            height: 64,
+            child: ElevatedButton.icon(
+              onPressed: _toggleAudio,
+              style: ElevatedButton.styleFrom(
+                backgroundColor:
+                    _playing ? AppColors.terracotta : AppColors.indigo,
+                padding: const EdgeInsets.symmetric(horizontal: 26),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(40),
+                ),
+              ),
+              icon: Icon(
+                _playing ? Icons.stop_rounded : Icons.volume_up_rounded,
+                size: 30,
+              ),
+              label: Text(
+                _playing
+                    ? 'Stop'
+                    : (_voiceFile != null ? 'Hear Voice Message' : 'Hear Prompt'),
+                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
 }

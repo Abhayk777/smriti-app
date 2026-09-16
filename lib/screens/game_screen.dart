@@ -11,6 +11,7 @@ import '../core/repo/event_repo.dart';
 import '../core/sync/sync_engine.dart';
 import '../games/cognitive_game.dart';
 import '../games/session_runner.dart';
+import '../ui/smriti_ui.dart';
 
 // Game imports
 import '../games/market_basket/market_basket_game.dart';
@@ -36,7 +37,7 @@ import '../games/sounds_home/sounds_home_widget.dart';
 ///
 /// Manages the session lifecycle, renders whichever game widget is active,
 /// shows session timer, feedback overlay, and exit controls.
-/// Games never touch DB directly — this screen owns the SessionRunner.
+/// Games never touch DB directly; this screen owns the SessionRunner.
 class GameScreen extends StatefulWidget {
   const GameScreen({
     super.key,
@@ -200,85 +201,73 @@ class _GameScreenState extends State<GameScreen> {
         builder: (ctx) {
           final isCompact = MediaQuery.of(ctx).size.height < 500;
           return AlertDialog(
-            backgroundColor: Colors.white,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            contentPadding: EdgeInsets.symmetric(horizontal: 24, vertical: isCompact ? 16 : 24),
+            contentPadding: EdgeInsets.fromLTRB(28, isCompact ? 20 : 32, 28, 24),
             content: SizedBox(
-              width: 360,
+              width: 380,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Container(
-                    width: isCompact ? 46 : 60,
-                    height: isCompact ? 46 : 60,
-                    decoration: BoxDecoration(
-                      color: AppColors.leafGreen.withValues(alpha: 0.15),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      Icons.check_circle_rounded,
-                      color: AppColors.leafGreen,
-                      size: isCompact ? 28 : 36,
-                    ),
+                  IconMedallion(
+                    icon: Icons.check_rounded,
+                    color: AppColors.leafGreen,
+                    size: isCompact ? 64 : 88,
+                    background: AppColors.leafGreen.withValues(alpha: 0.12),
                   ),
-                  SizedBox(height: isCompact ? 8 : 14),
+                  SizedBox(height: isCompact ? 12 : 18),
                   Text(
-                    completed ? 'Session Complete!' : 'Great Effort!',
+                    completed ? 'Session Complete' : 'Great Effort',
+                    textAlign: TextAlign.center,
                     style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w700,
+                      fontSize: 26,
+                      fontWeight: FontWeight.w800,
                       color: AppColors.primaryText,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 6),
                   Text(
                     name,
+                    textAlign: TextAlign.center,
                     style: const TextStyle(
-                      fontSize: 15,
+                      fontSize: 18,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.terracotta,
+                      color: AppColors.terracottaDark,
                     ),
                   ),
-                  SizedBox(height: isCompact ? 10 : 16),
+                  SizedBox(height: isCompact ? 14 : 20),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
                     decoration: BoxDecoration(
                       color: AppColors.pageBackground,
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(16),
                       border: Border.all(color: AppColors.border),
                     ),
                     child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.timer_outlined, color: AppColors.secondaryText, size: 20),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Time Played: $durationStr',
-                          style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.primaryText,
+                        const Icon(Icons.schedule_rounded, color: AppColors.secondaryText, size: 24),
+                        const SizedBox(width: 10),
+                        Flexible(
+                          child: Text(
+                            'Time Played: $durationStr',
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.primaryText,
+                            ),
                           ),
                         ),
                       ],
                     ),
                   ),
-                  SizedBox(height: isCompact ? 12 : 18),
+                  SizedBox(height: isCompact ? 16 : 24),
                   SizedBox(
                     width: double.infinity,
-                    height: isCompact ? 42 : 48,
+                    height: 60,
                     child: ElevatedButton(
                       onPressed: () => Navigator.of(ctx).pop(),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.terracotta,
-                        foregroundColor: AppColors.onColor,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                      ),
                       child: const Text(
                         'Back to Games',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
                       ),
                     ),
                   ),
@@ -340,85 +329,90 @@ class _GameScreenState extends State<GameScreen> {
     final seconds = _elapsed.inSeconds % 60;
     final remaining = 6 - minutes;
     final progress = _elapsed.inSeconds / 360.0;
+    final nearEnd = remaining <= 1;
 
     return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: 20,
-        vertical: isCompact ? 6 : 12,
-      ),
-      decoration: BoxDecoration(
-        color: AppColors.raisedSurface,
-        border: Border(
-          bottom: BorderSide(color: AppColors.border, width: 1),
-        ),
-      ),
-      child: Row(
+      color: AppColors.raisedSurface,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          // Game name
-          Text(
-            _gameName(widget.gameId),
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-              color: AppColors.primaryText,
-            ),
-          ),
-          const Spacer(),
-
-          // Timer
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(
-              color: AppColors.pageBackground,
-              borderRadius: BorderRadius.circular(12),
-            ),
+          Padding(
+            padding: EdgeInsets.fromLTRB(16, isCompact ? 6 : 10, 12, isCompact ? 6 : 10),
             child: Row(
-              mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(
-                  Icons.timer,
-                  size: 20,
-                  color: remaining <= 1
-                      ? AppColors.terracotta
-                      : AppColors.secondaryText,
+                // Game name
+                Expanded(
+                  child: Text(
+                    _gameName(widget.gameId),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.primaryText,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+
+                // Timer
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: nearEnd
+                        ? AppColors.terracotta.withValues(alpha: 0.10)
+                        : AppColors.pageBackground,
+                    borderRadius: BorderRadius.circular(40),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.schedule_rounded,
+                        size: 22,
+                        color: nearEnd
+                            ? AppColors.terracottaDark
+                            : AppColors.secondaryText,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        '$minutes:${seconds.toString().padLeft(2, '0')}',
+                        style: TextStyle(
+                          fontSize: 19,
+                          fontWeight: FontWeight.w700,
+                          fontFeatures: const [FontFeature.tabularFigures()],
+                          color: nearEnd
+                              ? AppColors.terracottaDark
+                              : AppColors.primaryText,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 const SizedBox(width: 8),
-                Text(
-                  '$minutes:${seconds.toString().padLeft(2, '0')}',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: remaining <= 1
-                        ? AppColors.terracotta
-                        : AppColors.primaryText,
+
+                // Exit button
+                IconButton(
+                  tooltip: 'Stop playing',
+                  onPressed: () => _endSession(completed: false),
+                  iconSize: 30,
+                  style: IconButton.styleFrom(
+                    minimumSize: const Size(52, 52),
+                    backgroundColor: AppColors.pageBackground,
                   ),
+                  icon: const Icon(Icons.close_rounded),
+                  color: AppColors.primaryText,
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 12),
 
-          // Progress
-          SizedBox(
-            width: 100,
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: LinearProgressIndicator(
-                value: progress.clamp(0.0, 1.0),
-                backgroundColor: AppColors.border,
-                valueColor:
-                    const AlwaysStoppedAnimation(AppColors.terracotta),
-                minHeight: 6,
-              ),
-            ),
-          ),
-          const SizedBox(width: 16),
-
-          // Exit button
-          IconButton(
-            onPressed: () => _endSession(completed: false),
-            icon: const Icon(Icons.close, size: 28),
-            color: AppColors.secondaryText,
+          // Progress through the 6-minute session
+          LinearProgressIndicator(
+            value: progress.clamp(0.0, 1.0),
+            backgroundColor: AppColors.border,
+            valueColor: const AlwaysStoppedAnimation(AppColors.terracotta),
+            minHeight: 5,
           ),
         ],
       ),
@@ -497,34 +491,41 @@ class _GameScreenState extends State<GameScreen> {
   Widget _buildFeedbackOverlay() {
     final isPraise = _lastFeedback!.tone == FeedbackTone.praise;
     return Positioned(
-      top: 80,
-      left: 0,
-      right: 0,
-      child: Center(
-        child: AnimatedOpacity(
-          opacity: _lastFeedback != null ? 1.0 : 0.0,
-          duration: const Duration(milliseconds: 300),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-            decoration: BoxDecoration(
-              color: isPraise
-                  ? AppColors.leafGreen.withValues(alpha: 0.9)
-                  : AppColors.wovenMat.withValues(alpha: 0.9),
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.15),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Text(
-              isPraise ? '✨ Well done!' : '👍 Nice try!',
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w600,
-                color: AppColors.onColor,
+      top: 84,
+      left: 16,
+      right: 16,
+      child: IgnorePointer(
+        child: Center(
+          child: AnimatedOpacity(
+            opacity: _lastFeedback != null ? 1.0 : 0.0,
+            duration: const Duration(milliseconds: 300),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
+              decoration: BoxDecoration(
+                color: isPraise ? AppColors.leafGreen : AppColors.raisedSurface,
+                borderRadius: BorderRadius.circular(40),
+                border: isPraise
+                    ? null
+                    : Border.all(color: AppColors.border, width: 1.5),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    isPraise ? Icons.check_circle_rounded : Icons.thumb_up_alt_rounded,
+                    color: isPraise ? AppColors.onColor : AppColors.indigo,
+                    size: 26,
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    isPraise ? 'Well done!' : 'Nice try!',
+                    style: TextStyle(
+                      fontSize: 21,
+                      fontWeight: FontWeight.w700,
+                      color: isPraise ? AppColors.onColor : AppColors.primaryText,
+                    ),
+                  ),
+                ],
               ),
             ),
           ),

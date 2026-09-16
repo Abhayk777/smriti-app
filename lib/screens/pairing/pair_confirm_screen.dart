@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 
 import '../../app_colors.dart';
 import '../../core/auth/pairing_service.dart';
+import '../../ui/smriti_ui.dart';
 
 /// Last step of the caregiver-login path: confirm which patient this tablet
 /// becomes, then pair.
 ///
-/// Pops `true` on success. Whatever happens — confirm, cancel, or error — the
+/// Pops `true` on success. Whatever happens (confirm, cancel, or error) the
 /// caregiver session is signed out by [PairingService] before this screen goes
 /// away, so the tablet never keeps caregiver credentials (AGENTS.md #8).
 class PairConfirmScreen extends StatefulWidget {
@@ -38,8 +39,7 @@ class _PairConfirmScreenState extends State<PairConfirmScreen> {
     });
 
     try {
-      await widget.pairingService
-          .completeCaregiverPairing(widget.patient.id);
+      await widget.pairingService.completeCaregiverPairing(widget.patient.id);
       _sessionSpent = true;
       if (!mounted) return;
       Navigator.of(context).pop(true);
@@ -89,81 +89,89 @@ class _PairConfirmScreenState extends State<PairConfirmScreen> {
           ),
         ),
         body: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(28, 24, 28, 28),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'This tablet will be set up for',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: AppColors.secondaryText,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  widget.patient.displayName,
-                  key: const Key('confirm_patient_name'),
-                  style: const TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.primaryText,
-                  ),
-                ),
-                const SizedBox(height: 20),
-                Text(
-                  'You will be signed out on this tablet as soon as pairing '
-                  'finishes. Any tablet previously paired to this patient '
-                  'stops syncing.',
-                  style: TextStyle(
-                    fontSize: 15,
-                    height: 1.4,
-                    color: AppColors.secondaryText,
-                  ),
-                ),
-                const SizedBox(height: 24),
-                if (_error != null) ...[
-                  Text(
-                    _error!,
-                    key: const Key('confirm_error'),
-                    style: const TextStyle(
-                      fontSize: 15,
-                      color: AppColors.terracottaDark,
+          child: MaxWidth(
+            maxWidth: 600,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(24, 24, 24, 28),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'This device will be set up for',
+                    style: TextStyle(
+                      fontSize: 17,
+                      color: AppColors.secondaryText,
                     ),
                   ),
-                  const SizedBox(height: 16),
-                ],
-                SizedBox(
-                  width: double.infinity,
-                  height: 60,
-                  child: ElevatedButton(
-                    key: const Key('confirm_pair_button'),
-                    onPressed: _isPairing ? null : _confirm,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.terracotta,
-                      foregroundColor: AppColors.onColor,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(18),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      const IconMedallion(
+                        icon: Icons.person_rounded,
+                        color: AppColors.indigo,
+                        size: 60,
+                        background: AppColors.raisedSurface,
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Text(
+                          widget.patient.displayName,
+                          key: const Key('confirm_patient_name'),
+                          style: const TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.primaryText,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  const Text(
+                    'You will be signed out on this device as soon as pairing '
+                    'finishes. Any device previously paired to this patient '
+                    'stops syncing.',
+                    style: TextStyle(
+                      fontSize: 15,
+                      height: 1.4,
+                      color: AppColors.secondaryText,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  if (_error != null) ...[
+                    Text(
+                      _error!,
+                      key: const Key('confirm_error'),
+                      style: const TextStyle(
+                        fontSize: 15,
+                        color: AppColors.terracottaDark,
                       ),
                     ),
-                    child: _isPairing
-                        ? const SizedBox(
-                            width: 26,
-                            height: 26,
-                            child: CircularProgressIndicator(strokeWidth: 3),
-                          )
-                        : const Text(
-                            'Pair this tablet',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w700,
+                    const SizedBox(height: 16),
+                  ],
+                  SizedBox(
+                    width: double.infinity,
+                    height: 60,
+                    child: ElevatedButton(
+                      key: const Key('confirm_pair_button'),
+                      onPressed: _isPairing ? null : _confirm,
+                      child: _isPairing
+                          ? const SizedBox(
+                              width: 26,
+                              height: 26,
+                              child: CircularProgressIndicator(strokeWidth: 3),
+                            )
+                          : const Text(
+                              'Pair this device',
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
-                          ),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),

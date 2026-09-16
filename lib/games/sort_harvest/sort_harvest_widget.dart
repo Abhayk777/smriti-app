@@ -103,14 +103,16 @@ class _SortHarvestWidgetState extends State<SortHarvestWidget> {
 
           // Sorting mats
           if (!_answered)
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            Wrap(
+              alignment: WrapAlignment.center,
+              spacing: isCompact ? 12 : 20,
+              runSpacing: isCompact ? 12 : 20,
               children: _mats.map((m) => _buildMat(m, isCompact)).toList(),
             )
           else
             const Center(
-              child: Icon(Icons.check_circle,
-                  size: 50, color: AppColors.leafGreen),
+              child: Icon(Icons.check_circle_rounded,
+                  size: 56, color: AppColors.leafGreen),
             ),
         ],
       ),
@@ -126,13 +128,6 @@ class _SortHarvestWidgetState extends State<SortHarvestWidget> {
         color: AppColors.raisedSurface,
         borderRadius: BorderRadius.circular(isCompact ? 14 : 20),
         border: Border.all(color: AppColors.marigold, width: isCompact ? 2 : 3),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.12),
-            blurRadius: isCompact ? 6 : 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -177,7 +172,7 @@ class _SortHarvestWidgetState extends State<SortHarvestWidget> {
                 color: color.withValues(alpha: 0.3),
                 shape: BoxShape.circle,
               ),
-              child: Icon(Icons.place, color: color, size: isCompact ? 20 : 30),
+              child: Icon(Icons.place_rounded, color: color, size: isCompact ? 20 : 30),
             ),
             SizedBox(height: isCompact ? 6 : 12),
             Text(

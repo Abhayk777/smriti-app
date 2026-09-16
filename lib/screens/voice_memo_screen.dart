@@ -15,6 +15,7 @@ import '../core/db/database.dart';
 import '../core/files/file_paths.dart';
 import '../core/repo/memo_repo.dart';
 import '../core/sync/sync_engine.dart';
+import '../ui/smriti_ui.dart';
 
 /// Screen allowing the elder to record voice memos and listen to previous recordings.
 ///
@@ -239,23 +240,32 @@ class _VoiceMemoScreenState extends State<VoiceMemoScreen> {
           children: [
             _buildHeader(context),
             Expanded(
-              child: Row(
-                children: [
-                  // Left panel: Record action
-                  Expanded(
-                    flex: 4,
-                    child: _buildRecordPanel(),
-                  ),
-                  Container(
-                    width: 1.5,
-                    color: AppColors.border,
-                  ),
-                  // Right panel: Memo list
-                  Expanded(
-                    flex: 5,
-                    child: _buildMemosList(),
-                  ),
-                ],
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final wide = constraints.maxWidth >= 720 &&
+                      constraints.maxWidth > constraints.maxHeight;
+                  if (wide) {
+                    return Row(
+                      children: [
+                        // Left panel: Record action
+                        Expanded(flex: 4, child: _buildRecordPanel()),
+                        Container(width: 1.5, color: AppColors.border),
+                        // Right panel: Memo list
+                        Expanded(flex: 5, child: _buildMemosList()),
+                      ],
+                    );
+                  }
+                  return Column(
+                    children: [
+                      SizedBox(
+                        height: (constraints.maxHeight * 0.46).clamp(260.0, 380.0),
+                        child: _buildRecordPanel(),
+                      ),
+                      Container(height: 1.5, color: AppColors.border),
+                      Expanded(child: _buildMemosList()),
+                    ],
+                  );
+                },
               ),
             ),
           ],
@@ -265,97 +275,81 @@ class _VoiceMemoScreenState extends State<VoiceMemoScreen> {
   }
 
   Widget _buildHeader(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-      decoration: const BoxDecoration(
-        color: AppColors.raisedSurface,
-        border: Border(bottom: BorderSide(color: AppColors.border, width: 1)),
-      ),
-      child: Row(
-        children: [
-          GestureDetector(
-            onTap: () async {
-              if (_isRecording) {
-                await _stopRecording();
-              }
-              await _audioPlayer.stop();
-              if (context.mounted) Navigator.of(context).pop();
-            },
-            child: Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: AppColors.terracotta.withValues(alpha: 0.12),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.arrow_back, color: AppColors.terracotta, size: 24),
-            ),
-          ),
-          const SizedBox(width: 16),
-          const Text(
-            '✉️  Message Caregiver',
-            style: TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.w700,
-              color: AppColors.primaryText,
-            ),
-          ),
-        ],
-      ),
+    return ScreenHeader(
+      title: 'Message',
+      subtitle: 'Send a voice message to your family',
+      icon: Icons.mic_rounded,
+      color: AppColors.riverTeal,
+      onBack: () async {
+        if (_isRecording) {
+          await _stopRecording();
+        }
+        await _audioPlayer.stop();
+        if (context.mounted) Navigator.of(context).pop();
+      },
     );
   }
 
   Widget _buildRecordPanel() {
+    final color = _isRecording ? AppColors.recordingDot : AppColors.riverTeal;
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          GestureDetector(
-            onTap: _toggleRecord,
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 300),
-              width: _isRecording ? 140 : 120,
-              height: _isRecording ? 140 : 120,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: _isRecording ? AppColors.recordingDot : AppColors.terracotta,
-                boxShadow: [
-                  BoxShadow(
-                    color: (_isRecording ? AppColors.recordingDot : AppColors.terracotta)
-                        .withValues(alpha: 0.4),
-                    blurRadius: _isRecording ? 30 : 16,
-                    spreadRadius: _isRecording ? 6 : 2,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Semantics(
+              button: true,
+              label: _isRecording ? 'Stop recording' : 'Start recording',
+              child: GestureDetector(
+                onTap: _toggleRecord,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 250),
+                  width: 168,
+                  height: 168,
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: color.withValues(alpha: 0.12),
                   ),
-                ],
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 250),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: color,
+                    ),
+                    child: Icon(
+                      _isRecording ? Icons.stop_rounded : Icons.mic_rounded,
+                      size: 68,
+                      color: AppColors.onColor,
+                    ),
+                  ),
+                ),
               ),
-              child: Icon(
-                _isRecording ? Icons.stop_rounded : Icons.mic_rounded,
-                size: _isRecording ? 64 : 54,
-                color: Colors.white,
+            ),
+            const SizedBox(height: 20),
+            Text(
+              _isRecording ? 'Recording...' : 'Tap to Record',
+              style: TextStyle(
+                fontSize: 26,
+                fontWeight: FontWeight.w800,
+                color: _isRecording ? AppColors.recordingDot : AppColors.primaryText,
               ),
             ),
-          ),
-          const SizedBox(height: 24),
-          Text(
-            _isRecording ? 'Recording...' : 'Tap to Record',
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.w700,
-              color: _isRecording ? AppColors.recordingDot : AppColors.primaryText,
+            const SizedBox(height: 6),
+            Text(
+              _isRecording
+                  ? _formatDuration(_recordSeconds)
+                  : 'Send a voice message',
+              style: TextStyle(
+                fontSize: _isRecording ? 30 : 18,
+                fontWeight: _isRecording ? FontWeight.w800 : FontWeight.w500,
+                color: _isRecording ? AppColors.recordingDot : AppColors.secondaryText,
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
             ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            _isRecording
-                ? _formatDuration(_recordSeconds)
-                : 'Send a voice message',
-            style: TextStyle(
-              fontSize: _isRecording ? 28 : 16,
-              fontWeight: _isRecording ? FontWeight.w800 : FontWeight.w500,
-              color: _isRecording ? AppColors.recordingDot : AppColors.secondaryText,
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -363,90 +357,94 @@ class _VoiceMemoScreenState extends State<VoiceMemoScreen> {
   Widget _buildMemosList() {
     if (_loadingMemos) {
       return const Center(
-        child: CircularProgressIndicator(color: AppColors.terracotta),
+        child: CircularProgressIndicator(color: AppColors.riverTeal),
       );
     }
 
     if (_memos.isEmpty) {
-      return const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.mic_none_rounded, size: 64, color: AppColors.border),
-            SizedBox(height: 12),
-            Text(
-              'No messages sent yet.',
-              style: TextStyle(fontSize: 18, color: AppColors.secondaryText),
-            ),
-          ],
-        ),
+      return const EmptyState(
+        icon: Icons.mic_none_rounded,
+        color: AppColors.riverTeal,
+        title: 'No messages sent yet.',
       );
     }
 
+    final gutter = Screen.gutter(context);
     return ListView.builder(
-      padding: const EdgeInsets.all(20),
-      itemCount: _memos.length,
+      padding: EdgeInsets.fromLTRB(gutter, 16, gutter, 24),
+      itemCount: _memos.length + 1,
       itemBuilder: (context, index) {
-        final memo = _memos[index];
+        if (index == 0) {
+          return const Padding(
+            padding: EdgeInsets.only(bottom: 12, left: 4),
+            child: Text(
+              'Your messages',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: AppColors.primaryText,
+              ),
+            ),
+          );
+        }
+        final memo = _memos[index - 1];
         final isPlayingThis =
             _currentlyPlayingId == memo.id && (_playerState?.playing ?? false);
 
         return Container(
           margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: BoxDecoration(
+          child: PressableCard(
+            onTap: () => _playMemo(memo),
             color: isPlayingThis
-                ? AppColors.terracotta.withValues(alpha: 0.1)
+                ? AppColors.riverTeal.withValues(alpha: 0.10)
                 : AppColors.raisedSurface,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: isPlayingThis ? AppColors.terracotta : AppColors.border,
-              width: isPlayingThis ? 2 : 1,
-            ),
-          ),
-          child: Row(
-            children: [
-              GestureDetector(
-                onTap: () => _playMemo(memo),
-                child: Container(
-                  width: 48,
-                  height: 48,
+            borderColor: isPlayingThis ? AppColors.riverTeal : AppColors.border,
+            radius: 20,
+            semanticLabel: isPlayingThis ? 'Pause message' : 'Play message',
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            child: Row(
+              children: [
+                Container(
+                  width: 56,
+                  height: 56,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: isPlayingThis ? AppColors.terracotta : AppColors.terracotta.withValues(alpha: 0.15),
+                    color: isPlayingThis
+                        ? AppColors.riverTeal
+                        : AppColors.riverTeal.withValues(alpha: 0.12),
                   ),
                   child: Icon(
                     isPlayingThis ? Icons.pause_rounded : Icons.play_arrow_rounded,
-                    color: isPlayingThis ? Colors.white : AppColors.terracotta,
-                    size: 30,
+                    color: isPlayingThis ? AppColors.onColor : AppColors.riverTeal,
+                    size: 34,
                   ),
                 ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _formatMemoDate(memo.recordedAt),
-                      style: const TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.primaryText,
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _formatMemoDate(memo.recordedAt),
+                        style: const TextStyle(
+                          fontSize: 19,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.primaryText,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      _formatDuration((memo.durationMs / 1000).round()),
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: AppColors.secondaryText,
+                      const SizedBox(height: 2),
+                      Text(
+                        _formatDuration((memo.durationMs / 1000).round()),
+                        style: const TextStyle(
+                          fontSize: 16,
+                          color: AppColors.secondaryText,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         );
       },

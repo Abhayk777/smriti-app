@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../app_colors.dart';
 import '../core/db/app_database.dart';
 import '../core/reminders/reminder_permissions.dart';
 import 'home_screen.dart';
@@ -41,8 +42,9 @@ class _MainScreenState extends State<MainScreen> {
         final start = snapshot.data;
         if (start == null) {
           return const Scaffold(
+            backgroundColor: AppColors.pageBackground,
             body: Center(
-              child: CircularProgressIndicator(),
+              child: CircularProgressIndicator(color: AppColors.terracotta),
             ),
           );
         }

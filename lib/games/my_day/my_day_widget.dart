@@ -153,7 +153,7 @@ class _MyDayWidgetState extends State<MyDayWidget> {
     return Column(
       children: [
         Text(
-          'Put these in the right order — morning to night:',
+          'Put these in order, from morning to night:',
           style: TextStyle(
             fontSize: isCompact ? 17 : 22,
             fontWeight: FontWeight.w600,
@@ -183,21 +183,16 @@ class _MyDayWidgetState extends State<MyDayWidget> {
           ElevatedButton(
             onPressed: _onReorderComplete,
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.terracotta,
-              foregroundColor: AppColors.onColor,
               padding: EdgeInsets.symmetric(
-                horizontal: isCompact ? 28 : 40,
-                vertical: isCompact ? 10 : 16,
-              ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
+                horizontal: isCompact ? 32 : 48,
+                vertical: isCompact ? 12 : 18,
               ),
             ),
             child: Text(
               'Done',
               style: TextStyle(
-                fontSize: isCompact ? 15 : 18,
-                fontWeight: FontWeight.w600,
+                fontSize: isCompact ? 17 : 20,
+                fontWeight: FontWeight.w700,
               ),
             ),
           ),
@@ -225,16 +220,18 @@ class _MyDayWidgetState extends State<MyDayWidget> {
             style: TextStyle(fontSize: isCompact ? 22 : 30),
           ),
           const SizedBox(width: 16),
-          Text(
-            (event['label'] as String?) ?? '',
-            style: TextStyle(
-              fontSize: isCompact ? 16 : 20,
-              fontWeight: FontWeight.w600,
-              color: AppColors.primaryText,
+          Expanded(
+            child: Text(
+              (event['label'] as String?) ?? '',
+              style: TextStyle(
+                fontSize: isCompact ? 17 : 20,
+                fontWeight: FontWeight.w600,
+                color: AppColors.primaryText,
+              ),
             ),
           ),
-          const Spacer(),
-          Icon(Icons.drag_handle, color: AppColors.ghostHand, size: isCompact ? 22 : 28),
+          const SizedBox(width: 8),
+          Icon(Icons.drag_handle_rounded, color: AppColors.ghostHand, size: isCompact ? 24 : 30),
         ],
       ),
     );
@@ -250,7 +247,7 @@ class _MyDayWidgetState extends State<MyDayWidget> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.calendar_today, size: isCompact ? 36 : 50, color: AppColors.marigold),
+          Icon(Icons.calendar_today_rounded, size: isCompact ? 36 : 52, color: AppColors.marigoldDark),
           SizedBox(height: isCompact ? 10 : 20),
           Text(
             questionText,
@@ -295,7 +292,7 @@ class _MyDayWidgetState extends State<MyDayWidget> {
               }).toList(),
             )
           else
-            Icon(Icons.check_circle, size: isCompact ? 40 : 60, color: AppColors.leafGreen),
+            Icon(Icons.check_circle_rounded, size: isCompact ? 40 : 60, color: AppColors.leafGreen),
         ],
       ),
     );

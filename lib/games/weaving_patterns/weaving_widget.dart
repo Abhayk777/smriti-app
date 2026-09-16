@@ -39,8 +39,8 @@ class _WeavingWidgetState extends State<WeavingWidget> {
   void initState() {
     super.initState();
     _shownAt = DateTime.now();
-    _targetPattern =
-        (widget.item.payload['targetPattern'] as List<Object?>).cast<int>();
+    _targetPattern = (widget.item.payload['targetPattern'] as List<Object?>)
+        .cast<int>();
     _patternType = widget.item.payload['patternType'] as String;
     _options = (widget.item.payload['options'] as List<Object?>)
         .cast<Map<String, Object>>();
@@ -80,60 +80,69 @@ class _WeavingWidgetState extends State<WeavingWidget> {
           const SizedBox(height: 24),
 
           // Target pattern (large)
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: AppColors.raisedSurface,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: AppColors.marigold, width: 3),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.marigold.withValues(alpha: 0.2),
-                  blurRadius: 12,
-                ),
-              ],
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppColors.raisedSurface,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: AppColors.marigold, width: 3),
+              ),
+              child: _buildPattern(_targetPattern, size: 36),
             ),
-            child: _buildPattern(_targetPattern, size: 36),
           ),
-          const SizedBox(height: 30),
+          const SizedBox(height: 24),
 
           // Options
           if (!_answered)
             Expanded(
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: _options.map((option) {
-                  final optionPattern =
-                      (option['pattern'] as List<Object?>).cast<int>();
-                  final optionId = option['id'] as String;
-                  return GestureDetector(
-                    onTap: () => _onOptionTap(optionId),
-                    child: Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: AppColors.raisedSurface,
-                        borderRadius: BorderRadius.circular(16),
-                        border:
-                            Border.all(color: AppColors.border, width: 1.5),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.08),
-                            blurRadius: 4,
-                            offset: const Offset(0, 2),
+              child: LayoutBuilder(
+                builder: (context, constraints) => SingleChildScrollView(
+                  child: Wrap(
+                    alignment: WrapAlignment.center,
+                    spacing: 16,
+                    runSpacing: 16,
+                    children: _options.map((option) {
+                      final optionPattern = (option['pattern'] as List<Object?>)
+                          .cast<int>();
+                      final optionId = option['id'] as String;
+                      return GestureDetector(
+                        onTap: () => _onOptionTap(optionId),
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(
+                            maxWidth: constraints.maxWidth,
                           ),
-                        ],
-                      ),
-                      child: _buildPattern(optionPattern, size: 24),
-                    ),
-                  );
-                }).toList(),
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: AppColors.raisedSurface,
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: AppColors.border,
+                                  width: 1.5,
+                                ),
+                              ),
+                              child: _buildPattern(optionPattern, size: 28),
+                            ),
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
               ),
             )
           else
             const Expanded(
               child: Center(
-                child: Icon(Icons.check_circle,
-                    size: 60, color: AppColors.leafGreen),
+                child: Icon(
+                  Icons.check_circle_rounded,
+                  size: 60,
+                  color: AppColors.leafGreen,
+                ),
               ),
             ),
         ],
@@ -170,10 +179,7 @@ class _WeavingWidgetState extends State<WeavingWidget> {
             block = Container(
               width: size,
               height: size,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: color,
-              ),
+              decoration: BoxDecoration(shape: BoxShape.circle, color: color),
             );
           case 'crosses':
             block = SizedBox(
@@ -187,11 +193,7 @@ class _WeavingWidgetState extends State<WeavingWidget> {
               painter: _ChevronPainter(color: color),
             );
           default: // stripes
-            block = Container(
-              width: size,
-              height: size,
-              color: color,
-            );
+            block = Container(width: size, height: size, color: color);
         }
 
         return Padding(

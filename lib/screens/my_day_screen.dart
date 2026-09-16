@@ -7,14 +7,15 @@ import '../core/db/app_database.dart';
 import '../core/db/database.dart';
 import '../core/repo/content_repo.dart';
 import '../core/sync/sync_engine.dart';
+import '../ui/smriti_ui.dart';
 
 /// Shows the elder's daily routine as a warm timeline.
 ///
-/// Reads `RoutineItems` from local SQLite — only the routine the caregiver
+/// Reads `RoutineItems` from local SQLite: only the routine the caregiver
 /// set on the web app, never placeholder data. Until one arrives, a gentle
 /// "will be updated soon" message is shown instead.
 /// Highlights the current / next item. Past items are dimmed.
-/// No medication items are shown here — those live in MedicineScreen.
+/// No medication items are shown here; those live in MedicineScreen.
 class MyDayScreen extends StatefulWidget {
   const MyDayScreen({super.key});
 
@@ -68,7 +69,12 @@ class _MyDayScreenState extends State<MyDayScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            _buildHeader(context),
+            ScreenHeader(
+              title: 'My Day',
+              subtitle: _dateString(),
+              icon: Icons.wb_sunny_rounded,
+              color: AppColors.marigoldDark,
+            ),
             Expanded(
               child: _loading
                   ? const Center(
@@ -84,81 +90,12 @@ class _MyDayScreenState extends State<MyDayScreen> {
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
-    final dateStr = _dateString();
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-      decoration: const BoxDecoration(
-        color: AppColors.raisedSurface,
-        border: Border(bottom: BorderSide(color: AppColors.border, width: 1)),
-      ),
-      child: Row(
-        children: [
-          GestureDetector(
-            onTap: () => Navigator.of(context).pop(),
-            child: Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: AppColors.marigold.withValues(alpha: 0.12),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.arrow_back, color: AppColors.marigold, size: 24),
-            ),
-          ),
-          const SizedBox(width: 16),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                '📅  My Day',
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.primaryText,
-                ),
-              ),
-              Text(
-                dateStr,
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: AppColors.secondaryText,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildEmpty() {
-    return const Center(
-      child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: 32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text('🌼', style: TextStyle(fontSize: 72)),
-            SizedBox(height: 16),
-            Text(
-              'Your routine will be updated soon',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.w700,
-                color: AppColors.primaryText,
-              ),
-            ),
-            SizedBox(height: 8),
-            Text(
-              'Your family will add your daily plan here.',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 18, color: AppColors.secondaryText),
-            ),
-          ],
-        ),
-      ),
+    return const EmptyState(
+      icon: Icons.event_note_rounded,
+      color: AppColors.marigoldDark,
+      title: 'Your routine will be updated soon',
+      message: 'Your family will add your daily plan here.',
     );
   }
 
@@ -172,20 +109,24 @@ class _MyDayScreenState extends State<MyDayScreen> {
       }
     }
 
+    final gutter = Screen.gutter(context);
     return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      padding: EdgeInsets.fromLTRB(gutter, 20, gutter, 24),
       itemCount: _items.length,
       itemBuilder: (context, index) {
         final item = _items[index];
         final isPast = item.timeMin < _nowMin;
         final isActive = index == activeIndex && !isPast;
 
-        return _TimelineItem(
-          entry: item,
-          isPast: isPast,
-          isActive: isActive,
-          timeLabel: _formatTime(item.timeMin),
-          isLast: index == _items.length - 1,
+        return MaxWidth(
+          maxWidth: 820,
+          child: _TimelineItem(
+            entry: item,
+            isPast: isPast,
+            isActive: isActive,
+            timeLabel: _formatTime(item.timeMin),
+            isLast: index == _items.length - 1,
+          ),
         );
       },
     );
@@ -225,7 +166,7 @@ class _TimelineItem extends StatelessWidget {
         ? AppColors.marigold
         : isPast
             ? AppColors.border
-            : AppColors.secondaryText.withValues(alpha: 0.4);
+            : AppColors.secondaryText.withValues(alpha: 0.45);
 
     return IntrinsicHeight(
       child: Row(
@@ -233,25 +174,26 @@ class _TimelineItem extends StatelessWidget {
         children: [
           // Timeline line + dot
           SizedBox(
-            width: 48,
+            width: 36,
             child: Column(
               children: [
+                const SizedBox(height: 26),
                 Container(
-                  width: 16,
-                  height: 16,
+                  width: isActive ? 22 : 16,
+                  height: isActive ? 22 : 16,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     color: dotColor,
                     border: isActive
-                        ? Border.all(color: AppColors.marigoldDark, width: 2)
+                        ? Border.all(color: AppColors.marigoldDark, width: 3)
                         : null,
                   ),
                 ),
                 if (!isLast)
                   Expanded(
                     child: Container(
-                      width: 2,
-                      margin: const EdgeInsets.symmetric(vertical: 4),
+                      width: 3,
+                      margin: const EdgeInsets.only(top: 4),
                       color: AppColors.border,
                     ),
                   ),
@@ -262,29 +204,42 @@ class _TimelineItem extends StatelessWidget {
           // Card
           Expanded(
             child: Padding(
-              padding: EdgeInsets.only(bottom: isLast ? 0 : 10),
+              padding: EdgeInsets.only(bottom: isLast ? 0 : 12, left: 8),
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                margin: const EdgeInsets.only(left: 8),
                 decoration: BoxDecoration(
                   color: isActive
-                      ? AppColors.marigold.withValues(alpha: 0.12)
+                      ? AppColors.marigold.withValues(alpha: 0.16)
                       : isPast
-                          ? AppColors.wovenMat.withValues(alpha: 0.4)
+                          ? AppColors.bottomStrip.withValues(alpha: 0.6)
                           : AppColors.raisedSurface,
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(22),
                   border: Border.all(
                     color: isActive ? AppColors.marigold : AppColors.border,
-                    width: isActive ? 2 : 1,
+                    width: isActive ? 2.5 : 1.5,
                   ),
                 ),
                 child: Row(
                   children: [
-                    Text(
-                      entry.iconAsset,
-                      style: TextStyle(fontSize: isActive ? 32 : 26),
+                    Container(
+                      width: isActive ? 60 : 52,
+                      height: isActive ? 60 : 52,
+                      decoration: BoxDecoration(
+                        color: isActive
+                            ? AppColors.raisedSurface
+                            : AppColors.medallion,
+                        shape: BoxShape.circle,
+                      ),
+                      alignment: Alignment.center,
+                      child: Opacity(
+                        opacity: isPast ? 0.6 : 1,
+                        child: Text(
+                          entry.iconAsset,
+                          style: TextStyle(fontSize: isActive ? 30 : 26),
+                        ),
+                      ),
                     ),
-                    const SizedBox(width: 14),
+                    const SizedBox(width: 16),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -292,23 +247,24 @@ class _TimelineItem extends StatelessWidget {
                           Text(
                             entry.labelKey,
                             style: TextStyle(
-                              fontSize: isActive ? 20 : 17,
+                              fontSize: isActive ? 23 : 20,
                               fontWeight: isActive
-                                  ? FontWeight.w700
-                                  : FontWeight.w500,
+                                  ? FontWeight.w800
+                                  : FontWeight.w600,
                               color: isPast
                                   ? AppColors.secondaryText
                                   : AppColors.primaryText,
                             ),
                           ),
+                          const SizedBox(height: 2),
                           Text(
                             timeLabel,
                             style: TextStyle(
-                              fontSize: 14,
+                              fontSize: 17,
                               color: isActive
                                   ? AppColors.marigoldDark
                                   : AppColors.secondaryText,
-                              fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
+                              fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
                             ),
                           ),
                         ],
@@ -317,19 +273,19 @@ class _TimelineItem extends StatelessWidget {
                     if (isActive)
                       Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 4,
+                          horizontal: 14,
+                          vertical: 6,
                         ),
                         decoration: BoxDecoration(
-                          color: AppColors.marigold,
+                          color: AppColors.marigoldDark,
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: const Text(
                           'Now',
                           style: TextStyle(
-                            fontSize: 13,
+                            fontSize: 16,
                             fontWeight: FontWeight.w700,
-                            color: Colors.white,
+                            color: AppColors.onColor,
                           ),
                         ),
                       ),

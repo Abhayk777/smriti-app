@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../app_colors.dart';
 import '../core/db/app_database.dart';
 import '../core/sync/sync_engine.dart';
+import '../ui/smriti_ui.dart';
 import 'diagnostics_screen.dart';
 import 'family_screen.dart';
 import 'game_select_screen.dart';
@@ -14,14 +15,13 @@ import 'voice_memo_screen.dart';
 
 /// Main home screen for the elder.
 ///
-/// Large, warm, culturally-informed design. Shows:
-/// - Greeting with time of day
-/// - Large clock
-/// - Game button (primary action)
-/// - Medication reminders (when due)
-/// - Quick actions (voice memo, people album)
+/// A calm greeting with the time and date, then one large tile per activity:
+/// games, family, today's routine, medicines and voice messages. Phones show
+/// the tiles as a single column under the greeting; wide tablets place the
+/// greeting on the left and the tiles on the right.
 ///
-/// Hidden diagnostics access: long-press bottom-left corner (AGENTS.md #9).
+/// Hidden diagnostics access: tap the greeting five times, or the bottom-left
+/// corner five times (AGENTS.md #9).
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -29,16 +29,13 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen>
-    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
+class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   String _elderName = '';
   Timer? _clockTimer;
   DateTime _now = DateTime.now();
   int _diagnosticsTapCount = 0;
   Timer? _diagnosticsTapResetTimer;
   Timer? _periodicSyncTimer;
-
-  late AnimationController _breathController;
 
   @override
   void initState() {
@@ -48,11 +45,6 @@ class _HomeScreenState extends State<HomeScreen>
     _clockTimer = Timer.periodic(const Duration(seconds: 30), (_) {
       if (mounted) setState(() => _now = DateTime.now());
     });
-
-    _breathController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 3),
-    )..repeat(reverse: true);
 
     // Trigger initial sync and heartbeat
     unawaited(SyncEngine.defaultInstance.run(trigger: SyncTrigger.appForeground));
@@ -66,6 +58,7 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
+      if (mounted) setState(() => _now = DateTime.now());
       unawaited(SyncEngine.defaultInstance.run(trigger: SyncTrigger.appForeground));
     }
   }
@@ -76,7 +69,6 @@ class _HomeScreenState extends State<HomeScreen>
     _clockTimer?.cancel();
     _diagnosticsTapResetTimer?.cancel();
     _periodicSyncTimer?.cancel();
-    _breathController.dispose();
     super.dispose();
   }
 
@@ -88,18 +80,12 @@ class _HomeScreenState extends State<HomeScreen>
 
   String _greeting() {
     final hour = _now.hour;
-    if (hour < 12) return 'Good Morning';
-    if (hour < 17) return 'Good Afternoon';
-    return 'Good Evening';
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    return 'Good evening';
   }
 
-  String _timeString() {
-    final hour = _now.hour;
-    final minute = _now.minute;
-    final period = hour >= 12 ? 'PM' : 'AM';
-    final displayHour = hour == 0 ? 12 : (hour > 12 ? hour - 12 : hour);
-    return '$displayHour:${minute.toString().padLeft(2, '0')} $period';
-  }
+  String _timeString() => formatClock(_now.hour, _now.minute);
 
   String _dateString() {
     const days = [
@@ -128,6 +114,50 @@ class _HomeScreenState extends State<HomeScreen>
     }
   }
 
+  void _open(Widget screen) {
+    Navigator.of(context).push(MaterialPageRoute(builder: (_) => screen));
+  }
+
+  List<_HomeAction> get _actions => [
+        _HomeAction(
+          title: 'Play',
+          subtitle: 'Games for the mind',
+          icon: Icons.extension_rounded,
+          color: AppColors.terracotta,
+          onTap: () => _open(const GameSelectScreen()),
+        ),
+        _HomeAction(
+          title: 'My Family',
+          subtitle: 'Your loved ones',
+          icon: Icons.people_alt_rounded,
+          color: AppColors.indigo,
+          onTap: () => _open(const FamilyScreen()),
+        ),
+        _HomeAction(
+          title: 'My Day',
+          subtitle: 'Your day at a glance',
+          icon: Icons.wb_sunny_rounded,
+          color: AppColors.marigold,
+          foreground: AppColors.primaryText,
+          iconColor: AppColors.marigoldDark,
+          onTap: () => _open(const MyDayScreen()),
+        ),
+        _HomeAction(
+          title: 'Medicine',
+          subtitle: 'Today\'s medicines',
+          icon: Icons.medication_rounded,
+          color: AppColors.leafGreen,
+          onTap: () => _open(const MedicineScreen()),
+        ),
+        _HomeAction(
+          title: 'Message',
+          subtitle: 'Send a voice note',
+          icon: Icons.mic_rounded,
+          color: AppColors.riverTeal,
+          onTap: () => _open(const VoiceMemoScreen()),
+        ),
+      ];
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -135,26 +165,14 @@ class _HomeScreenState extends State<HomeScreen>
       body: SafeArea(
         child: Stack(
           children: [
-            // Background decorative elements
-            _buildDecorations(),
-
-            // Main content
-            SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-              child: Column(
-                children: [
-                  // Top: greeting and clock
-                  _buildGreetingSection(),
-                  const SizedBox(height: 24),
-
-                  // Center: main actions
-                  _buildMainActions(),
-                  const SizedBox(height: 24),
-
-                  // Bottom: quick actions
-                  _buildQuickActions(),
-                ],
-              ),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final wide = constraints.maxWidth >= 720 &&
+                    constraints.maxWidth > constraints.maxHeight;
+                return wide
+                    ? _buildWideLayout(constraints)
+                    : _buildPortraitLayout(constraints);
+              },
             ),
 
             // Hidden diagnostics tap area (bottom-left corner)
@@ -173,32 +191,70 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  Widget _buildDecorations() {
-    return Stack(
-      children: [
-        // Top-right decorative circle
-        Positioned(
-          top: -40,
-          right: -40,
-          child: Container(
-            width: 200,
-            height: 200,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: AppColors.marigold.withValues(alpha: 0.08),
+  // Phones, and tablets held upright.
+  Widget _buildPortraitLayout(BoxConstraints constraints) {
+    final gutter = constraints.maxWidth >= 600 ? 32.0 : 18.0;
+    final actions = _actions;
+    const gap = 14.0;
+    // Fit all tiles on screen when there is room; scroll otherwise.
+    final headerHeight = (constraints.maxHeight * 0.21).clamp(170.0, 230.0);
+    final available =
+        constraints.maxHeight - headerHeight - 16 - gap * (actions.length - 1);
+    final tileHeight = (available / actions.length).clamp(88.0, 150.0);
+
+    return SingleChildScrollView(
+      child: Column(
+        children: [
+          SizedBox(
+            height: headerHeight,
+            child: _buildGreetingHeader(gutter: gutter),
+          ),
+          Padding(
+            padding: EdgeInsets.fromLTRB(gutter, 0, gutter, 16),
+            child: MaxWidth(
+              maxWidth: 760,
+              child: Column(
+                children: [
+                  for (var i = 0; i < actions.length; i++) ...[
+                    if (i > 0) const SizedBox(height: gap),
+                    _buildTile(actions[i], height: tileHeight),
+                  ],
+                ],
+              ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  // Tablets in landscape.
+  Widget _buildWideLayout(BoxConstraints constraints) {
+    final actions = _actions;
+    const gap = 16.0;
+    final tileHeight =
+        ((constraints.maxHeight - 48 - gap * (actions.length - 1)) /
+                actions.length)
+            .clamp(80.0, 160.0);
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Expanded(
+          flex: 5,
+          child: _buildGreetingPanel(),
         ),
-        // Bottom-left decorative circle
-        Positioned(
-          bottom: -60,
-          left: -60,
-          child: Container(
-            width: 250,
-            height: 250,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: AppColors.terracotta.withValues(alpha: 0.06),
+        Expanded(
+          flex: 6,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(8, 24, 32, 24),
+            child: Column(
+              children: [
+                for (var i = 0; i < actions.length; i++) ...[
+                  if (i > 0) const SizedBox(height: gap),
+                  _buildTile(actions[i], height: tileHeight),
+                ],
+              ],
             ),
           ),
         ),
@@ -206,248 +262,220 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  Widget _buildGreetingSection() {
-    final isCompact = MediaQuery.of(context).size.height < 500;
-    return Column(
-      children: [
-        // Greeting - also supports 5-tap to open diagnostics
-        GestureDetector(
-          onTap: _onDiagnosticsTap,
-          behavior: HitTestBehavior.opaque,
-          child: Text(
-            '${_greeting()}${_elderName.isNotEmpty ? ', $_elderName' : ''}',
+  Widget _buildTile(_HomeAction action, {required double height}) {
+    return ActionTile(
+      title: action.title,
+      subtitle: action.subtitle,
+      icon: action.icon,
+      color: action.color,
+      foreground: action.foreground,
+      iconColor: action.iconColor,
+      onTap: action.onTap,
+      height: height,
+    );
+  }
+
+  Widget _greetingText({required double nameSize}) {
+    return GestureDetector(
+      // Also supports 5-tap to open diagnostics
+      onTap: _onDiagnosticsTap,
+      behavior: HitTestBehavior.opaque,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            _elderName.isNotEmpty ? '${_greeting()},' : _greeting(),
             style: TextStyle(
-              fontSize: isCompact ? 22 : 30,
-              fontWeight: FontWeight.w700,
+              fontSize: nameSize * 0.62,
+              fontWeight: FontWeight.w600,
               color: AppColors.primaryText,
+              height: 1.15,
             ),
           ),
-        ),
-        const SizedBox(height: 4),
+          if (_elderName.isNotEmpty)
+            Text(
+              _elderName,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: nameSize,
+                fontWeight: FontWeight.w800,
+                color: AppColors.primaryText,
+                height: 1.1,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
 
-        // Date
+  Widget _timeAndDate({required double timeSize}) {
+    return Wrap(
+      crossAxisAlignment: WrapCrossAlignment.center,
+      spacing: 12,
+      runSpacing: 2,
+      children: [
+        Text(
+          _timeString(),
+          style: TextStyle(
+            fontSize: timeSize,
+            fontWeight: FontWeight.w800,
+            color: AppColors.terracottaDark,
+          ),
+        ),
         Text(
           _dateString(),
           style: TextStyle(
-            fontSize: isCompact ? 14 : 18,
-            fontWeight: FontWeight.w500,
+            fontSize: timeSize * 0.78,
+            fontWeight: FontWeight.w600,
             color: AppColors.secondaryText,
           ),
         ),
-        SizedBox(height: isCompact ? 10 : 20),
+      ],
+    );
+  }
 
-        // Large clock
-        AnimatedBuilder(
-          animation: _breathController,
-          builder: (context, child) {
-            final glow = 0.1 + _breathController.value * 0.1;
-            return Container(
-              padding: EdgeInsets.symmetric(
-                horizontal: isCompact ? 24 : 36,
-                vertical: isCompact ? 8 : 20,
-              ),
-              decoration: BoxDecoration(
-                color: AppColors.raisedSurface,
-                borderRadius: BorderRadius.circular(isCompact ? 16 : 24),
-                border: Border.all(color: AppColors.border, width: 1.5),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.marigold.withValues(alpha: glow),
-                    blurRadius: 20,
-                    spreadRadius: 2,
+  Widget _buildGreetingHeader({required double gutter}) {
+    return LayoutBuilder(
+      builder: (context, c) {
+        final nameSize = (c.maxHeight * 0.22).clamp(34.0, 52.0);
+        final sceneWidth = (c.maxWidth * 0.34).clamp(120.0, 240.0);
+        final sceneHeight = sceneWidth * 0.66;
+        return Stack(
+          children: [
+            // Soft ground curve along the bottom, as in a landscape
+            Positioned.fill(
+              child: CustomPaint(painter: _GroundPainter()),
+            ),
+            // Sun over the hills, beside the greeting
+            Positioned(
+              right: 0,
+              top: 8,
+              width: sceneWidth,
+              height: sceneHeight,
+              child: const HillsScene(),
+            ),
+            Padding(
+              padding: EdgeInsets.fromLTRB(gutter, 18, gutter, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: EdgeInsets.only(right: sceneWidth * 0.7),
+                    child: _greetingText(nameSize: nameSize),
+                  ),
+                  const Spacer(),
+                  Padding(
+                    padding: EdgeInsets.only(bottom: c.maxHeight * 0.16),
+                    child: _timeAndDate(timeSize: 21),
                   ),
                 ],
               ),
-              child: Text(
-                _timeString(),
-                style: TextStyle(
-                  fontSize: isCompact ? 36 : 56,
-                  fontWeight: FontWeight.w300,
-                  color: AppColors.primaryText,
-                  letterSpacing: isCompact ? 2 : 4,
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildGreetingPanel() {
+    return LayoutBuilder(
+      builder: (context, c) {
+        return Container(
+          margin: const EdgeInsets.fromLTRB(32, 24, 16, 24),
+          decoration: BoxDecoration(
+            color: AppColors.raisedSurface,
+            borderRadius: BorderRadius.circular(32),
+            border: Border.all(color: AppColors.border, width: 1.5),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const GamosaBand(height: 14),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(36, 20, 36, 0),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _greetingText(nameSize: 52),
+                      const SizedBox(height: 24),
+                      Text(
+                        _timeString(),
+                        style: const TextStyle(
+                          fontSize: 76,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.terracottaDark,
+                          height: 1.0,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        _dateString(),
+                        style: const TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.w500,
+                          color: AppColors.secondaryText,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            );
-          },
-        ),
-      ],
-    );
-  }
-
-  Widget _buildMainActions() {
-    final isCompact = MediaQuery.of(context).size.height < 500;
-    final spacing = isCompact ? 14.0 : 24.0;
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        // Play Games button - large and primary
-        _buildLargeButton(
-          emoji: '🎮',
-          label: 'Play Games',
-          sublabel: 'Exercise your mind',
-          color: AppColors.terracotta,
-          onTap: () {
-            Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => const GameSelectScreen(),
+              SizedBox(
+                height: (c.maxHeight * 0.32).clamp(110.0, 220.0),
+                width: double.infinity,
+                child: const HillsScene(),
               ),
-            );
-          },
-        ),
-        SizedBox(width: spacing),
-
-        // My Family button
-        _buildLargeButton(
-          emoji: '👨‍👩‍👧‍👦',
-          label: 'My Family',
-          sublabel: 'See your loved ones',
-          color: AppColors.indigo,
-          onTap: () {
-            Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const FamilyScreen()),
-            );
-          },
-        ),
-        SizedBox(width: spacing),
-
-        // My Day button
-        _buildLargeButton(
-          emoji: '📅',
-          label: 'My Day',
-          sublabel: 'Today\'s schedule',
-          color: AppColors.marigold,
-          onTap: () {
-            Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const MyDayScreen()),
-            );
-          },
-        ),
-      ],
+            ],
+          ),
+        );
+      },
     );
   }
+}
 
-  Widget _buildLargeButton({
-    required String emoji,
-    required String label,
-    required String sublabel,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    final isCompact = MediaQuery.of(context).size.height < 500;
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: isCompact ? 140 : 180,
-        height: isCompact ? 130 : 200,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [color, color.withValues(alpha: 0.85)],
-          ),
-          borderRadius: BorderRadius.circular(isCompact ? 20 : 28),
-          boxShadow: [
-            BoxShadow(
-              color: color.withValues(alpha: 0.35),
-              blurRadius: isCompact ? 10 : 16,
-              offset: const Offset(0, 6),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(emoji, style: TextStyle(fontSize: isCompact ? 32 : 50)),
-            SizedBox(height: isCompact ? 6 : 12),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: isCompact ? 15 : 20,
-                fontWeight: FontWeight.w700,
-                color: Colors.white,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              sublabel,
-              style: TextStyle(
-                fontSize: isCompact ? 11 : 13,
-                color: Colors.white.withValues(alpha: 0.8),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+class _HomeAction {
+  const _HomeAction({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.color,
+    required this.onTap,
+    this.foreground = AppColors.onColor,
+    this.iconColor,
+  });
+
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final Color color;
+  final Color foreground;
+  final Color? iconColor;
+  final VoidCallback onTap;
+}
+
+/// Gentle sand-coloured ground line under the greeting, as in a landscape.
+class _GroundPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final path = Path()
+      ..moveTo(0, size.height * 0.90)
+      ..quadraticBezierTo(
+        size.width * 0.50,
+        size.height * 0.80,
+        size.width,
+        size.height * 0.88,
+      )
+      ..lineTo(size.width, size.height)
+      ..lineTo(0, size.height)
+      ..close();
+    canvas.drawPath(path, Paint()..color = AppColors.bottomStrip);
   }
 
-  Widget _buildQuickActions() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-      decoration: BoxDecoration(
-        color: AppColors.bottomStrip,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          _buildQuickAction(
-            icon: Icons.message_rounded,
-            label: 'Message',
-            color: AppColors.terracotta,
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const VoiceMemoScreen()),
-              );
-            },
-          ),
-          const SizedBox(width: 32),
-          _buildQuickAction(
-            icon: Icons.medical_services,
-            label: 'Medicine',
-            color: AppColors.leafGreen,
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const MedicineScreen()),
-              );
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildQuickAction({
-    required IconData icon,
-    required String label,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 52,
-            height: 52,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.15),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, color: color, size: 26),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: AppColors.secondaryText,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

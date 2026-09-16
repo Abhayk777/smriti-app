@@ -4,6 +4,7 @@ import '../app_colors.dart';
 import '../core/reminders/native_reminder_bridge.dart';
 import '../core/reminders/reminder_isolate.dart';
 import '../core/reminders/reminder_permissions.dart';
+import '../ui/smriti_ui.dart';
 
 /// Checklist the caregiver completes after pairing so medicine reminders can
 /// take over the full screen: over the lock screen, on the home screen and
@@ -84,94 +85,115 @@ class _ReminderSetupScreenState extends State<ReminderSetupScreen>
     return Scaffold(
       backgroundColor: AppColors.pageBackground,
       body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-          children: [
-            const Text(
-              'Set up medicine reminders',
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: AppColors.primaryText,
+        child: MaxWidth(
+          maxWidth: 820,
+          child: ListView(
+            padding: EdgeInsets.symmetric(
+              horizontal: Screen.gutter(context),
+              vertical: 20,
+            ),
+            children: [
+              const Row(
+                children: [
+                  IconMedallion(
+                    icon: Icons.notifications_active_rounded,
+                    color: AppColors.terracotta,
+                    size: 56,
+                    background: AppColors.medicineBlush,
+                  ),
+                  SizedBox(width: 14),
+                  Expanded(
+                    child: Text(
+                      'Set up medicine reminders',
+                      style: TextStyle(
+                        fontSize: 26,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.primaryText,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Turn these on so reminders fill the whole screen, even when '
-              'the phone is locked or another app is open.',
-              style: TextStyle(fontSize: 17, color: AppColors.secondaryText),
-            ),
-            const SizedBox(height: 20),
-            _row(
-              ReminderSetupItem.overlay,
-              Icons.layers_rounded,
-              'Display over other apps',
-              'Lets the reminder cover the screen on the home screen or inside '
-                  'another app. On the next screen, find Smriti in the list and '
-                  'turn it on.',
-            ),
-            _row(
-              ReminderSetupItem.notifications,
-              Icons.notifications_active_rounded,
-              'Notifications',
-              'Needed to show any reminder.',
-            ),
-            _row(
-              ReminderSetupItem.fullScreen,
-              Icons.screen_lock_portrait_rounded,
-              'Full-screen notifications',
-              'Lets the reminder appear over the lock screen.',
-            ),
-            _row(
-              ReminderSetupItem.exactAlarm,
-              Icons.alarm_rounded,
-              'Alarms & reminders',
-              'Makes reminders ring at exactly the right time.',
-            ),
-            _row(
-              ReminderSetupItem.battery,
-              Icons.battery_charging_full_rounded,
-              'Battery: no restrictions',
-              'Stops the phone from putting Smriti to sleep and missing '
-                  'reminders.',
-            ),
-            if (_oem != null) _oemCard(_oem!),
-            const SizedBox(height: 8),
-            _testCard(),
-            const SizedBox(height: 20),
-            SizedBox(
-              height: 60,
-              child: ElevatedButton(
-                onPressed: widget.onDone,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor:
-                      _allGranted ? AppColors.leafGreen : AppColors.terracotta,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                ),
-                child: Text(
-                  _allGranted ? 'Done' : 'Continue for now',
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
+              const SizedBox(height: 12),
+              const Text(
+                'Turn these on so reminders fill the whole screen, even when '
+                'the phone is locked or another app is open.',
+                style: TextStyle(
+                  fontSize: 17,
+                  color: AppColors.secondaryText,
+                  height: 1.4,
                 ),
               ),
-            ),
-          ],
+              const SizedBox(height: 16),
+              const GamosaBand(),
+              const SizedBox(height: 20),
+              _row(
+                ReminderSetupItem.overlay,
+                Icons.layers_rounded,
+                'Display over other apps',
+                'Lets the reminder cover the screen on the home screen or inside '
+                    'another app. On the next screen, find Smriti in the list and '
+                    'turn it on.',
+              ),
+              _row(
+                ReminderSetupItem.notifications,
+                Icons.notifications_active_rounded,
+                'Notifications',
+                'Needed to show any reminder.',
+              ),
+              _row(
+                ReminderSetupItem.fullScreen,
+                Icons.screen_lock_portrait_rounded,
+                'Full-screen notifications',
+                'Lets the reminder appear over the lock screen.',
+              ),
+              _row(
+                ReminderSetupItem.exactAlarm,
+                Icons.alarm_rounded,
+                'Alarms & reminders',
+                'Makes reminders ring at exactly the right time.',
+              ),
+              _row(
+                ReminderSetupItem.battery,
+                Icons.battery_charging_full_rounded,
+                'Battery: no restrictions',
+                'Stops the phone from putting Smriti to sleep and missing '
+                    'reminders.',
+              ),
+              if (_oem != null) _oemCard(_oem!),
+              const SizedBox(height: 8),
+              _testCard(),
+              const SizedBox(height: 20),
+              SizedBox(
+                height: 60,
+                child: ElevatedButton(
+                  onPressed: widget.onDone,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _allGranted
+                        ? AppColors.leafGreen
+                        : AppColors.terracotta,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  child: Text(
+                    _allGranted ? 'Done' : 'Continue for now',
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _row(
-    ReminderSetupItem item,
-    IconData icon,
-    String title,
-    String why,
-  ) {
+  Widget _row(ReminderSetupItem item, IconData icon, String title, String why) {
     final granted = _status[item];
     return _card(
       icon: icon,
@@ -184,61 +206,66 @@ class _ReminderSetupScreenState extends State<ReminderSetupScreen>
               child: CircularProgressIndicator(strokeWidth: 2),
             )
           : granted
-              ? const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.check_circle_rounded,
-                        color: AppColors.leafGreen, size: 28),
-                    SizedBox(width: 6),
-                    Text(
-                      'On',
-                      style: TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.leafGreen,
-                      ),
-                    ),
-                  ],
-                )
-              : _actionButton('Turn on', () => _turnOn(item)),
+          ? const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.check_circle_rounded,
+                  color: AppColors.leafGreen,
+                  size: 28,
+                ),
+                SizedBox(width: 6),
+                Text(
+                  'On',
+                  style: TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.leafGreen,
+                  ),
+                ),
+              ],
+            )
+          : _actionButton('Turn on', () => _turnOn(item)),
     );
   }
 
   Widget _oemCard(OemVendor oem) {
     final (brand, toggles) = switch (oem) {
       OemVendor.xiaomi => (
-          'Xiaomi / Redmi / POCO',
-          'Under "Other permissions", allow: Show on lock screen, Display '
-              'pop-up windows while running in the background, and Display '
-              'pop-up windows. Then turn on Autostart in the app settings.',
-        ),
+        'Xiaomi / Redmi / POCO',
+        'Under "Other permissions", allow: Show on lock screen, Display '
+            'pop-up windows while running in the background, and Display '
+            'pop-up windows. Then turn on Autostart in the app settings.',
+      ),
       OemVendor.vivo => (
-          'Vivo / iQOO',
-          'Allow: Display on lock screen, Background pop-ups (display pop-up '
-              'windows), and Autostart.',
-        ),
+        'Vivo / iQOO',
+        'Allow: Display on lock screen, Background pop-ups (display pop-up '
+            'windows), and Autostart.',
+      ),
       OemVendor.oppo => (
-          'Oppo / Realme / OnePlus',
-          'Allow: Display over other apps / floating windows, Auto launch, '
-              'and Allow background activity.',
-        ),
+        'Oppo / Realme / OnePlus',
+        'Allow: Display over other apps / floating windows, Auto launch, '
+            'and Allow background activity.',
+      ),
       OemVendor.samsung => (
-          'Samsung',
-          'Set Battery to "Unrestricted" and make sure Smriti is not in '
-              '"Sleeping apps" or "Deep sleeping apps".',
-        ),
+        'Samsung',
+        'Set Battery to "Unrestricted" and make sure Smriti is not in '
+            '"Sleeping apps" or "Deep sleeping apps".',
+      ),
       OemVendor.other => (
-          'this',
-          'Some phones add their own switches. In the app settings, allow '
-              'anything like: Show on lock screen, Pop-up or floating '
-              'windows, Autostart or background activity, and set Battery '
-              'to "Unrestricted".',
-        ),
+        'this',
+        'Some phones add their own switches. In the app settings, allow '
+            'anything like: Show on lock screen, Pop-up or floating '
+            'windows, Autostart or background activity, and set Battery '
+            'to "Unrestricted".',
+      ),
     };
     return _card(
       icon: Icons.phone_android_rounded,
-      title: 'Extra settings on $brand phone${oem == OemVendor.other ? '' : 's'}',
-      body: '$toggles\nThese can\'t be checked automatically. Please confirm '
+      title:
+          'Extra settings on $brand phone${oem == OemVendor.other ? '' : 's'}',
+      body:
+          '$toggles\nThese can\'t be checked automatically. Please confirm '
           'with the test reminder below.',
       trailing: _actionButton(
         'Open',
@@ -251,7 +278,8 @@ class _ReminderSetupScreenState extends State<ReminderSetupScreen>
     return _card(
       icon: Icons.play_circle_fill_rounded,
       title: 'Try it',
-      body: 'Sends a test reminder in 15 seconds. Lock the phone or open '
+      body:
+          'Sends a test reminder in 15 seconds. Lock the phone or open '
           'another app and check that it fills the screen and the voice '
           'plays.',
       trailing: _actionButton('Send test', _sendTestReminder),
@@ -263,13 +291,12 @@ class _ReminderSetupScreenState extends State<ReminderSetupScreen>
       onPressed: onPressed,
       style: ElevatedButton.styleFrom(
         backgroundColor: AppColors.terracotta,
-        foregroundColor: Colors.white,
+        foregroundColor: AppColors.onColor,
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
       child: Text(
         label,
-        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
       ),
     );
   }
@@ -280,44 +307,73 @@ class _ReminderSetupScreenState extends State<ReminderSetupScreen>
     required String body,
     required Widget trailing,
   }) {
+    final text = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 19,
+            fontWeight: FontWeight.w700,
+            color: AppColors.primaryText,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          body,
+          style: const TextStyle(
+            fontSize: 15,
+            color: AppColors.secondaryText,
+            height: 1.35,
+          ),
+        ),
+      ],
+    );
+    final medallion = IconMedallion(
+      icon: icon,
+      color: AppColors.terracotta,
+      size: 52,
+      background: AppColors.medicineBlush,
+    );
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.raisedSurface,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(color: AppColors.border, width: 1.5),
       ),
-      child: Row(
-        children: [
-          Icon(icon, size: 32, color: AppColors.terracotta),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          // Narrow phones: action goes under the explanation.
+          if (constraints.maxWidth < 480) {
+            return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 19,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.primaryText,
-                  ),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    medallion,
+                    const SizedBox(width: 14),
+                    Expanded(child: text),
+                  ],
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  body,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    color: AppColors.secondaryText,
-                  ),
-                ),
+                const SizedBox(height: 12),
+                Align(alignment: Alignment.centerRight, child: trailing),
               ],
-            ),
-          ),
-          const SizedBox(width: 12),
-          trailing,
-        ],
+            );
+          }
+          return Row(
+            children: [
+              medallion,
+              const SizedBox(width: 16),
+              Expanded(child: text),
+              const SizedBox(width: 12),
+              trailing,
+            ],
+          );
+        },
       ),
     );
   }

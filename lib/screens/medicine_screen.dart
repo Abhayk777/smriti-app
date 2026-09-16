@@ -14,6 +14,7 @@ import '../core/files/file_paths.dart';
 import '../core/repo/content_repo.dart';
 import '../core/repo/event_repo.dart';
 import '../core/sync/sync_engine.dart';
+import '../ui/smriti_ui.dart';
 
 /// Screen displaying the elder's daily medications.
 ///
@@ -191,7 +192,12 @@ class _MedicineScreenState extends State<MedicineScreen>
       body: SafeArea(
         child: Column(
           children: [
-            _buildHeader(context),
+            const ScreenHeader(
+              title: 'My Medicines',
+              subtitle: 'Tap Take once you have had it',
+              icon: Icons.medication_rounded,
+              color: AppColors.leafGreen,
+            ),
             Expanded(
               child: _loading
                   ? const Center(
@@ -207,208 +213,203 @@ class _MedicineScreenState extends State<MedicineScreen>
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-      decoration: const BoxDecoration(
-        color: AppColors.raisedSurface,
-        border: Border(bottom: BorderSide(color: AppColors.border, width: 1)),
-      ),
-      child: Row(
-        children: [
-          GestureDetector(
-            onTap: () => Navigator.of(context).pop(),
-            child: Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: AppColors.leafGreen.withValues(alpha: 0.12),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.arrow_back, color: AppColors.leafGreen, size: 24),
-            ),
-          ),
-          const SizedBox(width: 16),
-          const Text(
-            '💊  My Medicines',
-            style: TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.w700,
-              color: AppColors.primaryText,
-            ),
-          ),
-        ],
-      ),
+  Widget _buildEmpty() {
+    return const EmptyState(
+      icon: Icons.medication_rounded,
+      color: AppColors.leafGreen,
+      title: 'No medicines scheduled.',
     );
   }
 
-  Widget _buildEmpty() {
-    return const Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text('💊', style: TextStyle(fontSize: 72)),
-          SizedBox(height: 16),
-          Text(
-            'No medicines scheduled.',
-            style: TextStyle(fontSize: 22, color: AppColors.secondaryText),
-          ),
-        ],
-      ),
-    );
+  void _onTakeTap(Medication med, bool isTaken) {
+    if (!isTaken) {
+      _recordTaken(med);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${med.name} is already marked as taken today.'),
+          backgroundColor: AppColors.leafGreen,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
   }
 
   Widget _buildList() {
+    final gutter = Screen.gutter(context);
     return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      padding: EdgeInsets.fromLTRB(gutter, 20, gutter, 24),
       itemCount: _medications.length,
       itemBuilder: (context, index) {
         final med = _medications[index];
         final isTaken = _visuallyTakenIds.contains(med.id);
+        return MaxWidth(
+          maxWidth: 900,
+          child: _buildMedicineCard(med, isTaken),
+        );
+      },
+    );
+  }
+
+  Widget _buildMedicineCard(Medication med, bool isTaken) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final stacked = constraints.maxWidth < 600;
+        final photoSize = stacked ? 84.0 : 96.0;
+
+        final photo = Container(
+          width: photoSize,
+          height: photoSize,
+          decoration: BoxDecoration(
+            color: AppColors.medicineBlush,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: FutureBuilder<File?>(
+            future: _resolveMedPhoto(med.pillPhotoPath, med.id),
+            builder: (context, snapshot) {
+              final file = snapshot.data;
+              if (file != null) {
+                return ClipRRect(
+                  borderRadius: BorderRadius.circular(20),
+                  child: Image.file(
+                    file,
+                    fit: BoxFit.cover,
+                  ),
+                );
+              }
+              return Icon(
+                Icons.medication_rounded,
+                size: photoSize * 0.5,
+                color: AppColors.terracotta,
+              );
+            },
+          ),
+        );
+
+        final details = Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              med.name,
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.w800,
+                color: isTaken ? AppColors.secondaryText : AppColors.primaryText,
+                decoration: isTaken ? TextDecoration.lineThrough : null,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                const Icon(Icons.schedule_rounded,
+                    size: 20, color: AppColors.leafGreenDark),
+                const SizedBox(width: 6),
+                Flexible(
+                  child: Text(
+                    '${_timeOfDayLabel(med.chosenTimeMin)}, ${_formatTime(med.chosenTimeMin)}',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.leafGreenDark,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Dose: ${med.dose}',
+              style: const TextStyle(
+                fontSize: 18,
+                color: AppColors.secondaryText,
+              ),
+            ),
+          ],
+        );
+
+        final listen = SizedBox(
+          height: 60,
+          child: OutlinedButton.icon(
+            onPressed: () => _playInstruction(med),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.leafGreenDark,
+              side: const BorderSide(color: AppColors.leafGreen, width: 2),
+              padding: const EdgeInsets.symmetric(horizontal: 18),
+            ),
+            icon: const Icon(Icons.volume_up_rounded, size: 28),
+            label: const Text(
+              'Listen',
+              style: TextStyle(fontSize: 19, fontWeight: FontWeight.w700),
+            ),
+          ),
+        );
+
+        final take = SizedBox(
+          height: 60,
+          child: ElevatedButton.icon(
+            onPressed: () => _onTakeTap(med, isTaken),
+            style: ElevatedButton.styleFrom(
+              backgroundColor:
+                  isTaken ? AppColors.leafGreenDark : AppColors.leafGreen,
+              foregroundColor: AppColors.onColor,
+              padding: const EdgeInsets.symmetric(horizontal: 22),
+            ),
+            icon: Icon(
+              isTaken ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
+              size: 28,
+            ),
+            label: Text(
+              isTaken ? 'Taken' : 'Take',
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+            ),
+          ),
+        );
 
         return Container(
           margin: const EdgeInsets.only(bottom: 16),
           padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(
             color: isTaken
-                ? AppColors.leafGreen.withValues(alpha: 0.08)
+                ? AppColors.leafGreen.withValues(alpha: 0.10)
                 : AppColors.raisedSurface,
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(26),
             border: Border.all(
               color: isTaken ? AppColors.leafGreen : AppColors.border,
               width: isTaken ? 2 : 1.5,
             ),
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.leafGreen.withValues(alpha: 0.06),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
           ),
-          child: Row(
-            children: [
-              // Pill photo or icon
-              Container(
-                width: 72,
-                height: 72,
-                decoration: BoxDecoration(
-                  color: AppColors.medicineBlush,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: FutureBuilder<File?>(
-                  future: _resolveMedPhoto(med.pillPhotoPath, med.id),
-                  builder: (context, snapshot) {
-                    final file = snapshot.data;
-                    if (file != null) {
-                      return ClipRRect(
-                        borderRadius: BorderRadius.circular(16),
-                        child: Image.file(
-                          file,
-                          fit: BoxFit.cover,
-                        ),
-                      );
-                    }
-                    return const Center(
-                      child: Text('💊', style: TextStyle(fontSize: 36)),
-                    );
-                  },
-                ),
-              ),
-              const SizedBox(width: 20),
-
-              // Med details
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+          child: stacked
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Text(
-                      med.name,
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w700,
-                        color: isTaken ? AppColors.secondaryText : AppColors.primaryText,
-                        decoration: isTaken ? TextDecoration.lineThrough : null,
-                      ),
+                    Row(
+                      children: [
+                        photo,
+                        const SizedBox(width: 16),
+                        Expanded(child: details),
+                      ],
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '${_timeOfDayLabel(med.chosenTimeMin)} • ${_formatTime(med.chosenTimeMin)}',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.leafGreen,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'Dose: ${med.dose}',
-                      style: const TextStyle(
-                        fontSize: 15,
-                        color: AppColors.secondaryText,
-                      ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(child: listen),
+                        const SizedBox(width: 12),
+                        Expanded(child: take),
+                      ],
                     ),
                   ],
+                )
+              : Row(
+                  children: [
+                    photo,
+                    const SizedBox(width: 20),
+                    Expanded(child: details),
+                    const SizedBox(width: 12),
+                    listen,
+                    const SizedBox(width: 12),
+                    take,
+                  ],
                 ),
-              ),
-
-              // Listen voice button
-              IconButton(
-                iconSize: 32,
-                icon: const Icon(Icons.volume_up_rounded, color: AppColors.leafGreen),
-                tooltip: 'Listen instructions',
-                onPressed: () => _playInstruction(med),
-              ),
-              const SizedBox(width: 12),
-
-              // Taken check button
-              GestureDetector(
-                onTap: () {
-                  if (!isTaken) {
-                    _recordTaken(med);
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('${med.name} is already marked as taken today.'),
-                        backgroundColor: AppColors.leafGreen,
-                        duration: const Duration(seconds: 2),
-                      ),
-                    );
-                  }
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: isTaken ? AppColors.leafGreen : Colors.transparent,
-                    borderRadius: BorderRadius.circular(30),
-                    border: Border.all(
-                      color: AppColors.leafGreen,
-                      width: 2,
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        isTaken ? Icons.check_circle_rounded : Icons.circle_outlined,
-                        color: isTaken ? Colors.white : AppColors.leafGreen,
-                        size: 20,
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        isTaken ? 'Taken' : 'Take',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: isTaken ? Colors.white : AppColors.leafGreen,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
         );
       },
     );

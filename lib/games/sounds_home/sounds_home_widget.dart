@@ -218,17 +218,7 @@ class _SoundsHomeWidgetState extends State<SoundsHomeWidget>
     final drumSize = isCompact ? 96.0 : 160.0;
 
     return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            Color(0xFF2C5F2D), // Forest green
-            Color(0xFF1B3A1D),
-            Color(0xFF0D1F0E),
-          ],
-        ),
-      ),
+      decoration: const BoxDecoration(color: AppColors.leafGreenDark),
       child: Padding(
         padding: EdgeInsets.symmetric(horizontal: 16, vertical: isCompact ? 8 : 20),
         child: Column(
@@ -283,7 +273,10 @@ class _SoundsHomeWidgetState extends State<SoundsHomeWidget>
                     _currentSound.isNotEmpty
                         ? _emojiForSound(_currentSound)
                         : '...',
-                    style: TextStyle(fontSize: isCompact ? 36 : 60),
+                    style: TextStyle(
+                      fontSize: isCompact ? 36 : 60,
+                      color: Colors.green.shade100,
+                    ),
                   ),
                 );
               },
@@ -306,36 +299,23 @@ class _SoundsHomeWidgetState extends State<SoundsHomeWidget>
                         height: drumSize,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          gradient: RadialGradient(
-                            colors: [
-                              Colors.brown.shade400,
-                              Colors.brown.shade700,
-                              Colors.brown.shade900,
-                            ],
-                          ),
+                          color: AppColors.terracottaDark,
                           border: Border.all(
-                            color: Colors.amber.shade600,
-                            width: isCompact ? 3 : 4,
+                            color: AppColors.marigold,
+                            width: isCompact ? 4 : 6,
                           ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.brown.withValues(alpha: 0.5),
-                              blurRadius: isCompact ? 10 : 20,
-                              spreadRadius: isCompact ? 2 : 4,
-                            ),
-                          ],
                         ),
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.music_note,
-                                size: isCompact ? 24 : 40, color: Colors.amber.shade200),
+                            Icon(Icons.touch_app_rounded,
+                                size: isCompact ? 26 : 44, color: AppColors.onColor),
                             Text(
                               'Tap!',
                               style: TextStyle(
                                 fontSize: isCompact ? 13 : 16,
                                 fontWeight: FontWeight.w700,
-                                color: Colors.amber.shade100,
+                                color: AppColors.onColor,
                               ),
                             ),
                           ],
@@ -346,8 +326,8 @@ class _SoundsHomeWidgetState extends State<SoundsHomeWidget>
                 ),
               )
             else
-              const Icon(Icons.check_circle,
-                  size: 50, color: AppColors.leafGreen),
+              const Icon(Icons.check_circle_rounded,
+                  size: 56, color: AppColors.onColor),
             if (!isCompact) const Spacer(),
           ],
         ),

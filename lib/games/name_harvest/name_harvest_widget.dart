@@ -245,14 +245,9 @@ class _NameHarvestWidgetState extends State<NameHarvestWidget>
                 ElevatedButton(
                   onPressed: _addItem,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.terracotta,
-                    foregroundColor: AppColors.onColor,
                     padding: EdgeInsets.all(isCompact ? 12 : 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
                   ),
-                  child: Icon(Icons.add, size: isCompact ? 22 : 28),
+                  child: Icon(Icons.add_rounded, size: isCompact ? 24 : 30),
                 ),
               ],
             ),
@@ -297,7 +292,7 @@ class _NameHarvestWidgetState extends State<NameHarvestWidget>
           if (_taskComplete)
             Padding(
               padding: EdgeInsets.only(top: isCompact ? 4 : 12),
-              child: Icon(Icons.check_circle,
+              child: Icon(Icons.check_circle_rounded,
                   size: isCompact ? 36 : 50, color: AppColors.leafGreen),
             ),
         ],

@@ -17,6 +17,7 @@ import '../core/reminders/reminder_screen_channel.dart';
 import '../core/repo/content_repo.dart';
 import '../core/repo/event_repo.dart';
 import '../core/sync/sync_engine.dart';
+import '../ui/smriti_ui.dart';
 
 /// Full-screen, high-contrast, elder-friendly medication reminder screen.
 ///
@@ -389,18 +390,26 @@ class _FullScreenReminderScreenState extends State<FullScreenReminderScreen>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(
-              Icons.check_circle_rounded,
-              size: 120,
-              color: AppColors.leafGreen,
+            Container(
+              width: 168,
+              height: 168,
+              decoration: BoxDecoration(
+                color: AppColors.leafGreen.withValues(alpha: 0.12),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.check_circle_rounded,
+                size: 120,
+                color: AppColors.leafGreen,
+              ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 28),
             Text(
               message,
               textAlign: TextAlign.center,
               style: const TextStyle(
-                fontSize: 32,
-                fontWeight: FontWeight.bold,
+                fontSize: 34,
+                fontWeight: FontWeight.w800,
                 color: AppColors.primaryText,
               ),
             ),
@@ -414,79 +423,86 @@ class _FullScreenReminderScreenState extends State<FullScreenReminderScreen>
   Widget _buildBanner({required bool hasVoice, required bool compact}) {
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.symmetric(horizontal: compact ? 16 : 24, vertical: 14),
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: AppColors.terracotta,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withAlpha(30),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(24),
       ),
-      child: Row(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(
-            Icons.alarm_on_rounded,
-            color: AppColors.onColor,
-            size: 34,
-          ),
-          SizedBox(width: compact ? 10 : 16),
-          Expanded(
-            child: Text(
-              'Time for Your Medicine',
-              style: TextStyle(
-                color: AppColors.onColor,
-                fontSize: compact ? 22 : 26,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 0.5,
-              ),
+          Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: compact ? 14 : 24,
+              vertical: compact ? 12 : 16,
             ),
-          ),
-          // Voice status pill
-          if (hasVoice)
-            ScaleTransition(
-              scale: _isPlayingAudio
-                  ? _pulseAnimation
-                  : const AlwaysStoppedAnimation(1.0),
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                decoration: BoxDecoration(
-                  color: _isPlayingAudio
-                      ? AppColors.leafGreen
-                      : AppColors.terracottaDark,
-                  borderRadius: BorderRadius.circular(24),
+            child: Row(
+              children: [
+                IconMedallion(
+                  icon: Icons.alarm_rounded,
+                  color: AppColors.terracottaDark,
+                  size: compact ? 48 : 56,
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      _isPlayingAudio
-                          ? Icons.volume_up_rounded
-                          : Icons.volume_mute_rounded,
-                      color: Colors.white,
-                      size: 20,
+                SizedBox(width: compact ? 12 : 16),
+                Expanded(
+                  child: Text(
+                    'Time for Your Medicine',
+                    style: TextStyle(
+                      color: AppColors.onColor,
+                      fontSize: compact ? 23 : 28,
+                      fontWeight: FontWeight.w800,
                     ),
-                    if (!compact) ...[
-                      const SizedBox(width: 8),
-                      Text(
-                        _isPlayingAudio
-                            ? "Caregiver Speaking..."
-                            : "Voice Note Ready",
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ],
+                  ),
                 ),
-              ),
+                // Voice status pill
+                if (hasVoice)
+                  ScaleTransition(
+                    scale: _isPlayingAudio
+                        ? _pulseAnimation
+                        : const AlwaysStoppedAnimation(1.0),
+                    child: Container(
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: _isPlayingAudio
+                            ? AppColors.leafGreen
+                            : AppColors.terracottaDark,
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            _isPlayingAudio
+                                ? Icons.volume_up_rounded
+                                : Icons.volume_mute_rounded,
+                            color: AppColors.onColor,
+                            size: 22,
+                          ),
+                          if (!compact) ...[
+                            const SizedBox(width: 8),
+                            Text(
+                              _isPlayingAudio
+                                  ? "Caregiver Speaking..."
+                                  : "Voice Note Ready",
+                              style: const TextStyle(
+                                color: AppColors.onColor,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
             ),
+          ),
+          const ColoredBox(
+            color: AppColors.raisedSurface,
+            child: GamosaBand(height: 10, opacity: 0.7),
+          ),
         ],
       ),
     );
@@ -495,14 +511,7 @@ class _FullScreenReminderScreenState extends State<FullScreenReminderScreen>
   BoxDecoration get _cardDecoration => BoxDecoration(
         color: AppColors.raisedSurface,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.border, width: 2),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withAlpha(15),
-            blurRadius: 8,
-            offset: const Offset(0, 3),
-          ),
-        ],
+        border: Border.all(color: AppColors.border, width: 1.5),
       );
 
   // Pill photo card & Hear Voice Again button
@@ -524,24 +533,12 @@ class _FullScreenReminderScreenState extends State<FullScreenReminderScreen>
                   : Container(
                       color: AppColors.medicineBlush,
                       width: double.infinity,
-                      child: const Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.medication_rounded,
-                            size: 80,
-                            color: AppColors.terracotta,
-                          ),
-                          SizedBox(height: 10),
-                          Text(
-                            'Pill Image',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.secondaryText,
-                            ),
-                          ),
-                        ],
+                      child: const Center(
+                        child: Icon(
+                          Icons.medication_rounded,
+                          size: 88,
+                          color: AppColors.terracotta,
+                        ),
                       ),
                     ),
             ),
@@ -550,21 +547,20 @@ class _FullScreenReminderScreenState extends State<FullScreenReminderScreen>
             const SizedBox(height: 12),
             SizedBox(
               width: double.infinity,
-              height: 50,
+              height: 56,
               child: ElevatedButton.icon(
                 onPressed: _actionCompleted ? null : _replayVoice,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.indigo,
                   foregroundColor: AppColors.onColor,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(16),
                   ),
-                  elevation: 2,
                 ),
-                icon: const Icon(Icons.replay_rounded, size: 24),
+                icon: const Icon(Icons.replay_rounded, size: 26),
                 label: const Text(
                   'Hear Voice Again',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  style: TextStyle(fontSize: 19, fontWeight: FontWeight.w700),
                 ),
               ),
             ),
@@ -588,8 +584,8 @@ class _FullScreenReminderScreenState extends State<FullScreenReminderScreen>
             med?.name ?? 'Scheduled Medication',
             style: const TextStyle(
               color: AppColors.primaryText,
-              fontSize: 34,
-              fontWeight: FontWeight.bold,
+              fontSize: 36,
+              fontWeight: FontWeight.w800,
               height: 1.1,
             ),
           ),
@@ -598,14 +594,13 @@ class _FullScreenReminderScreenState extends State<FullScreenReminderScreen>
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             decoration: BoxDecoration(
               color: AppColors.medicineBlush,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.terracotta.withAlpha(60)),
+              borderRadius: BorderRadius.circular(16),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.info_outline_rounded,
-                    size: 24, color: AppColors.terracotta),
+                const Icon(Icons.medication_liquid_rounded,
+                    size: 28, color: AppColors.terracottaDark),
                 const SizedBox(width: 10),
                 Flexible(
                   child: Text(
@@ -628,45 +623,44 @@ class _FullScreenReminderScreenState extends State<FullScreenReminderScreen>
   // Large "I Have Taken It" & "Remind in 10 Mins" buttons
   Widget _buildActions({required bool portrait}) {
     final snooze = SizedBox(
-      height: 68,
+      height: 72,
       child: OutlinedButton.icon(
         onPressed: _actionCompleted ? null : _onSnooze,
         style: OutlinedButton.styleFrom(
-          side: const BorderSide(color: AppColors.marigold, width: 3),
+          side: const BorderSide(color: AppColors.marigoldDark, width: 2.5),
           backgroundColor: AppColors.raisedSurface,
           foregroundColor: AppColors.marigoldDark,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(20),
           ),
         ),
-        icon: const Icon(Icons.snooze_rounded, size: 28),
+        icon: const Icon(Icons.snooze_rounded, size: 30),
         label: const Text(
           'Remind in 10 Mins',
-          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          style: TextStyle(fontSize: 21, fontWeight: FontWeight.w700),
         ),
       ),
     );
 
     final taken = SizedBox(
-      height: 68,
+      height: 80,
       child: ElevatedButton.icon(
         onPressed: _actionCompleted ? null : _onTaken,
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.leafGreen,
-          foregroundColor: Colors.white,
-          elevation: 6,
+          foregroundColor: AppColors.onColor,
+          elevation: 0,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(20),
           ),
         ),
         icon: const Icon(Icons.check_circle_rounded,
-            size: 36, color: Colors.white),
+            size: 38, color: AppColors.onColor),
         label: const Text(
           'I Have Taken It',
           style: TextStyle(
             fontSize: 26,
-            fontWeight: FontWeight.bold,
-            letterSpacing: 0.5,
+            fontWeight: FontWeight.w800,
           ),
         ),
       ),

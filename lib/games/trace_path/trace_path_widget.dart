@@ -100,9 +100,10 @@ class _TracePathWidgetState extends State<TracePathWidget> {
             _variant == 'A'
                 ? 'Tap the stones in order: 1, 2, 3...'
                 : 'Tap alternating: 1, A, 2, B, 3, C...',
+            textAlign: TextAlign.center,
             style: const TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w600,
+              fontSize: 21,
+              fontWeight: FontWeight.w700,
               color: AppColors.primaryText,
             ),
           ),
@@ -175,15 +176,6 @@ class _TracePathWidgetState extends State<TracePathWidget> {
         color: bgColor,
         shape: BoxShape.circle,
         border: Border.all(color: borderColor, width: 2.5),
-        boxShadow: isNext
-            ? [
-                BoxShadow(
-                  color: AppColors.marigold.withValues(alpha: 0.4),
-                  blurRadius: 12,
-                  spreadRadius: 2,
-                ),
-              ]
-            : [],
       ),
       child: Center(
         child: Text(

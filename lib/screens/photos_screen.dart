@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../app_colors.dart';
+import '../ui/smriti_ui.dart';
 import '../core/db/app_database.dart';
 import '../core/repo/content_repo.dart';
 
@@ -105,68 +106,30 @@ class _PhotosScreenState extends State<PhotosScreen> {
   }
 
   Widget _buildHeader(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-      decoration: const BoxDecoration(
-        color: AppColors.raisedSurface,
-        border: Border(bottom: BorderSide(color: AppColors.border, width: 1)),
-      ),
-      child: Row(
-        children: [
-          GestureDetector(
-            onTap: () => Navigator.of(context).pop(),
-            child: Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: AppColors.indigo.withValues(alpha: 0.12),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.arrow_back, color: AppColors.indigo, size: 24),
+    return ScreenHeader(
+      title: 'Photos & Memories',
+      icon: Icons.photo_library_rounded,
+      color: AppColors.indigo,
+      actions: [
+        if (_photos.isNotEmpty)
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.indigo,
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
             ),
+            icon: const Icon(Icons.slideshow_rounded),
+            label: const Text('Slideshow'),
+            onPressed: () => _openSlideshow(0),
           ),
-          const SizedBox(width: 16),
-          const Text(
-            '🖼️  Photos & Memories',
-            style: TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.w700,
-              color: AppColors.primaryText,
-            ),
-          ),
-          const Spacer(),
-          if (_photos.isNotEmpty)
-            ElevatedButton.icon(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.indigo,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(24),
-                ),
-              ),
-              icon: const Icon(Icons.slideshow_rounded),
-              label: const Text('Slideshow', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-              onPressed: () => _openSlideshow(0),
-            ),
-        ],
-      ),
+      ],
     );
   }
 
   Widget _buildEmpty() {
-    return const Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text('🖼️', style: TextStyle(fontSize: 72)),
-          SizedBox(height: 16),
-          Text(
-            'No photos available yet.',
-            style: TextStyle(fontSize: 22, color: AppColors.secondaryText),
-          ),
-        ],
-      ),
+    return const EmptyState(
+      icon: Icons.photo_library_rounded,
+      color: AppColors.indigo,
+      title: 'No photos available yet.',
     );
   }
 
@@ -214,7 +177,7 @@ class _PhotosScreenState extends State<PhotosScreen> {
                             color: _placeholderColor(item.title),
                             child: Center(
                               child: Text(
-                                item.title.isNotEmpty ? item.title[0].toUpperCase() : '📷',
+                                item.title.isNotEmpty ? item.title[0].toUpperCase() : '?',
                                 style: const TextStyle(
                                   fontSize: 48,
                                   fontWeight: FontWeight.bold,
@@ -357,7 +320,7 @@ class _SlideshowViewerState extends State<_SlideshowViewer> {
                               ),
                               child: Center(
                                 child: Text(
-                                  photo.title.isNotEmpty ? photo.title[0].toUpperCase() : '📷',
+                                  photo.title.isNotEmpty ? photo.title[0].toUpperCase() : '?',
                                   style: const TextStyle(
                                     fontSize: 64,
                                     color: Colors.white,

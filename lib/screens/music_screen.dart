@@ -7,11 +7,12 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
 import '../app_colors.dart';
+import '../ui/smriti_ui.dart';
 
 class _Track {
   final String title;
   final String category;
-  final String icon;
+  final IconData icon;
   final String? localFilePath;
   final String? narration;
 
@@ -88,7 +89,7 @@ class _MusicScreenState extends State<MusicScreen>
               _Track(
                 title: p.basenameWithoutExtension(f.path),
                 category: 'Family Audio',
-                icon: '🎵',
+                icon: Icons.library_music_rounded,
                 localFilePath: f.path,
               ),
             );
@@ -102,25 +103,25 @@ class _MusicScreenState extends State<MusicScreen>
       const _Track(
         title: 'Morning Serenity',
         category: 'Peaceful Raga',
-        icon: '🌅',
+        icon: Icons.wb_twilight_rounded,
         narration: 'Take a deep breath and listen to the gentle morning silence.',
       ),
       const _Track(
         title: 'Sacred Temple Bells',
         category: 'Chimes & Harmony',
-        icon: '🔔',
+        icon: Icons.notifications_rounded,
         narration: 'Gentle temple chimes ringing softly in the morning breeze.',
       ),
       const _Track(
         title: 'Flute by the River',
         category: 'Bansuri Meditation',
-        icon: '🪈',
+        icon: Icons.air_rounded,
         narration: 'Soft bamboo flute music flowing like a quiet river.',
       ),
       const _Track(
         title: 'Evening Birds & Rain',
         category: 'Nature Melody',
-        icon: '🌧️',
+        icon: Icons.water_drop_rounded,
         narration: 'Cool evening rain falling gently on green tree leaves.',
       ),
     ]);
@@ -218,41 +219,15 @@ class _MusicScreenState extends State<MusicScreen>
   }
 
   Widget _buildHeader(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-      decoration: const BoxDecoration(
-        color: AppColors.raisedSurface,
-        border: Border(bottom: BorderSide(color: AppColors.border, width: 1)),
-      ),
-      child: Row(
-        children: [
-          GestureDetector(
-            onTap: () {
-              _player.stop();
-              _tts.stop();
-              Navigator.of(context).pop();
-            },
-            child: Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: AppColors.marigold.withValues(alpha: 0.12),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.arrow_back, color: AppColors.marigold, size: 24),
-            ),
-          ),
-          const SizedBox(width: 16),
-          const Text(
-            '🎵  Music & Peace',
-            style: TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.w700,
-              color: AppColors.primaryText,
-            ),
-          ),
-        ],
-      ),
+    return ScreenHeader(
+      title: 'Music & Peace',
+      icon: Icons.music_note_rounded,
+      color: AppColors.marigoldDark,
+      onBack: () {
+        _player.stop();
+        _tts.stop();
+        Navigator.of(context).pop();
+      },
     );
   }
 
@@ -279,18 +254,9 @@ class _MusicScreenState extends State<MusicScreen>
                     shape: BoxShape.circle,
                     color: AppColors.raisedSurface,
                     border: Border.all(color: AppColors.marigold, width: 3),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.marigold.withValues(
-                          alpha: _isPlaying ? 0.35 : 0.15,
-                        ),
-                        blurRadius: _isPlaying ? 35 : 15,
-                        spreadRadius: _isPlaying ? 5 : 1,
-                      ),
-                    ],
                   ),
                   child: Center(
-                    child: Text(track.icon, style: const TextStyle(fontSize: 80)),
+                    child: Icon(track.icon, size: 84, color: AppColors.marigoldDark),
                   ),
                 ),
               );
@@ -387,7 +353,7 @@ class _MusicScreenState extends State<MusicScreen>
           ),
           child: ListTile(
             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            leading: Text(t.icon, style: const TextStyle(fontSize: 28)),
+            leading: Icon(t.icon, size: 30, color: AppColors.marigoldDark),
             title: Text(
               t.title,
               style: TextStyle(

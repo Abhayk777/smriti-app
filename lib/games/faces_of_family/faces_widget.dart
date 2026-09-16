@@ -98,7 +98,7 @@ class _FacesWidgetState extends State<FacesWidget> {
             )
           else
             Icon(
-              Icons.check_circle,
+              Icons.check_circle_rounded,
               size: isCompact ? 40 : 60,
               color: AppColors.leafGreen,
             ),
@@ -141,14 +141,7 @@ class _FacesWidgetState extends State<FacesWidget> {
       decoration: BoxDecoration(
         color: color,
         shape: BoxShape.circle,
-        border: Border.all(color: AppColors.border, width: isCompact ? 2 : 3),
-        boxShadow: [
-          BoxShadow(
-            color: color.withValues(alpha: 0.3),
-            blurRadius: isCompact ? 10 : 20,
-            spreadRadius: isCompact ? 2 : 4,
-          ),
-        ],
+        border: Border.all(color: AppColors.raisedSurface, width: isCompact ? 3 : 5),
       ),
       child: Center(
         child: Text(
@@ -177,15 +170,8 @@ class _FacesWidgetState extends State<FacesWidget> {
         ),
         decoration: BoxDecoration(
           color: AppColors.raisedSurface,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(20),
           border: Border.all(color: AppColors.border, width: 1.5),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.08),
-              blurRadius: 4,
-              offset: const Offset(0, 2),
-            ),
-          ],
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
