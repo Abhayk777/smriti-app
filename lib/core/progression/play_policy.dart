@@ -129,8 +129,13 @@ class PlayPolicy {
   }
 
   /// The play-time figure shown on the card: whole minutes, rounded down to
-  /// the nearest 5, so it never reads like a stopwatch.
-  static int displayMinutes(int playSecondsToday) => (playSecondsToday ~/ 60 ~/ 5) * 5;
+  /// the nearest 5 (e.g. 5, 10, 15, 30), or exact minutes when under 5 min
+  /// (e.g. 1, 2) so testing or short thresholds never display 0 minutes.
+  static int displayMinutes(int playSecondsToday) {
+    final mins = playSecondsToday ~/ 60;
+    if (mins < 5) return mins;
+    return (mins ~/ 5) * 5;
+  }
 
   // ── Variety nudge (§8) ───────────────────────────────────────────────────
 

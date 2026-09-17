@@ -302,4 +302,33 @@ void main() {
     expect(state.lastShownAtMs, isNull);
     expect(find.text('Ready to show'), findsOneWidget);
   });
+
+  testWidgets('Simulate 6 Plays button simulates counted sessions and updates live favourite', (tester) async {
+    tester.view.physicalSize = const Size(1280, 1000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: DiagnosticsScreen(service: service),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('simulate_favourite_button')),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.byKey(const ValueKey('simulate_favourite_button')), findsOneWidget);
+    expect(find.textContaining('None yet (needs 6 counted plays)'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('simulate_favourite_button')));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('market basket (6 counted plays)'), findsOneWidget);
+  });
 }

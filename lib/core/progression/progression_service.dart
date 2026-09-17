@@ -1,3 +1,5 @@
+import 'package:drift/drift.dart';
+
 import '../ability/estimator.dart';
 import '../db/app_database.dart';
 import '../db/database.dart';
@@ -283,6 +285,16 @@ class ProgressionService implements GameLevelSource {
     final rolledOver = stored.dayKey != todayKey;
     var state = PlayPolicy.forToday(stored, todayKey, thresholdSeconds);
 
+    // If threshold was reduced and card hasn't shown yet today, align nextDueAtSeconds
+    // so caregiver changes (e.g. from 30m to 1m) take effect immediately.
+    if (thresholdSeconds > 0 &&
+        state.shownCount == 0 &&
+        state.keptPlayingCount == 0 &&
+        state.nextDueAtSeconds != null &&
+        state.nextDueAtSeconds! > thresholdSeconds) {
+      state = state.copyWith(nextDueAtSeconds: thresholdSeconds);
+    }
+
     final isLocked = PlayPolicy.isGamesLocked(state, nowMs);
     Duration? lockRemaining;
     if (isLocked && state.lockedUntilMs != null) {
@@ -308,6 +320,33 @@ class ProgressionService implements GameLevelSource {
       shouldLockOnPrompt: shouldLock,
       lockRemaining: lockRemaining,
     );
+  }
+
+  /// Updates daily rest reminder setting and synchronizes [RestState.nextDueAtSeconds]
+  /// so changes take effect immediately today.
+  Future<void> updateDailyRestMinutes(int minutes, {DateTime? now}) async {
+    final n = now ?? _now();
+    final todayKey = PlayPolicy.dayKeyOf(n);
+    final settings = await repo.getSettings();
+    final updatedSettings = settings.copyWith(dailyRestMinutes: minutes);
+    await repo.saveSettings(updatedSettings);
+
+    final thresholdSeconds = minutes * 60;
+    var state = await repo.getRestState(todayKey);
+    final playSec = await _playSecondsToday(n);
+    state = PlayPolicy.forToday(state, todayKey, thresholdSeconds);
+
+    if (thresholdSeconds <= 0) {
+      state = state.copyWith(clearNextDueAtSeconds: true);
+    } else if (state.shownCount == 0 && state.keptPlayingCount == 0) {
+      state = state.copyWith(nextDueAtSeconds: thresholdSeconds);
+    } else {
+      final repeatSec = (thresholdSeconds < ProgressionConfig.restCardRepeatMinutes * 60)
+          ? thresholdSeconds
+          : ProgressionConfig.restCardRepeatMinutes * 60;
+      state = state.copyWith(nextDueAtSeconds: playSec + repeatSec);
+    }
+    await repo.saveRestState(state);
   }
 
   /// Call when the elder answers the rest card.
@@ -381,6 +420,76 @@ class ProgressionService implements GameLevelSource {
       snoozedUntilMs: null,
     );
     await repo.saveNudgeState(updated);
+  }
+
+  /// Returns counted plays by game id over the current nudge window.
+  /// (Counted play = ≥ 30s play duration or ≥ 1 completed round).
+  Future<Map<String, int>> countedPlaysByGame({DateTime? now}) async {
+    final n = now ?? _now();
+    final settings = await repo.getSettings();
+    final windowDays = settings.effectiveNudgeWindowDays;
+    final nowMs = n.millisecondsSinceEpoch;
+    final windowFromMs = n.subtract(Duration(days: windowDays)).millisecondsSinceEpoch;
+    final sessions = await eventRepo.sessionsBetween(windowFromMs, nowMs);
+    final trialCounts = await eventRepo.trialCountsBySessionBetween(windowFromMs, nowMs);
+
+    final result = <String, int>{};
+    for (final s in sessions) {
+      final gids = s.gameIds.split(',').map((g) => g.trim()).where((g) => g.isNotEmpty);
+      if (gids.isEmpty) continue;
+      final tCount = trialCounts[s.id] ?? 0;
+      final durSec = s.completed && s.endedAt != null
+          ? ((s.endedAt! - s.startedAt) / 1000).round()
+          : (s.abandonedAtMs != null ? (s.abandonedAtMs! / 1000).round() : null);
+      final isCounted = tCount > 0 ||
+          (durSec != null && durSec >= ProgressionConfig.minCountedPlaySeconds);
+      if (isCounted) {
+        for (final gid in gids) {
+          result[gid] = (result[gid] ?? 0) + 1;
+        }
+      }
+    }
+    return result;
+  }
+
+  /// Live calculation: detects if any game qualifies as a favourite game right now.
+  Future<String?> detectFavouriteGame({String? gameId, DateTime? now}) async {
+    final counted = await countedPlaysByGame(now: now);
+    final settings = await repo.getSettings();
+    final repeatPlays = settings.effectiveNudgeRepeatPlays;
+    final livingPeople = await contentRepo.getLivingPeople();
+    final facesEligible = livingPeople.length >= 2;
+    final eligibleGameIds = {
+      for (final g in kGameDomains.keys)
+        if (g != 'faces_of_family' || facesEligible) g,
+    };
+    return PlayPolicy.findFavouriteGame(
+      countedPlaysByGame: counted,
+      eligibleGameIds: eligibleGameIds,
+      gameId: gameId,
+      repeatPlays: repeatPlays,
+      shareOfPlays: ProgressionConfig.nudgeShareOfPlays,
+    );
+  }
+
+  /// Simulates [count] counted sessions (lasting 35s each) for [gameId] so that
+  /// variety recommendations can be immediately tested in diagnostics.
+  Future<void> simulateCountedPlays(String gameId, {int count = 6, DateTime? now}) async {
+    final n = now ?? _now();
+    for (var i = 0; i < count; i++) {
+      final startedAt = n.subtract(Duration(minutes: (count - i) * 5)).millisecondsSinceEpoch;
+      final endedAt = startedAt + 35 * 1000;
+      final sessionId = 'sim_${gameId}_${startedAt}_$i';
+      await eventRepo.insertSession(
+        SessionsCompanion.insert(
+          id: sessionId,
+          startedAt: startedAt,
+          gameIds: gameId,
+          endedAt: Value(endedAt),
+          completed: const Value(true),
+        ),
+      );
+    }
   }
 
   Future<int> _playSecondsToday(DateTime now) async {

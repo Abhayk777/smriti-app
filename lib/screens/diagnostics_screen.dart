@@ -76,7 +76,10 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
   Map<CognitiveDomain, GenreReport> _genreReports = {};
   RestState _restState = const RestState(dayKey: '');
   NudgeState _nudgeState = const NudgeState();
+  int _playSecondsToday = 0;
   int _playMinutesToday = 0;
+  String? _liveFavourite;
+  Map<String, int> _countedPlaysByGame = {};
   ProgressionSettings _progressionSettings = const ProgressionSettings();
   late final TextEditingController _restMinutesController = TextEditingController();
   bool _isRunningReview = false;
@@ -144,10 +147,13 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
         now.millisecondsSinceEpoch,
       );
       final playSec = PlayPolicy.playSecondsToday(sessionsToday);
+      _playSecondsToday = playSec;
       _playMinutesToday = PlayPolicy.displayMinutes(playSec);
       _progressionSettings = await progService.repo.getSettings();
       _restMinutesController.text = _progressionSettings.effectiveDailyRestMinutes.toString();
       _nudgeState = await progService.repo.getNudgeState();
+      _liveFavourite = await progService.detectFavouriteGame(now: now);
+      _countedPlaysByGame = await progService.countedPlaysByGame(now: now);
     } catch (_) {}
   }
 
@@ -608,9 +614,20 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Today's play summary
-        _buildInfoRow('Today\'s Play Time', '$_playMinutesToday minutes'),
+        _buildInfoRow(
+          'Today\'s Play Time',
+          _playSecondsToday >= 60
+              ? '${_playSecondsToday ~/ 60}m ${_playSecondsToday % 60}s (${_playMinutesToday}m rounded)'
+              : '${_playSecondsToday}s (0m rounded)',
+        ),
         _buildInfoRow('Rest Card Shown Today', '${_restState.shownCount} times'),
         _buildInfoRow('Keep Playing Chosen', '${_restState.keptPlayingCount} times'),
+        _buildInfoRow(
+          'Next Reminder Due At',
+          _restState.nextDueAtSeconds != null
+              ? '${_restState.nextDueAtSeconds! ~/ 60}m ${_restState.nextDueAtSeconds! % 60}s played'
+              : 'Disabled',
+        ),
         _buildInfoRow(
           'Games Status',
           isLocked ? 'Resting ($remainingMinutes min remaining)' : 'Active',
@@ -677,8 +694,20 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
           style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.primaryText),
         ),
         const SizedBox(height: 8),
-        _buildInfoRow('Favourite Detected', _nudgeState.lastFavouriteId ?? 'None yet'),
-        _buildInfoRow('Suggested Game', _nudgeState.lastSuggestedId ?? 'None yet'),
+        _buildInfoRow(
+          'Live Favourite Game',
+          _liveFavourite != null
+              ? '${_liveFavourite!.replaceAll('_', ' ')} (${_countedPlaysByGame[_liveFavourite!] ?? 0} counted plays)'
+              : 'None yet (needs ${_progressionSettings.effectiveNudgeRepeatPlays} counted plays)',
+        ),
+        _buildInfoRow(
+          'Last Nudge Favourite',
+          _nudgeState.lastFavouriteId?.replaceAll('_', ' ') ?? 'None yet',
+        ),
+        _buildInfoRow(
+          'Last Nudge Suggested',
+          _nudgeState.lastSuggestedId?.replaceAll('_', ' ') ?? 'None yet',
+        ),
         _buildInfoRow('Maybe Later Dismissals', '${_nudgeState.dismissStreak}'),
         _buildInfoRow('Recommendation Cooldown', () {
           if (_nudgeState.snoozedUntilMs != null && nowMs < _nudgeState.snoozedUntilMs!) {
@@ -695,24 +724,54 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
           }
           return 'Ready to show';
         }()),
-        const SizedBox(height: 6),
-        ElevatedButton.icon(
-          key: const ValueKey('reset_nudge_cooldown_button'),
-          onPressed: () async {
-            await _progressionService.resetNudgeCooldown();
-            await _loadProgressionData();
-            if (!mounted) return;
-            setState(() {});
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Nudge cooldown reset')),
-            );
-          },
-          icon: const Icon(Icons.restart_alt_rounded, size: 18),
-          label: const Text('Reset Nudge Cooldown'),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.indigo,
-            foregroundColor: AppColors.onColor,
-          ),
+        const SizedBox(height: 4),
+        Text(
+          'Counted plays: ${_countedPlaysByGame.isEmpty ? '0 so far' : _countedPlaysByGame.entries.map((e) => '${e.key.replaceAll('_', ' ')}: ${e.value}').join(', ')} (requires ≥ 30s play or ≥ 1 completed round)',
+          style: const TextStyle(fontSize: 12, color: AppColors.secondaryText),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            ElevatedButton.icon(
+              key: const ValueKey('reset_nudge_cooldown_button'),
+              onPressed: () async {
+                await _progressionService.resetNudgeCooldown();
+                await _loadProgressionData();
+                if (!mounted) return;
+                setState(() {});
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Nudge cooldown reset')),
+                );
+              },
+              icon: const Icon(Icons.restart_alt_rounded, size: 18),
+              label: const Text('Reset Nudge Cooldown'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.indigo,
+                foregroundColor: AppColors.onColor,
+              ),
+            ),
+            ElevatedButton.icon(
+              key: const ValueKey('simulate_favourite_button'),
+              onPressed: () async {
+                await _progressionService.simulateCountedPlays('market_basket', count: 6);
+                await _progressionService.resetNudgeCooldown();
+                await _loadProgressionData();
+                if (!mounted) return;
+                setState(() {});
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Simulated 6 Market Basket plays')),
+                );
+              },
+              icon: const Icon(Icons.flash_on_rounded, size: 18),
+              label: const Text('Simulate 6 Plays (Market Basket)'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.marigold,
+                foregroundColor: AppColors.primaryText,
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: 14),
 
@@ -941,10 +1000,10 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
   Future<void> _saveRestMinutes(String text) async {
     final minutes = int.tryParse(text.trim());
     if (minutes == null || minutes < 0) return;
-    final updated = _progressionSettings.copyWith(dailyRestMinutes: minutes);
-    await _progressionService.repo.saveSettings(updated);
+    await _progressionService.updateDailyRestMinutes(minutes);
+    await _loadProgressionData();
     if (!mounted) return;
-    setState(() => _progressionSettings = updated);
+    setState(() {});
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Rest reminder set to $minutes minutes')),
     );

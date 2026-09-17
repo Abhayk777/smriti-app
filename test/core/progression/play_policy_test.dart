@@ -189,11 +189,20 @@ void main() {
   });
 
   group('displayMinutes', () {
-    test('rounds down to the nearest 5 minutes', () {
+    test('rounds down to the nearest 5 minutes for >= 5m', () {
       expect(PlayPolicy.displayMinutes(34 * 60), 30);
       expect(PlayPolicy.displayMinutes(29 * 60), 25);
       expect(PlayPolicy.displayMinutes(30 * 60), 30);
       expect(PlayPolicy.displayMinutes(0), 0);
+    });
+
+    test('returns exact minutes for under 5 minutes', () {
+      expect(PlayPolicy.displayMinutes(60), 1);
+      expect(PlayPolicy.displayMinutes(86), 1);
+      expect(PlayPolicy.displayMinutes(120), 2);
+      expect(PlayPolicy.displayMinutes(180), 3);
+      expect(PlayPolicy.displayMinutes(240), 4);
+      expect(PlayPolicy.displayMinutes(300), 5);
     });
   });
 

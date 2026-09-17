@@ -318,6 +318,32 @@ void main() {
       expect(fresh.snoozedUntilMs, isNull);
       expect(fresh.dismissStreak, 0);
     });
+
+    test('updateDailyRestMinutes syncs nextDueAtSeconds and triggers restAdvice immediately when met', () async {
+      // Initially 30m default. Play 2 minutes.
+      await addPlayMinutes(2);
+      var advice = await service.restAdvice();
+      expect(advice.show, isFalse);
+
+      // Caregiver updates rest reminder to 1 minute
+      await service.updateDailyRestMinutes(1);
+
+      // Now with 2 minutes played >= 1 minute threshold, restAdvice triggers immediately!
+      advice = await service.restAdvice();
+      expect(advice.show, isTrue);
+      expect(advice.minutesToday, 2);
+    });
+
+    test('simulateCountedPlays registers counted sessions and detectFavouriteGame finds it', () async {
+      expect(await service.detectFavouriteGame(), isNull);
+
+      await service.simulateCountedPlays('market_basket', count: 6);
+      final counted = await service.countedPlaysByGame();
+      expect(counted['market_basket'], 6);
+
+      final fav = await service.detectFavouriteGame();
+      expect(fav, 'market_basket');
+    });
   });
 
   group('variety suggestion (docs/PROGRESSION_PLAN.md §8)', () {
