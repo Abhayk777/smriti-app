@@ -27,15 +27,29 @@ class VarietySuggestion {
 }
 
 /// Whether the elder should be shown a gentle rest reminder right now
-/// (docs/PROGRESSION_PLAN.md §9.5). Advice, never a lock: every game stays
-/// playable regardless of [show].
+/// (docs/PROGRESSION_PLAN.md §9.5).
 class RestAdvice {
-  const RestAdvice({required this.show, required this.minutesToday});
+  const RestAdvice({
+    required this.show,
+    required this.minutesToday,
+    this.isLocked = false,
+    this.shouldLockOnPrompt = false,
+    this.lockRemaining,
+  });
 
   final bool show;
 
   /// Whole minutes played today, rounded down to the nearest 5.
   final int minutesToday;
+
+  /// Whether games are currently locked for a restful break.
+  final bool isLocked;
+
+  /// Whether this prompt is the 4th trigger (transitioning to 3-hour lock).
+  final bool shouldLockOnPrompt;
+
+  /// Remaining duration of the lock, if currently locked.
+  final Duration? lockRemaining;
 }
 
 /// Every game id and the cognitive domain it belongs to
@@ -86,6 +100,9 @@ class ProgressionService implements GameLevelSource {
   static ProgressionService get instance => _instance ??= ProgressionService();
 
   static set instance(ProgressionService value) => _instance = value;
+
+  /// Current clock used by this service (respects test clock when injected).
+  DateTime get currentClock => _now();
 
   final SmritiDatabase db;
   final ProgressionRepo repo;
@@ -247,13 +264,17 @@ class ProgressionService implements GameLevelSource {
     };
   }
 
-  // ── Daily rest card (docs/PROGRESSION_PLAN.md §9) ───────────────────────
+  // ── Daily rest card & Game Lock (docs/PROGRESSION_PLAN.md §9) ─────────
 
-  /// Whether a gentle rest reminder is due right now, and today's play time
-  /// to show on it. Marks the card as shown (so it is not repeated
+  /// Whether a gentle rest reminder or game break is due right now, and today's
+  /// play time to show on it. Marks the card as shown (so it is not repeated
   /// immediately) whenever it returns `show: true`.
-  Future<RestAdvice> restAdvice({DateTime? now}) async {
+  Future<RestAdvice> restAdvice({
+    DateTime? now,
+    int inSessionElapsedSeconds = 0,
+  }) async {
     final n = now ?? _now();
+    final nowMs = n.millisecondsSinceEpoch;
     final settings = await repo.getSettings();
     final thresholdSeconds = settings.effectiveDailyRestMinutes * 60;
     final todayKey = PlayPolicy.dayKeyOf(n);
@@ -262,8 +283,15 @@ class ProgressionService implements GameLevelSource {
     final rolledOver = stored.dayKey != todayKey;
     var state = PlayPolicy.forToday(stored, todayKey, thresholdSeconds);
 
-    final seconds = await _playSecondsToday(n);
-    final due = PlayPolicy.restCardDue(state, seconds, thresholdSeconds);
+    final isLocked = PlayPolicy.isGamesLocked(state, nowMs);
+    Duration? lockRemaining;
+    if (isLocked && state.lockedUntilMs != null) {
+      lockRemaining = Duration(milliseconds: state.lockedUntilMs! - nowMs);
+    }
+
+    final seconds = (await _playSecondsToday(n)) + inSessionElapsedSeconds;
+    final shouldLock = PlayPolicy.shouldLockOnNextPrompt(state);
+    final due = !isLocked && PlayPolicy.restCardDue(state, seconds, thresholdSeconds);
 
     if (due) {
       state = PlayPolicy.afterRestCardShown(state);
@@ -273,13 +301,24 @@ class ProgressionService implements GameLevelSource {
       await repo.saveRestState(state);
     }
 
-    return RestAdvice(show: due, minutesToday: PlayPolicy.displayMinutes(seconds));
+    return RestAdvice(
+      show: due,
+      minutesToday: PlayPolicy.displayMinutes(seconds),
+      isLocked: isLocked,
+      shouldLockOnPrompt: shouldLock,
+      lockRemaining: lockRemaining,
+    );
   }
 
-  /// Call when the elder answers the rest card, however they answered it
-  /// (closing it any other way counts as "Keep playing",
-  /// docs/PROGRESSION_PLAN.md §9.3).
-  Future<void> onRestCardAnswered({required bool keepPlaying, DateTime? now}) async {
+  /// Call when the elder answers the rest card.
+  /// If [keepPlaying] is true, resets the reminder timer by the configured
+  /// [dailyRestMinutes] (or defaults to [restCardRepeatMinutes]).
+  /// If the elder chose "Keep playing" 3 times already, the 4th trigger locks games.
+  Future<void> onRestCardAnswered({
+    required bool keepPlaying,
+    DateTime? now,
+    int inSessionElapsedSeconds = 0,
+  }) async {
     final n = now ?? _now();
     final settings = await repo.getSettings();
     final thresholdSeconds = settings.effectiveDailyRestMinutes * 60;
@@ -288,14 +327,60 @@ class ProgressionService implements GameLevelSource {
     var state = await repo.getRestState(todayKey);
     state = PlayPolicy.forToday(state, todayKey, thresholdSeconds);
 
-    final seconds = await _playSecondsToday(n);
+    final seconds = (await _playSecondsToday(n)) + inSessionElapsedSeconds;
+    // Repeat after configured rest minutes if set below default 15m (e.g. 1m for testing),
+    // otherwise repeat every 15 minutes (§9.3).
+    final configuredMin = settings.effectiveDailyRestMinutes;
+    final repeatMinutes = (configuredMin > 0 && configuredMin < ProgressionConfig.restCardRepeatMinutes)
+        ? configuredMin
+        : ProgressionConfig.restCardRepeatMinutes;
+
     final updated = PlayPolicy.afterRestCardAnswered(
       state,
       keptPlaying: keepPlaying,
       playSecondsToday: seconds,
-      repeatMinutes: ProgressionConfig.restCardRepeatMinutes,
+      repeatMinutes: repeatMinutes,
+      nowMs: n.millisecondsSinceEpoch,
     );
     await repo.saveRestState(updated);
+  }
+
+  /// Locks games for [hours] (defaults to 3 hours).
+  Future<void> lockGames({int hours = ProgressionConfig.gameLockHours, DateTime? now}) async {
+    final n = now ?? _now();
+    final todayKey = PlayPolicy.dayKeyOf(n);
+    final state = await repo.getRestState(todayKey);
+    final updated = PlayPolicy.lockGames(state, nowMs: n.millisecondsSinceEpoch, lockHours: hours);
+    await repo.saveRestState(updated);
+  }
+
+  /// Unlocks games immediately (caregiver override in Diagnostics).
+  Future<void> unlockGames({DateTime? now}) async {
+    final n = now ?? _now();
+    final todayKey = PlayPolicy.dayKeyOf(n);
+    final state = await repo.getRestState(todayKey);
+    final updated = PlayPolicy.unlockGames(state);
+    await repo.saveRestState(updated);
+  }
+
+  /// Checks if games are currently locked for a restful break.
+  Future<bool> isGamesLocked({DateTime? now}) async {
+    final n = now ?? _now();
+    final todayKey = PlayPolicy.dayKeyOf(n);
+    final state = await repo.getRestState(todayKey);
+    return PlayPolicy.isGamesLocked(state, n.millisecondsSinceEpoch);
+  }
+
+  /// Resets variety nudge cooldown and snoozing so suggestions can appear immediately.
+  Future<void> resetNudgeCooldown() async {
+    const updated = NudgeState(
+      lastFavouriteId: null,
+      lastSuggestedId: null,
+      lastShownAtMs: null,
+      dismissStreak: 0,
+      snoozedUntilMs: null,
+    );
+    await repo.saveNudgeState(updated);
   }
 
   Future<int> _playSecondsToday(DateTime now) async {
@@ -319,6 +404,8 @@ class ProgressionService implements GameLevelSource {
   Future<VarietySuggestion?> suggestionFor({String? gameId, DateTime? now}) async {
     final n = now ?? _now();
 
+    if (await isGamesLocked(now: n)) return null;
+
     // Rest card wins over the variety suggestion when both are due (§9.2).
     final rest = await restAdvice(now: n);
     if (rest.show) return null;
@@ -339,8 +426,8 @@ class ProgressionService implements GameLevelSource {
 
     final countedPlaysByGame = <String, int>{};
     for (final s in sessions) {
-      final gid = s.gameIds;
-      if (gid.isEmpty) continue;
+      final gids = s.gameIds.split(',').map((g) => g.trim()).where((g) => g.isNotEmpty);
+      if (gids.isEmpty) continue;
       final tCount = trialCounts[s.id] ?? 0;
       final durSec = s.completed && s.endedAt != null
           ? ((s.endedAt! - s.startedAt) / 1000).round()
@@ -348,7 +435,9 @@ class ProgressionService implements GameLevelSource {
       final isCounted = tCount > 0 ||
           (durSec != null && durSec >= ProgressionConfig.minCountedPlaySeconds);
       if (isCounted) {
-        countedPlaysByGame[gid] = (countedPlaysByGame[gid] ?? 0) + 1;
+        for (final gid in gids) {
+          countedPlaysByGame[gid] = (countedPlaysByGame[gid] ?? 0) + 1;
+        }
       }
     }
 

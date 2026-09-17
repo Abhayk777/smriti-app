@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:smriti/core/db/database.dart';
 import 'package:smriti/core/progression/progression_config.dart';
 import 'package:smriti/core/progression/progression_service.dart';
+import 'package:smriti/core/progression/progression_state.dart';
 import 'package:uuid/uuid.dart';
 
 import '../repo/_test_db.dart';
@@ -276,6 +277,46 @@ void main() {
       final advice = await service.restAdvice();
       expect(advice.show, isFalse);
       expect(advice.minutesToday, 0);
+    });
+
+    test('restAdvice accounts for inSessionElapsedSeconds', () async {
+      await addPlayMinutes(28);
+      // Not due without in-session elapsed:
+      expect((await service.restAdvice()).show, isFalse);
+      // Due when adding 2 minutes of mid-session play (28 + 2 = 30):
+      final advice = await service.restAdvice(inSessionElapsedSeconds: 120);
+      expect(advice.show, isTrue);
+      expect(advice.minutesToday, 30);
+    });
+
+    test('games locking and unlocking', () async {
+      expect(await service.isGamesLocked(), isFalse);
+      await service.lockGames(hours: 3);
+      expect(await service.isGamesLocked(), isTrue);
+
+      final advice = await service.restAdvice();
+      expect(advice.isLocked, isTrue);
+      expect(advice.lockRemaining, isNotNull);
+
+      await service.unlockGames();
+      expect(await service.isGamesLocked(), isFalse);
+      expect((await service.restAdvice()).isLocked, isFalse);
+    });
+
+    test('resetNudgeCooldown clears snooze and shownAt', () async {
+      final nowMs = clock.millisecondsSinceEpoch;
+      await service.repo.saveNudgeState(NudgeState(
+        lastFavouriteId: 'market_basket',
+        lastSuggestedId: 'trace_path',
+        lastShownAtMs: nowMs,
+        dismissStreak: 2,
+        snoozedUntilMs: nowMs + 100000,
+      ));
+      await service.resetNudgeCooldown();
+      final fresh = await service.repo.getNudgeState();
+      expect(fresh.lastShownAtMs, isNull);
+      expect(fresh.snoozedUntilMs, isNull);
+      expect(fresh.dismissStreak, 0);
     });
   });
 

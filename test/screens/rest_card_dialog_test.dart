@@ -148,4 +148,68 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(RestAdviceCard), findsOneWidget);
   });
+
+  testWidgets('BreakLockDialog renders calm 3-hour rest message and Rest now button',
+      (tester) async {
+    var restNowTapped = false;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: BreakLockDialog(
+            isCompact: false,
+            onRestNow: () => restNowTapped = true,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Time for a good rest'), findsOneWidget);
+    expect(
+      find.text(
+        'You have had a wonderful playtime today! It is time to rest your eyes and mind. Games are taking a peaceful break and will be back in 3 hours.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('Rest now'), findsOneWidget);
+    // Keep playing button must NOT exist on BreakLockDialog
+    expect(find.text('Keep playing'), findsNothing);
+
+    await tester.tap(find.text('Rest now'));
+    await tester.pump();
+    expect(restNowTapped, isTrue);
+  });
+
+  testWidgets('BreakLockDialog has no negative icons or red color', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: BreakLockDialog(
+            isCompact: false,
+            onRestNow: () {},
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final medallions = tester.widgetList<IconMedallion>(find.byType(IconMedallion));
+    for (final m in medallions) {
+      final codePoint = m.icon.codePoint;
+      expect(codePoint != Icons.error.codePoint, isTrue);
+      expect(codePoint != Icons.warning.codePoint, isTrue);
+      expect(codePoint != Icons.timer.codePoint, isTrue);
+      expect(codePoint != Icons.hourglass_empty.codePoint, isTrue);
+    }
+
+    final containers = tester.widgetList<Container>(find.byType(Container));
+    for (final c in containers) {
+      final decoration = c.decoration;
+      if (decoration is BoxDecoration && decoration.color != null) {
+        expect(decoration.color != Colors.red, isTrue);
+        expect(decoration.color != AppColors.gamosaRed, isTrue);
+      }
+    }
+  });
 }

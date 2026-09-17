@@ -307,6 +307,7 @@ class RestState {
     this.nextDueAtSeconds,
     this.shownCount = 0,
     this.keptPlayingCount = 0,
+    this.lockedUntilMs,
   });
 
   /// A fresh day with the reminder due at [thresholdSeconds] of play.
@@ -328,11 +329,16 @@ class RestState {
   /// "Keep playing" taps today; caregiver-visible only.
   final int keptPlayingCount;
 
+  /// When games are taking a restful break until (epoch ms); null when games are active.
+  final int? lockedUntilMs;
+
   RestState copyWith({
     int? nextDueAtSeconds,
     bool clearNextDueAtSeconds = false,
     int? shownCount,
     int? keptPlayingCount,
+    int? lockedUntilMs,
+    bool clearLockedUntilMs = false,
   }) {
     return RestState(
       dayKey: dayKey,
@@ -341,6 +347,9 @@ class RestState {
           : (nextDueAtSeconds ?? this.nextDueAtSeconds),
       shownCount: shownCount ?? this.shownCount,
       keptPlayingCount: keptPlayingCount ?? this.keptPlayingCount,
+      lockedUntilMs: clearLockedUntilMs
+          ? null
+          : (lockedUntilMs ?? this.lockedUntilMs),
     );
   }
 
@@ -349,6 +358,7 @@ class RestState {
         'nextDueAtSeconds': nextDueAtSeconds,
         'shownCount': shownCount,
         'keptPlayingCount': keptPlayingCount,
+        'lockedUntilMs': lockedUntilMs,
       };
 
   /// Falls back to a fresh state for [todayKey] whenever [json] is missing or
@@ -373,6 +383,7 @@ class RestState {
         nextDueAtSeconds: (json['nextDueAtSeconds'] as num?)?.toInt(),
         shownCount: (json['shownCount'] as num?)?.toInt() ?? 0,
         keptPlayingCount: (json['keptPlayingCount'] as num?)?.toInt() ?? 0,
+        lockedUntilMs: (json['lockedUntilMs'] as num?)?.toInt(),
       );
     } catch (_) {
       return RestState.forNewDay(

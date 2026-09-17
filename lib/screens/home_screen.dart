@@ -130,6 +130,56 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     Navigator.of(context).push(MaterialPageRoute(builder: (_) => screen));
   }
 
+  Future<void> _onPlayTap() async {
+    final isLocked = await ProgressionService.instance.isGamesLocked();
+    if (!mounted) return;
+    if (isLocked) {
+      await showDialog<void>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          title: const Row(
+            children: [
+              Icon(Icons.local_cafe_rounded, color: AppColors.leafGreen, size: 32),
+              SizedBox(width: 12),
+              Expanded(child: Text('Games are Resting')),
+            ],
+          ),
+          content: const Text(
+            'Games are taking a peaceful break right now. How about checking your family messages or your daily routine?',
+            style: TextStyle(fontSize: 18, height: 1.4),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(ctx).pop();
+                _open(const FamilyScreen());
+              },
+              child: const Text('My Family', style: TextStyle(fontSize: 17)),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(ctx).pop();
+                _open(const MyDayScreen());
+              },
+              child: const Text('My Day', style: TextStyle(fontSize: 17)),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.leafGreen,
+                foregroundColor: AppColors.onColor,
+              ),
+              child: const Text('OK', style: TextStyle(fontSize: 17)),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+    _open(const GameSelectScreen());
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -247,7 +297,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         icon: Icons.extension_rounded,
         color: AppColors.terracotta,
         height: height,
-        onTap: () => _open(const GameSelectScreen()),
+        onTap: _onPlayTap,
       ),
       ActionTile(
         title: 'My Family',

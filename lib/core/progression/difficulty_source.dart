@@ -85,7 +85,7 @@ class LevelDifficultySource<G extends Object, R extends Object>
     this.service,
     this.idOf,
     this.correctOf, {
-    this.enableStaircase = false,
+    this.enableStaircase = true,
   });
 
   final GameLevelSource service;
@@ -96,7 +96,7 @@ class LevelDifficultySource<G extends Object, R extends Object>
   /// Reads `result.correct` without this file importing `TrialResult`.
   final bool Function(R result) correctOf;
 
-  /// Whether the in-session staircase is enabled. Defaults to false so difficulty
+  /// Whether the in-session staircase is enabled. When false, difficulty
   /// remains strictly fixed to the elder's stored level throughout the session,
   /// changing only when the 4-day review analyses the elder's pattern.
   final bool enableStaircase;

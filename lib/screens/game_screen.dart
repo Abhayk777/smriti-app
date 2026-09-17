@@ -251,6 +251,83 @@ class _GameScreenState extends State<GameScreen> {
   Future<void> _nextItem() async {
     if (_runner == null || _game == null || _sessionEnded) return;
 
+    // Check rest reminder / game lock between rounds (after trial completion)
+    if (_currentItem != null) {
+      final rest = await ProgressionService.instance.restAdvice(
+        inSessionElapsedSeconds: _elapsed.inSeconds,
+      );
+      if (!mounted || _sessionEnded) return;
+
+      if (rest.isLocked || rest.shouldLockOnPrompt) {
+        await ProgressionService.instance.lockGames();
+        if (!mounted || _sessionEnded) return;
+        await showDialog<void>(
+          context: context,
+          barrierDismissible: false,
+          builder: (ctx) {
+            final isCompact = MediaQuery.of(ctx).size.height < 500;
+            return Dialog(
+              clipBehavior: Clip.antiAlias,
+              insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 420),
+                child: BreakLockDialog(
+                  isCompact: isCompact,
+                  onRestNow: () => Navigator.of(ctx).pop(),
+                ),
+              ),
+            );
+          },
+        );
+        if (mounted) {
+          _endSession(completed: true);
+        }
+        return;
+      } else if (rest.show) {
+        var keepPlaying = false;
+        await showDialog<void>(
+          context: context,
+          barrierDismissible: false,
+          builder: (ctx) {
+            final isCompact = MediaQuery.of(ctx).size.height < 500;
+            return Dialog(
+              clipBehavior: Clip.antiAlias,
+              insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 420),
+                child: RestCardDialog(
+                  isCompact: isCompact,
+                  minutesToday: rest.minutesToday,
+                  onRestNow: () {
+                    keepPlaying = false;
+                    Navigator.of(ctx).pop();
+                  },
+                  onKeepPlaying: () {
+                    keepPlaying = true;
+                    Navigator.of(ctx).pop();
+                  },
+                ),
+              ),
+            );
+          },
+        );
+
+        if (!mounted || _sessionEnded) return;
+
+        await ProgressionService.instance.onRestCardAnswered(
+          keepPlaying: keepPlaying,
+          inSessionElapsedSeconds: _elapsed.inSeconds,
+        );
+
+        if (!keepPlaying) {
+          _endSession(completed: true);
+          return;
+        }
+      }
+    }
+
     final item = await _runner!.nextItem(_game!);
     if (item == null) {
       // Session cap reached
@@ -284,7 +361,8 @@ class _GameScreenState extends State<GameScreen> {
       final restAdvice = await ProgressionService.instance.restAdvice();
       if (!mounted) return;
 
-      final suggestion = restAdvice.show
+      final isBreak = restAdvice.isLocked || restAdvice.shouldLockOnPrompt;
+      final suggestion = (restAdvice.show || isBreak)
           ? null
           : await ProgressionService.instance.suggestionFor(gameId: widget.gameId);
       if (!mounted) return;
@@ -303,21 +381,30 @@ class _GameScreenState extends State<GameScreen> {
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 420),
-              child: restAdvice.show
-                  ? RestCardDialog(
+              child: isBreak
+                  ? BreakLockDialog(
                       isCompact: isCompact,
-                      minutesToday: restAdvice.minutesToday,
                       onRestNow: () {
-                        unawaited(ProgressionService.instance.onRestCardAnswered(keepPlaying: false));
+                        unawaited(ProgressionService.instance.lockGames());
                         restNow = true;
                         Navigator.of(ctx).pop();
                       },
-                      onKeepPlaying: () {
-                        unawaited(ProgressionService.instance.onRestCardAnswered(keepPlaying: true));
-                        Navigator.of(ctx).pop();
-                      },
                     )
-                  : SingleChildScrollView(
+                  : restAdvice.show
+                      ? RestCardDialog(
+                          isCompact: isCompact,
+                          minutesToday: restAdvice.minutesToday,
+                          onRestNow: () {
+                            unawaited(ProgressionService.instance.onRestCardAnswered(keepPlaying: false));
+                            restNow = true;
+                            Navigator.of(ctx).pop();
+                          },
+                          onKeepPlaying: () {
+                            unawaited(ProgressionService.instance.onRestCardAnswered(keepPlaying: true));
+                            Navigator.of(ctx).pop();
+                          },
+                        )
+                      : SingleChildScrollView(
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -871,3 +958,86 @@ class RestCardDialog extends StatelessWidget {
     );
   }
 }
+
+/// Standalone dialog presented when games are resting for 3 hours.
+class BreakLockDialog extends StatelessWidget {
+  const BreakLockDialog({
+    super.key,
+    required this.isCompact,
+    required this.onRestNow,
+  });
+
+  final bool isCompact;
+  final VoidCallback onRestNow;
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      child: Container(
+        padding: EdgeInsets.all(isCompact ? 20 : 28),
+        decoration: BoxDecoration(
+          color: Color.lerp(AppColors.leafGreen, Colors.white, 0.85),
+          borderRadius: BorderRadius.circular(28),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                IconMedallion(
+                  icon: Icons.local_cafe_rounded,
+                  color: AppColors.leafGreen,
+                  size: isCompact ? 48 : 56,
+                ),
+                const SizedBox(width: 14),
+                const Expanded(
+                  child: Text(
+                    'Time for a good rest',
+                    style: TextStyle(
+                      fontSize: 26,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.primaryText,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: isCompact ? 12 : 16),
+            const Text(
+              'You have had a wonderful playtime today! It is time to rest your eyes and mind. Games are taking a peaceful break and will be back in 3 hours.',
+              style: TextStyle(
+                fontSize: 20,
+                height: 1.3,
+                color: AppColors.primaryText,
+              ),
+            ),
+            SizedBox(height: isCompact ? 18 : 24),
+            SizedBox(
+              height: 64,
+              child: ElevatedButton.icon(
+                onPressed: onRestNow,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.leafGreen,
+                  foregroundColor: AppColors.onColor,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                ),
+                icon: const Icon(Icons.home_rounded, size: 28),
+                label: const Text(
+                  'Rest now',
+                  style: TextStyle(
+                    fontSize: 21,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+

@@ -142,6 +142,42 @@ void main() {
       expect(updated.nextDueAtSeconds, 1800 + 15 * 60);
       expect(updated.keptPlayingCount, 0);
     });
+
+    test('4th "Keep playing" locks games for 3 hours', () {
+      var state = const RestState(dayKey: '2026-01-05', keptPlayingCount: 3);
+      final nowMs = 1000000;
+      final updated = PlayPolicy.afterRestCardAnswered(
+        state,
+        keptPlaying: true,
+        playSecondsToday: 2400,
+        repeatMinutes: 1,
+        nowMs: nowMs,
+      );
+      expect(updated.keptPlayingCount, 4);
+      expect(updated.lockedUntilMs, nowMs + 3 * 3600 * 1000);
+      expect(PlayPolicy.isGamesLocked(updated, nowMs), isTrue);
+      expect(PlayPolicy.isGamesLocked(updated, nowMs + 4 * 3600 * 1000), isFalse);
+    });
+  });
+
+  group('game lock policy', () {
+    test('shouldLockOnNextPrompt is true when keptPlayingCount >= 3', () {
+      expect(PlayPolicy.shouldLockOnNextPrompt(const RestState(dayKey: 'k', keptPlayingCount: 2)), isFalse);
+      expect(PlayPolicy.shouldLockOnNextPrompt(const RestState(dayKey: 'k', keptPlayingCount: 3)), isTrue);
+      expect(PlayPolicy.shouldLockOnNextPrompt(const RestState(dayKey: 'k', keptPlayingCount: 4)), isTrue);
+    });
+
+    test('lockGames and unlockGames', () {
+      const state = RestState(dayKey: '2026-01-05', keptPlayingCount: 3);
+      final locked = PlayPolicy.lockGames(state, nowMs: 100000, lockHours: 3);
+      expect(locked.lockedUntilMs, 100000 + 3 * 3600 * 1000);
+      expect(PlayPolicy.isGamesLocked(locked, 100000), isTrue);
+
+      final unlocked = PlayPolicy.unlockGames(locked);
+      expect(unlocked.lockedUntilMs, isNull);
+      expect(unlocked.keptPlayingCount, 0);
+      expect(PlayPolicy.isGamesLocked(unlocked, 100000), isFalse);
+    });
   });
 
   group('afterRestCardShown', () {

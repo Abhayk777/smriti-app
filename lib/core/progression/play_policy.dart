@@ -49,31 +49,83 @@ class PlayPolicy {
 
   /// Whether the rest card should show right now. `thresholdSeconds <= 0`
   /// (the caregiver turned the reminder off) always means no.
+  /// If games are locked for a break, the standard reminder does not show.
   static bool restCardDue(RestState state, int playSecondsToday, int thresholdSeconds) {
     if (thresholdSeconds <= 0) return false;
     final due = state.nextDueAtSeconds;
     return due != null && playSecondsToday >= due;
   }
 
+  /// Whether the games feature is currently locked for a restful break.
+  static bool isGamesLocked(RestState state, int nowMs) {
+    return state.lockedUntilMs != null && nowMs < state.lockedUntilMs!;
+  }
+
+  /// Whether the upcoming rest prompt should be the 3-hour break lock
+  /// (because the elder has chosen "Keep playing" [maxKeepPlayingCount] times already).
+  static bool shouldLockOnNextPrompt(
+    RestState state, {
+    int maxKeepPlayingCount = ProgressionConfig.maxKeepPlayingCount,
+  }) {
+    return state.keptPlayingCount >= maxKeepPlayingCount;
+  }
+
+  /// Locks games for [lockHours] (default 3 hours).
+  static RestState lockGames(
+    RestState state, {
+    required int nowMs,
+    int lockHours = ProgressionConfig.gameLockHours,
+  }) {
+    return state.copyWith(
+      lockedUntilMs: nowMs + lockHours * 3600 * 1000,
+      clearNextDueAtSeconds: true,
+    );
+  }
+
+  /// Unlocks games, clearing the resting lock and resetting keptPlayingCount.
+  static RestState unlockGames(RestState state) {
+    return state.copyWith(
+      clearLockedUntilMs: true,
+      keptPlayingCount: 0,
+    );
+  }
+
   /// [RestState] to save once the card has been shown.
   static RestState afterRestCardShown(RestState state) =>
       state.copyWith(shownCount: state.shownCount + 1);
 
-  /// [RestState] to save once the elder has answered the card. Both answers
-  /// push the next reminder out by [repeatMinutes] of further play
-  /// (docs/PROGRESSION_PLAN.md §9.3); only "Keep playing" counts toward
-  /// [RestState.keptPlayingCount] (caregiver-visible only).
+  /// [RestState] to save once the elder has answered the card.
+  /// Both answers push the next reminder out by [repeatMinutes] of further play.
+  /// If the elder chose "Keep playing" [maxKeepPlayingCount] times already,
+  /// the next prompt or answering "Keep playing" locks games for [lockHours].
   static RestState afterRestCardAnswered(
     RestState state, {
     required bool keptPlaying,
     required int playSecondsToday,
     required int repeatMinutes,
+    int? nowMs,
+    int maxKeepPlayingCount = ProgressionConfig.maxKeepPlayingCount,
+    int lockHours = ProgressionConfig.gameLockHours,
   }) {
-    return state.copyWith(
-      nextDueAtSeconds: playSecondsToday + repeatMinutes * 60,
-      keptPlayingCount:
-          keptPlaying ? state.keptPlayingCount + 1 : state.keptPlayingCount,
-    );
+    if (keptPlaying) {
+      final newCount = state.keptPlayingCount + 1;
+      if (newCount > maxKeepPlayingCount) {
+        final currentMs = nowMs ?? DateTime.now().millisecondsSinceEpoch;
+        return state.copyWith(
+          keptPlayingCount: newCount,
+          lockedUntilMs: currentMs + lockHours * 3600 * 1000,
+          clearNextDueAtSeconds: true,
+        );
+      }
+      return state.copyWith(
+        nextDueAtSeconds: playSecondsToday + repeatMinutes * 60,
+        keptPlayingCount: newCount,
+      );
+    } else {
+      return state.copyWith(
+        nextDueAtSeconds: playSecondsToday + repeatMinutes * 60,
+      );
+    }
   }
 
   /// The play-time figure shown on the card: whole minutes, rounded down to

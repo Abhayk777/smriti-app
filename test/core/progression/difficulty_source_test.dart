@@ -81,11 +81,12 @@ void main() {
       expect(d, closeTo(LevelScale.levelToDifficulty(5.0), 1e-9));
     });
 
-    test('by default, mid-session difficulty is fixed and does not change on misses or hits', () async {
+    test('when enableStaircase is false, mid-session difficulty is fixed and does not change on misses or hits', () async {
       final source = LevelDifficultySource<_FakeGame, _FakeResult>(
         _FakeLevelSource({'g': 5.0}),
         (g) => g.id,
         (r) => r.correct,
+        enableStaircase: false,
       );
       const game = _FakeGame('g', CognitiveDomain.memory);
 

@@ -75,6 +75,7 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
   Map<String, GameProgress> _gameProgress = {};
   Map<CognitiveDomain, GenreReport> _genreReports = {};
   RestState _restState = const RestState(dayKey: '');
+  NudgeState _nudgeState = const NudgeState();
   int _playMinutesToday = 0;
   ProgressionSettings _progressionSettings = const ProgressionSettings();
   late final TextEditingController _restMinutesController = TextEditingController();
@@ -134,9 +135,9 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
       }
       _gameProgress = progressMap;
       _genreReports = await progService.genreReports(windowDays: 7);
-      final todayKey = PlayPolicy.dayKeyOf(DateTime.now());
+      final now = progService.currentClock;
+      final todayKey = PlayPolicy.dayKeyOf(now);
       _restState = await progService.repo.getRestState(todayKey);
-      final now = DateTime.now();
       final startOfDay = DateTime(now.year, now.month, now.day);
       final sessionsToday = await _eventRepo.sessionsBetween(
         startOfDay.millisecondsSinceEpoch,
@@ -146,6 +147,7 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
       _playMinutesToday = PlayPolicy.displayMinutes(playSec);
       _progressionSettings = await progService.repo.getSettings();
       _restMinutesController.text = _progressionSettings.effectiveDailyRestMinutes.toString();
+      _nudgeState = await progService.repo.getNudgeState();
     } catch (_) {}
   }
 
@@ -596,6 +598,12 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
   // ── Game levels section (docs/PROGRESSION_PLAN.md §11) ───────────────────
 
   Widget _buildGameLevels() {
+    final nowMs = _progressionService.currentClock.millisecondsSinceEpoch;
+    final isLocked = _restState.lockedUntilMs != null && nowMs < _restState.lockedUntilMs!;
+    final remainingMinutes = isLocked
+        ? ((_restState.lockedUntilMs! - nowMs) ~/ 60000 + 1)
+        : 0;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -603,6 +611,31 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
         _buildInfoRow('Today\'s Play Time', '$_playMinutesToday minutes'),
         _buildInfoRow('Rest Card Shown Today', '${_restState.shownCount} times'),
         _buildInfoRow('Keep Playing Chosen', '${_restState.keptPlayingCount} times'),
+        _buildInfoRow(
+          'Games Status',
+          isLocked ? 'Resting ($remainingMinutes min remaining)' : 'Active',
+        ),
+        if (isLocked) ...[
+          const SizedBox(height: 6),
+          ElevatedButton.icon(
+            key: const ValueKey('unlock_games_now_button'),
+            onPressed: () async {
+              await _progressionService.unlockGames();
+              await _loadProgressionData();
+              if (!mounted) return;
+              setState(() {});
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Games unlocked successfully')),
+              );
+            },
+            icon: const Icon(Icons.lock_open_rounded, size: 18),
+            label: const Text('Unlock Games Now'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.leafGreen,
+              foregroundColor: AppColors.onColor,
+            ),
+          ),
+        ],
         const SizedBox(height: 12),
 
         // Rest reminder setting
@@ -635,6 +668,51 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
               child: const Text('Save'),
             ),
           ],
+        ),
+        const SizedBox(height: 14),
+
+        // Variety Recommendations Diagnostic Section
+        const Text(
+          'Variety Recommendations',
+          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.primaryText),
+        ),
+        const SizedBox(height: 8),
+        _buildInfoRow('Favourite Detected', _nudgeState.lastFavouriteId ?? 'None yet'),
+        _buildInfoRow('Suggested Game', _nudgeState.lastSuggestedId ?? 'None yet'),
+        _buildInfoRow('Maybe Later Dismissals', '${_nudgeState.dismissStreak}'),
+        _buildInfoRow('Recommendation Cooldown', () {
+          if (_nudgeState.snoozedUntilMs != null && nowMs < _nudgeState.snoozedUntilMs!) {
+            final mins = (_nudgeState.snoozedUntilMs! - nowMs) ~/ 60000;
+            return 'Snoozed (${mins ~/ 60}h ${mins % 60}m remaining)';
+          }
+          if (_nudgeState.lastShownAtMs != null) {
+            final elapsed = nowMs - _nudgeState.lastShownAtMs!;
+            final coolMs = ProgressionConfig.nudgeCooldownHours * 3600 * 1000;
+            if (elapsed < coolMs) {
+              final rem = (coolMs - elapsed) ~/ 60000;
+              return 'In 24h Cooldown (${rem ~/ 60}h ${rem % 60}m remaining)';
+            }
+          }
+          return 'Ready to show';
+        }()),
+        const SizedBox(height: 6),
+        ElevatedButton.icon(
+          key: const ValueKey('reset_nudge_cooldown_button'),
+          onPressed: () async {
+            await _progressionService.resetNudgeCooldown();
+            await _loadProgressionData();
+            if (!mounted) return;
+            setState(() {});
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Nudge cooldown reset')),
+            );
+          },
+          icon: const Icon(Icons.restart_alt_rounded, size: 18),
+          label: const Text('Reset Nudge Cooldown'),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.indigo,
+            foregroundColor: AppColors.onColor,
+          ),
         ),
         const SizedBox(height: 14),
 

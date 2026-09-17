@@ -31,6 +31,8 @@ class _GameSelectScreenState extends State<GameSelectScreen> {
 
   final GlobalKey<RestAdviceCardState> _restAdviceKey = GlobalKey<RestAdviceCardState>();
   VarietySuggestion? _suggestion;
+  bool _isLocked = false;
+  Duration? _lockRemaining;
 
   @override
   void initState() {
@@ -39,22 +41,70 @@ class _GameSelectScreenState extends State<GameSelectScreen> {
   }
 
   Future<void> _loadSuggestion() async {
-    final s = await _service.suggestionFor();
+    final advice = await _service.restAdvice();
     if (!mounted) return;
-    setState(() => _suggestion = s);
-    if (s != null) {
-      unawaited(_service.onNudgeShown(s));
+    setState(() {
+      _isLocked = advice.isLocked;
+      _lockRemaining = advice.lockRemaining;
+    });
+
+    if (!_isLocked) {
+      final s = await _service.suggestionFor();
+      if (!mounted) return;
+      setState(() => _suggestion = s);
+      if (s != null) {
+        unawaited(_service.onNudgeShown(s));
+      }
+    } else {
+      setState(() => _suggestion = null);
     }
   }
 
   void _onTrySuggested(GameInfo info) {
     unawaited(_service.onNudgeAccepted(info.id));
-    _launchGame(context, info);
+    _launchGame(info);
   }
 
   void _onMaybeLater() {
     unawaited(_service.onNudgeDismissed());
     setState(() => _suggestion = null);
+  }
+
+  Widget _buildRestingBanner(BuildContext context, bool compact) {
+    final remainingMinutes = _lockRemaining != null
+        ? (_lockRemaining!.inMinutes + 1)
+        : 180;
+    final gutter = Screen.gutter(context);
+    return Padding(
+      padding: EdgeInsets.fromLTRB(gutter, 10, gutter, 12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        decoration: BoxDecoration(
+          color: Color.lerp(AppColors.leafGreen, Colors.white, 0.85),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(
+          children: [
+            IconMedallion(
+              icon: Icons.local_cafe_rounded,
+              color: AppColors.leafGreen,
+              size: compact ? 42 : 50,
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Text(
+                'Games are resting for another $remainingMinutes minutes. Take a peaceful break!',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.primaryText,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -101,16 +151,20 @@ class _GameSelectScreenState extends State<GameSelectScreen> {
                       ),
               ],
             ),
-            RestAdviceCard(key: _restAdviceKey, service: widget.service),
-            if (suggestion != null)
-              VarietySuggestionCard(
-                suggestion: suggestion,
-                onTrySuggested: () {
-                  final info = gameInfoFor(suggestion.suggestedGameId);
-                  if (info != null) _onTrySuggested(info);
-                },
-                onMaybeLater: _onMaybeLater,
-              ),
+            if (_isLocked)
+              _buildRestingBanner(context, compact)
+            else ...[
+              RestAdviceCard(key: _restAdviceKey, service: widget.service),
+              if (suggestion != null)
+                VarietySuggestionCard(
+                  suggestion: suggestion,
+                  onTrySuggested: () {
+                    final info = gameInfoFor(suggestion.suggestedGameId);
+                    if (info != null) _onTrySuggested(info);
+                  },
+                  onMaybeLater: _onMaybeLater,
+                ),
+            ],
             Expanded(
               child: compact
                   ? ListView.separated(
@@ -129,7 +183,7 @@ class _GameSelectScreenState extends State<GameSelectScreen> {
                               if (isSuggested) {
                                 unawaited(_service.onNudgeAccepted(info.id));
                               }
-                              _launchGame(context, info);
+                              _launchGame(info);
                             },
                           ),
                         );
@@ -156,7 +210,7 @@ class _GameSelectScreenState extends State<GameSelectScreen> {
                               if (isSuggested) {
                                 unawaited(_service.onNudgeAccepted(info.id));
                               }
-                              _launchGame(context, info);
+                              _launchGame(info);
                             },
                           ),
                         );
@@ -169,17 +223,28 @@ class _GameSelectScreenState extends State<GameSelectScreen> {
     );
   }
 
-  void _launchGame(BuildContext context, GameInfo info) {
-    Navigator.of(context).push(
+  Future<void> _launchGame(GameInfo info) async {
+    final locked = await _service.isGamesLocked();
+    if (!mounted) return;
+    if (locked) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Games are taking a restful break right now.'),
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
+
+    await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => GameScreen(gameId: info.id),
       ),
-    ).then((_) {
-      if (mounted) {
-        _loadSuggestion();
-        _restAdviceKey.currentState?.reload();
-      }
-    });
+    );
+    if (mounted) {
+      _loadSuggestion();
+      _restAdviceKey.currentState?.reload();
+    }
   }
 
   void _showHistoryDialog(BuildContext context) {

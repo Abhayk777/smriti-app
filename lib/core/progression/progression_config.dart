@@ -42,7 +42,7 @@ class ProgressionConfig {
 
   // Variety nudge (docs/PROGRESSION_PLAN.md §8)
   static const int nudgeRepeatPlays = 6; // X
-  static const int nudgeWindowDays = 3; // Y
+  static const int nudgeWindowDays = 4; // Y
   static const double nudgeShareOfPlays = 0.6;
   static const int nudgeCooldownHours = 24;
   static const int nudgeSnoozeDaysAfterTwoDismissals = 2;
@@ -50,6 +50,8 @@ class ProgressionConfig {
   // Daily rest card (docs/PROGRESSION_PLAN.md §9)
   static const int dailyRestMinutes = 30; // 0 = never show
   static const int restCardRepeatMinutes = 15;
+  static const int maxKeepPlayingCount = 3;
+  static const int gameLockHours = 3;
 
   // Session length cap used when summing play time for the rest card
   // (docs/PROGRESSION_PLAN.md §9.1): each session contributes at most this

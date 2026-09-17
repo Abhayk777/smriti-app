@@ -231,4 +231,75 @@ void main() {
     final settings = await service.repo.getSettings();
     expect(settings.dailyRestMinutes, 45);
   });
+
+  testWidgets('Unlock Games Now unlocks locked games in diagnostics', (tester) async {
+    tester.view.physicalSize = const Size(1280, 1000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    // Lock games
+    await service.lockGames(hours: 3);
+    expect(await service.isGamesLocked(), isTrue);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: DiagnosticsScreen(service: service),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('unlock_games_now_button')),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.textContaining('Resting'), findsOneWidget);
+    expect(find.byKey(const ValueKey('unlock_games_now_button')), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('unlock_games_now_button')));
+    await tester.pumpAndSettle();
+
+    expect(await service.isGamesLocked(), isFalse);
+    expect(find.text('Active'), findsOneWidget);
+  });
+
+  testWidgets('Reset Nudge Cooldown resets nudge cooldown state in diagnostics', (tester) async {
+    tester.view.physicalSize = const Size(1280, 1000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    // Seed nudge in cooldown
+    await service.repo.saveNudgeState(NudgeState(
+      lastFavouriteId: 'market_basket',
+      lastSuggestedId: 'trace_path',
+      lastShownAtMs: clock.millisecondsSinceEpoch,
+    ));
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: DiagnosticsScreen(service: service),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('reset_nudge_cooldown_button')),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.textContaining('In 24h Cooldown'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('reset_nudge_cooldown_button')));
+    await tester.pumpAndSettle();
+
+    final state = await service.repo.getNudgeState();
+    expect(state.lastShownAtMs, isNull);
+    expect(find.text('Ready to show'), findsOneWidget);
+  });
 }
