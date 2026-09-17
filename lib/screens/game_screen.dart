@@ -6,6 +6,8 @@ import 'package:flutter/services.dart';
 
 import '../app_colors.dart';
 import '../core/db/app_database.dart';
+import '../core/progression/difficulty_source.dart';
+import '../core/progression/progression_service.dart';
 import '../core/repo/ability_repo.dart';
 import '../core/repo/content_repo.dart';
 import '../core/repo/event_repo.dart';
@@ -87,6 +89,7 @@ class _GameScreenState extends State<GameScreen> {
     _timerUpdate?.cancel();
     if (!_sessionEnded && _runner != null) {
       _runner!.end(completed: false);
+      unawaited(ProgressionService.instance.onSessionEnded(widget.gameId));
     }
     super.dispose();
   }
@@ -113,11 +116,20 @@ class _GameScreenState extends State<GameScreen> {
       return;
     }
 
+    // Seed/ease this game's level and prime the in-memory cache
+    // (docs/PROGRESSION_PLAN.md §6.7, §7) before the session reads it.
+    await ProgressionService.instance.onSessionStarted(widget.gameId);
+
     // Create session runner
     final runner = SessionRunner(
       eventRepo: _eventRepo,
       abilityRepo: _abilityRepo,
       content: content,
+      difficultySource: LevelDifficultySource<CognitiveGame, TrialResult>(
+        ProgressionService.instance,
+        (g) => g.id,
+        (r) => r.correct,
+      ),
     );
 
     // Start session
@@ -255,6 +267,7 @@ class _GameScreenState extends State<GameScreen> {
     _timerUpdate?.cancel();
     _runner?.end(completed: completed);
     unawaited(SyncEngine.defaultInstance.run(trigger: SyncTrigger.sessionEnded));
+    unawaited(ProgressionService.instance.onSessionEnded(widget.gameId));
 
     if (!mounted) return;
 

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../app_colors.dart';
 import '../core/db/app_database.dart';
+import '../core/progression/progression_service.dart';
 import '../core/sync/sync_engine.dart';
 import '../ui/day_scene.dart';
 import '../ui/smriti_ui.dart';
@@ -49,6 +50,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
     // Trigger initial sync and heartbeat
     unawaited(SyncEngine.defaultInstance.run(trigger: SyncTrigger.appForeground));
+
+    // Catch up any game whose 4-day review is due (docs/PROGRESSION_PLAN.md §6.1).
+    unawaited(ProgressionService.instance.runDueReviews());
 
     // Periodic automatic background sync while app is active
     _periodicSyncTimer = Timer.periodic(const Duration(seconds: 60), (_) {
