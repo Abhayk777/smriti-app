@@ -88,8 +88,11 @@ class _MyDayWidgetState extends State<MyDayWidget> {
                 .cast<String>());
         _orientationAnswer = widget.item.payload['answer'] as String?;
       case 'date':
-        // Show nearby dates
-        for (var d = now.day - 2; d <= now.day + 2; d++) {
+        // Show nearby dates; the spread narrows as the level rises
+        // (docs/PROGRESSION_PLAN.md §5.3), falling back to the old fixed
+        // window of 2 for items generated before this existed.
+        final spread = widget.item.payload['dateOptionSpread'] as int? ?? 2;
+        for (var d = now.day - spread; d <= now.day + spread; d++) {
           if (d > 0 && d <= 31) _orientationOptions.add('$d');
         }
         _orientationAnswer = '${now.day}';

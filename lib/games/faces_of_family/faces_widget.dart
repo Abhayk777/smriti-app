@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -48,6 +49,12 @@ class _FacesWidgetState extends State<FacesWidget> {
   late final String _mode;
   late final Future<File?> _photo;
 
+  /// Seconds the photo stays visible before the elder must answer from
+  /// memory; 0 means it never hides (docs/PROGRESSION_PLAN.md §5.3).
+  late final int _revealSeconds;
+  bool _photoHidden = false;
+  Timer? _revealTimer;
+
   @override
   void initState() {
     super.initState();
@@ -57,6 +64,19 @@ class _FacesWidgetState extends State<FacesWidget> {
         (widget.item.payload['options'] as List<Object?>).cast<PersonItem>();
     _mode = widget.item.payload['mode'] as String;
     _photo = _findPhoto();
+
+    _revealSeconds = widget.item.payload['revealSeconds'] as int? ?? 0;
+    if (_revealSeconds > 0) {
+      _revealTimer = Timer(Duration(seconds: _revealSeconds), () {
+        if (mounted && !_answered) setState(() => _photoHidden = true);
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _revealTimer?.cancel();
+    super.dispose();
   }
 
   Future<File?> _findPhoto() async {
@@ -194,26 +214,41 @@ class _FacesWidgetState extends State<FacesWidget> {
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(size * 0.14),
-          child: FutureBuilder<File?>(
-            future: _photo,
-            builder: (context, snapshot) {
-              final file = snapshot.data;
-              if (file != null) {
-                return Image.file(file, fit: BoxFit.cover);
-              }
-              return Container(
-                color: color.withValues(alpha: 0.15),
-                alignment: Alignment.center,
-                child: Text(
-                  initial,
-                  style: TextStyle(
-                    fontSize: size * 0.42,
-                    fontWeight: FontWeight.w800,
-                    color: color,
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 400),
+            child: _photoHidden
+                ? Container(
+                    key: const ValueKey('hidden'),
+                    color: color.withValues(alpha: 0.15),
+                    alignment: Alignment.center,
+                    child: Icon(
+                      Icons.person_rounded,
+                      size: size * 0.5,
+                      color: color,
+                    ),
+                  )
+                : FutureBuilder<File?>(
+                    key: const ValueKey('shown'),
+                    future: _photo,
+                    builder: (context, snapshot) {
+                      final file = snapshot.data;
+                      if (file != null) {
+                        return Image.file(file, fit: BoxFit.cover);
+                      }
+                      return Container(
+                        color: color.withValues(alpha: 0.15),
+                        alignment: Alignment.center,
+                        child: Text(
+                          initial,
+                          style: TextStyle(
+                            fontSize: size * 0.42,
+                            fontWeight: FontWeight.w800,
+                            color: color,
+                          ),
+                        ),
+                      );
+                    },
                   ),
-                ),
-              );
-            },
           ),
         ),
       ),

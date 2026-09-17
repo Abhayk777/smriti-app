@@ -36,6 +36,11 @@ class _TracePathWidgetState extends State<TracePathWidget> {
   late final List<Map<String, Object>> _nodes;
   late final String _variant;
 
+  /// Unlabelled decoy stones (docs/PROGRESSION_PLAN.md §5.3): tapping one
+  /// does nothing and is never counted as an error. Empty for items
+  /// generated before this existed.
+  late final List<Map<String, Object>> _decoys;
+
   @override
   void initState() {
     super.initState();
@@ -43,6 +48,8 @@ class _TracePathWidgetState extends State<TracePathWidget> {
     _nodes = (widget.item.payload['nodes'] as List<Object?>)
         .cast<Map<String, Object>>();
     _variant = widget.item.payload['variant'] as String;
+    _decoys = (widget.item.payload['decoys'] as List<Object?>? ?? const [])
+        .cast<Map<String, Object>>();
   }
 
   int get _nextExpected => _tappedOrder.length;
@@ -120,35 +127,51 @@ class _TracePathWidgetState extends State<TracePathWidget> {
                     height: constraints.maxHeight,
                   ),
                   child: Stack(
-                    children: _nodes.asMap().entries.map((entry) {
-                      final idx = entry.key;
-                      final node = entry.value;
-                      final x = (node['x'] as double) * constraints.maxWidth;
-                      final y = (node['y'] as double) * constraints.maxHeight;
-                      final isTapped = _tappedOrder.contains(idx);
-                      final isNext = idx == _nextExpected;
-
-                      return Positioned(
-                        left: x - 28,
-                        top: y - 28,
-                        child: BouncyTap(
-                          pressedScale: 0.85,
-                          onTap: () => _onNodeTap(idx),
-                          child: _buildNode(
-                            node['label'] as String,
-                            node['type'] as String,
-                            isTapped,
-                            isNext,
+                    children: [
+                      // Decoys sit behind the real stones and never respond
+                      // to a tap (docs/PROGRESSION_PLAN.md §5.3).
+                      for (final decoy in _decoys)
+                        Positioned(
+                          left: (decoy['x'] as double) * constraints.maxWidth - 24,
+                          top: (decoy['y'] as double) * constraints.maxHeight - 24,
+                          child: IgnorePointer(child: _buildDecoy()),
+                        ),
+                      for (final entry in _nodes.asMap().entries)
+                        Positioned(
+                          left: (entry.value['x'] as double) * constraints.maxWidth - 28,
+                          top: (entry.value['y'] as double) * constraints.maxHeight - 28,
+                          child: BouncyTap(
+                            pressedScale: 0.85,
+                            onTap: () => _onNodeTap(entry.key),
+                            child: _buildNode(
+                              entry.value['label'] as String,
+                              entry.value['type'] as String,
+                              _tappedOrder.contains(entry.key),
+                              entry.key == _nextExpected,
+                            ),
                           ),
                         ),
-                      );
-                    }).toList(),
+                    ],
                   ),
                 );
               },
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  /// A plain, unlabelled stone that does nothing when tapped
+  /// (docs/PROGRESSION_PLAN.md §5.3).
+  Widget _buildDecoy() {
+    return Container(
+      width: 48,
+      height: 48,
+      decoration: BoxDecoration(
+        color: AppColors.wovenMat,
+        shape: BoxShape.circle,
+        border: Border.all(color: AppColors.border, width: 2),
       ),
     );
   }

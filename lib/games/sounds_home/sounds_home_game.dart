@@ -4,6 +4,8 @@ import 'dart:math';
 import 'package:flutter/widgets.dart';
 
 import '../../core/ability/estimator.dart';
+import '../../core/progression/game_level_profiles.dart';
+import '../../core/progression/level_scale.dart';
 import '../cognitive_game.dart';
 import '../ghost_hand.dart';
 
@@ -59,24 +61,37 @@ class SoundsHomeGame implements CognitiveGame {
     'cricket', 'bell', 'rooster', 'temple_bell',
   ];
 
+  /// The sounds most easily mistaken for the target or for each other
+  /// (docs/PROGRESSION_PLAN.md §5.3): the rooster and cricket are bird-like,
+  /// the bell and temple bell are their own confusable family. Drawn from
+  /// more often as `lureChance` rises.
+  static const List<String> _lureSounds = ['rooster', 'cricket', 'bell', 'temple_bell'];
+
   static const String targetSound = 'bird';
 
-  /// Target frequency (proportion of stimuli that are targets).
-  static double targetFrequencyFor(double difficulty) =>
-      (0.25 - difficulty * 0.03).clamp(0.1, 0.3);
+  static Map<String, double> _paramsFor(double difficulty) =>
+      GameLevelProfiles.soundsHome.paramsAt(LevelScale.difficultyToLevel(difficulty));
+
+  /// Target frequency (proportion of stimuli that are targets)
+  /// (docs/PROGRESSION_PLAN.md §5.3).
+  static double targetFrequencyFor(double difficulty) => _paramsFor(difficulty)['targetFrequency']!;
 
   /// Inter-stimulus interval range (ms).
-  static int isiMinFor(double difficulty) =>
-      (2500 - difficulty * 200).round().clamp(1500, 3000);
+  static int isiMinFor(double difficulty) => _paramsFor(difficulty)['isiMinMs']!.round();
 
-  static int isiMaxFor(double difficulty) =>
-      (4000 - difficulty * 200).round().clamp(2500, 5000);
+  static int isiMaxFor(double difficulty) => _paramsFor(difficulty)['isiMaxMs']!.round();
+
+  /// How often a non-target stimulus is one of the easily-confused
+  /// [_lureSounds] rather than any of [_distractorSounds].
+  static double lureChanceFor(double difficulty) => _paramsFor(difficulty)['lureChance']!;
 
   @override
   GameItem generateItem(double difficulty, GameContent content) {
-    final targetFreq = targetFrequencyFor(difficulty);
-    final isiMin = isiMinFor(difficulty);
-    final isiMax = isiMaxFor(difficulty);
+    final params = _paramsFor(difficulty);
+    final targetFreq = params['targetFrequency']!;
+    final isiMin = params['isiMinMs']!.round();
+    final isiMax = params['isiMaxMs']!.round();
+    final lureChance = params['lureChance']!;
 
     // Generate a sequence of stimuli for the full 90 seconds
     final stimuli = <Map<String, Object>>[];
@@ -87,9 +102,12 @@ class SoundsHomeGame implements CognitiveGame {
       if (elapsed >= totalDurationSeconds * 1000) break;
 
       final isTarget = _random.nextDouble() < targetFreq;
+      final isLure = !isTarget && _random.nextDouble() < lureChance;
       final sound = isTarget
           ? targetSound
-          : _distractorSounds[_random.nextInt(_distractorSounds.length)];
+          : isLure
+              ? _lureSounds[_random.nextInt(_lureSounds.length)]
+              : _distractorSounds[_random.nextInt(_distractorSounds.length)];
 
       stimuli.add({
         'timeMs': elapsed,

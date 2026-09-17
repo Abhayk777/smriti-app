@@ -4,6 +4,8 @@ import 'dart:math';
 import 'package:flutter/widgets.dart';
 
 import '../../core/ability/estimator.dart';
+import '../../core/progression/game_level_profiles.dart';
+import '../../core/progression/level_scale.dart';
 import '../cognitive_game.dart';
 import '../ghost_hand.dart';
 
@@ -50,23 +52,32 @@ class LampsGame implements CognitiveGame {
     ]);
   }
 
-  /// Sequence length (span) based on difficulty.
-  static int spanFor(double difficulty) =>
-      (2 + difficulty).round().clamp(2, 7);
+  static Map<String, double> _paramsFor(double difficulty) =>
+      GameLevelProfiles.lampsFestival.paramsAt(LevelScale.difficultyToLevel(difficulty));
+
+  /// Sequence length (span) based on difficulty (docs/PROGRESSION_PLAN.md §5.3).
+  static int spanFor(double difficulty) => _paramsFor(difficulty)['span']!.toInt();
 
   /// Total lamp count on screen based on difficulty.
-  static int lampCountFor(double difficulty) =>
-      (6 + difficulty).round().clamp(5, 12);
+  static int lampCountFor(double difficulty) => _paramsFor(difficulty)['lampCount']!.toInt();
 
-  /// Whether to use backward direction at higher difficulty.
+  /// The typical direction at this difficulty. Actual selection is a random
+  /// roll against `backwardChance`, so a single call is descriptive rather
+  /// than exactly what the next generated item will use.
   static String directionFor(double difficulty) =>
-      difficulty >= 1.5 ? 'backward' : 'forward';
+      _paramsFor(difficulty)['backwardChance']! >= 0.5 ? 'backward' : 'forward';
+
+  /// How long (ms) each lamp stays lit while the sequence plays.
+  static int litMsFor(double difficulty) => _paramsFor(difficulty)['litMs']!.round();
 
   @override
   GameItem generateItem(double difficulty, GameContent content) {
-    final span = spanFor(difficulty);
-    final lampCount = lampCountFor(difficulty);
-    final direction = directionFor(difficulty);
+    final params = _paramsFor(difficulty);
+    final span = params['span']!.toInt();
+    final lampCount = params['lampCount']!.toInt();
+    final direction =
+        _random.nextDouble() < params['backwardChance']! ? 'backward' : 'forward';
+    final litMs = params['litMs']!.round();
 
     // Generate lamp positions in irregular pattern
     final lamps = <Map<String, Object>>[];
@@ -96,6 +107,7 @@ class LampsGame implements CognitiveGame {
         'lamps': lamps,
         'sequence': sequence,
         'direction': direction,
+        'litMs': litMs,
       },
     );
   }

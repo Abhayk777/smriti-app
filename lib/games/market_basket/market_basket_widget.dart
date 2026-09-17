@@ -65,13 +65,17 @@ class _MarketBasketWidgetState extends State<MarketBasketWidget>
       duration: const Duration(milliseconds: 500),
     );
 
-    // Show list for a duration proportional to list length
-    final showDuration = Duration(seconds: 2 + _targets.length);
-    Future.delayed(showDuration, () {
+    // Show list for a duration set by the level (docs/PROGRESSION_PLAN.md
+    // §5.3), falling back to the old fixed formula for items generated
+    // before this existed.
+    final studySeconds =
+        widget.item.payload['studySeconds'] as int? ?? 2 + _targets.length;
+    final delaySeconds = widget.item.payload['delaySeconds'] as int? ?? 2;
+    Future.delayed(Duration(seconds: studySeconds), () {
       if (!mounted) return;
       setState(() => _phase = 'delay');
       // Brief filled delay
-      Future.delayed(const Duration(seconds: 2), () {
+      Future.delayed(Duration(seconds: delaySeconds), () {
         if (!mounted) return;
         _shelfShownAt = DateTime.now();
         setState(() => _phase = 'picking');

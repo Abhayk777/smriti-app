@@ -102,6 +102,9 @@ class _NameHarvestWidgetState extends State<NameHarvestWidget>
       'animals': 'animals',
       'things_in_kitchen': 'things in the kitchen',
       'things_in_market': 'things at the market',
+      'things_that_are_red': 'things that are red',
+      'festival_foods': 'festival foods',
+      'birds': 'birds',
     };
     return labels[category] ?? category;
   }

@@ -4,14 +4,20 @@ import 'dart:math';
 import 'package:flutter/widgets.dart';
 
 import '../../core/ability/estimator.dart';
+import '../../core/progression/game_level_profiles.dart';
+import '../../core/progression/level_scale.dart';
 import '../cognitive_game.dart';
 import '../ghost_hand.dart';
 
 /// Faces of My Family: face-name paired associate learning.
 ///
 /// Domain: memory (primary), language (secondary).
-/// Uses caregiver-uploaded photos. Progression:
-///   3-option recognition → 2-option → free naming → relationship → last-contact
+/// Uses caregiver-uploaded photos of the elder's own family
+/// (`GameContent.people`, pulled from the caregiver's web app).
+///
+/// Difficulty raises the option count first, then introduces the harder
+/// "how are they related" question and same-relationship distractors, and
+/// finally hides the photo after a countdown (docs/PROGRESSION_PLAN.md §5.3).
 ///
 /// Error classes:
 ///   - `semantic`: picked another relative (category intact, identity lost)
@@ -48,20 +54,24 @@ class FacesGame implements CognitiveGame {
     ]);
   }
 
-  /// Number of name options at a given difficulty.
-  static int optionCountFor(double difficulty) {
-    if (difficulty < -0.5) return 3;
-    if (difficulty < 0.5) return 2;
-    return 2; // higher difficulty uses free recall, but still shows 2 as fallback
-  }
+  static Map<String, double> _paramsFor(double difficulty) =>
+      GameLevelProfiles.facesOfFamily.paramsAt(LevelScale.difficultyToLevel(difficulty));
 
-  /// Trial mode based on difficulty.
-  static String modeFor(double difficulty) {
-    if (difficulty < -0.5) return 'recognition_3';
-    if (difficulty < 0.5) return 'recognition_2';
-    if (difficulty < 1.5) return 'free_naming';
-    if (difficulty < 2.5) return 'relationship';
-    return 'last_contact';
+  /// Number of name options at a given difficulty (docs/PROGRESSION_PLAN.md §5.3).
+  static int optionCountFor(double difficulty) => _paramsFor(difficulty)['optionCount']!.toInt();
+
+  /// The typical trial mode at this difficulty. Actual selection is a random
+  /// roll against `relationshipModeChance`, so a single call is descriptive
+  /// rather than exactly what the next generated item will use.
+  static String modeFor(double difficulty) =>
+      _paramsFor(difficulty)['relationshipModeChance']! >= 0.5 ? 'relationship' : 'recognition';
+
+  /// Seconds the photo stays visible before the elder must answer from
+  /// memory; 0 means the photo never hides.
+  static int revealSecondsFor(double difficulty) {
+    final level = LevelScale.difficultyToLevel(difficulty);
+    if (level < 11) return 0;
+    return _paramsFor(difficulty)['revealSeconds']!.round();
   }
 
   @override
@@ -71,13 +81,30 @@ class FacesGame implements CognitiveGame {
       throw StateError('Faces of My Family needs at least one person');
     }
 
-    final mode = modeFor(difficulty);
+    final level = LevelScale.difficultyToLevel(difficulty);
+    final params = _paramsFor(difficulty);
+
+    final optionCount = min(params['optionCount']!.toInt(), people.length);
+    final mode = _random.nextDouble() < params['relationshipModeChance']!
+        ? 'relationship'
+        : 'recognition';
+    final revealSeconds = level < 11 ? 0 : params['revealSeconds']!.round();
+
     final pool = [...people]..shuffle(_random);
     final target = pool.first;
+    final others = pool.skip(1).toList();
 
-    // Build distractor options (other people)
-    final optionCount = optionCountFor(difficulty);
-    final distractors = pool.skip(1).take(optionCount - 1).toList();
+    // Above the configured chance, prefer distractors who share the target's
+    // relationship (a much harder pick, e.g. two grandsons) over a free mix.
+    final preferSameRelationship = _random.nextDouble() <
+        params['sameRelationshipDistractorChance']!;
+    final ordered = preferSameRelationship
+        ? [
+            ...others.where((p) => p.relationship == target.relationship),
+            ...others.where((p) => p.relationship != target.relationship),
+          ]
+        : others;
+    final distractors = ordered.take(optionCount - 1).toList();
     final options = [target, ...distractors]..shuffle(_random);
 
     return GameItem(
@@ -89,12 +116,14 @@ class FacesGame implements CognitiveGame {
         'targetId': target.id,
         'targetName': target.name,
         'relationship': target.relationship,
+        'revealSeconds': revealSeconds,
         'contentVersion': content.version,
       },
       payload: {
         'target': target,
         'options': options,
         'mode': mode,
+        'revealSeconds': revealSeconds,
       },
     );
   }

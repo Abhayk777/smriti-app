@@ -4,6 +4,8 @@ import 'dart:math';
 import 'package:flutter/widgets.dart';
 
 import '../../core/ability/estimator.dart';
+import '../../core/progression/game_level_profiles.dart';
+import '../../core/progression/level_scale.dart';
 import '../cognitive_game.dart';
 import '../ghost_hand.dart';
 
@@ -51,22 +53,28 @@ class WeavingGame implements CognitiveGame {
     ]);
   }
 
-  /// Number of elements in the pattern based on difficulty.
-  static int elementCountFor(double difficulty) =>
-      (3 + difficulty).round().clamp(2, 8);
+  static Map<String, double> _paramsFor(double difficulty) =>
+      GameLevelProfiles.weavingPatterns.paramsAt(LevelScale.difficultyToLevel(difficulty));
+
+  /// Number of elements in the pattern based on difficulty
+  /// (docs/PROGRESSION_PLAN.md §5.3).
+  static int elementCountFor(double difficulty) => _paramsFor(difficulty)['elementCount']!.toInt();
 
   /// Distractor similarity increases with difficulty (0.0 = easy, 1.0 = hard).
   static double distractorSimilarityFor(double difficulty) =>
-      ((difficulty + 2) / 5).clamp(0.0, 1.0);
+      _paramsFor(difficulty)['distractorSimilarity']!;
 
-  /// Pattern types for procedural generation.
-  static const List<String> _patternTypes = [
-    'stripes',
-    'diamonds',
-    'zigzag',
-    'chevron',
-    'dots',
-    'crosses',
+  /// How many pattern-type tiers are unlocked.
+  static int patternTypeTierFor(double difficulty) =>
+      _paramsFor(difficulty)['patternTypeTier']!.toInt().clamp(1, _patternTypesByTier.length);
+
+  /// Pattern types for procedural generation, grouped by the tier that
+  /// unlocks them (docs/PROGRESSION_PLAN.md §5.3): 1 stripes/dots, 2 adds
+  /// diamonds/crosses, 3 adds zigzag/chevron.
+  static const List<List<String>> _patternTypesByTier = [
+    ['stripes', 'dots'],
+    ['diamonds', 'crosses'],
+    ['zigzag', 'chevron'],
   ];
 
   /// Colours used in patterns (warm, Manipuri-inspired).
@@ -81,10 +89,15 @@ class WeavingGame implements CognitiveGame {
 
   @override
   GameItem generateItem(double difficulty, GameContent content) {
-    final elementCount = elementCountFor(difficulty);
-    final similarity = distractorSimilarityFor(difficulty);
+    final params = _paramsFor(difficulty);
+    final elementCount = params['elementCount']!.toInt();
+    final similarity = params['distractorSimilarity']!;
+    final patternTypeTier =
+        params['patternTypeTier']!.toInt().clamp(1, _patternTypesByTier.length);
+    final eligiblePatternTypes =
+        _patternTypesByTier.take(patternTypeTier).expand((tier) => tier).toList();
     final patternType =
-        _patternTypes[_random.nextInt(_patternTypes.length)];
+        eligiblePatternTypes[_random.nextInt(eligiblePatternTypes.length)];
 
     // Generate a "seed" pattern as a list of color indices
     final patternSeed = List.generate(

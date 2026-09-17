@@ -4,6 +4,8 @@ import 'dart:math';
 import 'package:flutter/widgets.dart';
 
 import '../../core/ability/estimator.dart';
+import '../../core/progression/game_level_profiles.dart';
+import '../../core/progression/level_scale.dart';
 import '../cognitive_game.dart';
 import '../ghost_hand.dart';
 
@@ -13,7 +15,9 @@ import '../ghost_hand.dart';
 /// Primary domain is memory - the load is holding the list across the delay.
 /// Difficulty raises the list length first, then the number of same-category
 /// distractors on the shelf, since a distractor from the same category is much
-/// harder to reject than one from a different aisle.
+/// harder to reject than one from a different aisle. Above that, the study
+/// time per item shortens and the delay before picking lengthens
+/// (docs/PROGRESSION_PLAN.md §5.3).
 ///
 /// This game never touches Drift or Supabase. It generates items on request and
 /// emits [TrialResult]s (AGENTS.md #10).
@@ -48,13 +52,16 @@ class MarketBasketGame implements CognitiveGame {
     ]);
   }
 
-  /// List length for a given difficulty, held to a humane range.
-  static int listLengthFor(double difficulty) =>
-      (3 + difficulty.round()).clamp(2, 6);
+  /// List length for a given difficulty, held to a humane range
+  /// (docs/PROGRESSION_PLAN.md §5.3).
+  static int listLengthFor(double difficulty) => _paramsFor(difficulty)['listLength']!.toInt();
 
   /// Extra same-category items on the shelf, which are the hard distractors.
   static int nearDistractorsFor(double difficulty) =>
-      (difficulty.round()).clamp(0, 3);
+      _paramsFor(difficulty)['nearDistractors']!.toInt();
+
+  static Map<String, double> _paramsFor(double difficulty) =>
+      GameLevelProfiles.marketBasket.paramsAt(LevelScale.difficultyToLevel(difficulty));
 
   @override
   GameItem generateItem(double difficulty, GameContent content) {
@@ -63,7 +70,13 @@ class MarketBasketGame implements CognitiveGame {
       throw StateError('Market Basket needs at least one item in content');
     }
 
-    final listLength = min(listLengthFor(difficulty), catalogue.length);
+    final params = _paramsFor(difficulty);
+    final listLength = min(params['listLength']!.toInt(), catalogue.length);
+    final nearDistractors = params['nearDistractors']!.toInt();
+    final studySeconds =
+        max(3, (2 + listLength * params['studySecondsPerItem']!).round());
+    final delaySeconds = params['delaySeconds']!.round();
+
     final pool = [...catalogue]..shuffle(_random);
     final target = pool.take(listLength).toList(growable: false);
 
@@ -74,7 +87,7 @@ class MarketBasketGame implements CognitiveGame {
         pool.where((i) => !targetIds.contains(i.id)).toList(growable: false);
     final near = remaining
         .where((i) => targetCategories.contains(i.category))
-        .take(nearDistractorsFor(difficulty))
+        .take(nearDistractors)
         .toList(growable: false);
     final nearIds = near.map((i) => i.id).toSet();
     final far = remaining
@@ -99,6 +112,8 @@ class MarketBasketGame implements CognitiveGame {
       payload: {
         'target': target,
         'shelf': shelf,
+        'studySeconds': studySeconds,
+        'delaySeconds': delaySeconds,
       },
     );
   }

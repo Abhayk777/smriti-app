@@ -4,6 +4,8 @@ import 'dart:math';
 import 'package:flutter/widgets.dart';
 
 import '../../core/ability/estimator.dart';
+import '../../core/progression/game_level_profiles.dart';
+import '../../core/progression/level_scale.dart';
 import '../cognitive_game.dart';
 import '../ghost_hand.dart';
 
@@ -65,22 +67,35 @@ class SortHarvestGame implements CognitiveGame {
     {'id': 'rice_white_small', 'type': 'grain', 'colour': 'white', 'size': 'small', 'emoji': '🍚'},
   ];
 
-  /// How many categories to sort into based on difficulty.
-  static int categoryCountFor(double difficulty) =>
-      (2 + difficulty.round()).clamp(2, 4);
+  static Map<String, double> _paramsFor(double difficulty) =>
+      GameLevelProfiles.sortHarvest.paramsAt(LevelScale.difficultyToLevel(difficulty));
+
+  /// How many categories to sort into based on difficulty
+  /// (docs/PROGRESSION_PLAN.md §5.3).
+  static int categoryCountFor(double difficulty) => _paramsFor(difficulty)['matCount']!.toInt();
 
   /// How frequently the rule switches (every N correct trials).
-  static int switchFrequencyFor(double difficulty) =>
-      (6 - difficulty.round()).clamp(3, 8);
+  static int switchFrequencyFor(double difficulty) => _paramsFor(difficulty)['switchEvery']!.round();
+
+  /// How many of [dimensions], from the front, are in play: 1 (type only) at
+  /// low difficulty, growing to all 3.
+  static int dimensionCountFor(double difficulty) =>
+      _paramsFor(difficulty)['dimensionCount']!.toInt().clamp(1, dimensions.length);
 
   @override
   GameItem generateItem(double difficulty, GameContent content) {
+    final params = _paramsFor(difficulty);
+    final matCount = params['matCount']!.toInt();
+    final dimensionCount = params['dimensionCount']!.toInt().clamp(1, dimensions.length);
+    final switchFrequency = params['switchEvery']!.round();
+
     final pool = [..._produce]..shuffle(_random);
     final card = pool.first;
 
-    // Pick current sorting dimension
-    final dimIndex = _random.nextInt(dimensions.length);
-    final currentDimension = dimensions[dimIndex];
+    // Pick current sorting dimension, only among those unlocked so far.
+    final eligibleDimensions = dimensions.take(dimensionCount).toList();
+    final currentDimension =
+        eligibleDimensions[_random.nextInt(eligibleDimensions.length)];
 
     // Build mats (sorting targets)
     final uniqueValues = <String>{};
@@ -88,8 +103,8 @@ class SortHarvestGame implements CognitiveGame {
       uniqueValues.add(item[currentDimension]!);
     }
     final matValues = uniqueValues.toList()..shuffle(_random);
-    final matCount = min(categoryCountFor(difficulty), matValues.length);
-    final mats = matValues.take(matCount).toList();
+    final actualMatCount = min(matCount, matValues.length);
+    final mats = matValues.take(actualMatCount).toList();
 
     // Correct mat is the one matching the card's value for current dimension
     final correctMat = card[currentDimension]!;
@@ -101,8 +116,8 @@ class SortHarvestGame implements CognitiveGame {
         'dimension': currentDimension,
         'cardId': card['id'],
         'correctMat': correctMat,
-        'matCount': matCount,
-        'switchFrequency': switchFrequencyFor(difficulty),
+        'matCount': actualMatCount,
+        'switchFrequency': switchFrequency,
         'contentVersion': content.version,
       },
       payload: {

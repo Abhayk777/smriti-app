@@ -4,6 +4,8 @@ import 'dart:math';
 import 'package:flutter/widgets.dart';
 
 import '../../core/ability/estimator.dart';
+import '../../core/progression/game_level_profiles.dart';
+import '../../core/progression/level_scale.dart';
 import '../cognitive_game.dart';
 import '../ghost_hand.dart';
 
@@ -52,47 +54,59 @@ class MyDayGame implements CognitiveGame {
   /// Fewest routine items worth putting in order.
   static const int minOrderingEvents = 3;
 
-  /// Orientation questions with increasing specificity.
+  /// Orientation questions with increasing specificity
+  /// (docs/PROGRESSION_PLAN.md §5.3): a question is eligible once
+  /// `questionTier` reaches its `tier`.
   static const List<Map<String, Object>> _orientationQuestions = [
     {
       'id': 'season',
       'question': 'What season is it now?',
-      'difficulty_min': -1.0,
+      'tier': 1,
     },
     {
       'id': 'day_of_week',
       'question': 'What day of the week is it?',
-      'difficulty_min': 0.0,
-    },
-    {
-      'id': 'month',
-      'question': 'What month is it?',
-      'difficulty_min': 0.5,
+      'tier': 2,
     },
     {
       'id': 'after_lunch',
       'question': 'What do you usually do after lunch?',
-      'difficulty_min': -0.5,
+      'tier': 3,
     },
     {
       'id': 'before_dinner',
       'question': 'What do you usually do before dinner?',
-      'difficulty_min': 0.0,
+      'tier': 3,
+    },
+    {
+      'id': 'month',
+      'question': 'What month is it?',
+      'tier': 4,
     },
     {
       'id': 'date',
       'question': 'What is today\'s date?',
-      'difficulty_min': 1.5,
+      'tier': 5,
     },
   ];
 
-  /// Number of events to order based on difficulty.
-  static int eventCountFor(double difficulty) =>
-      (3 + difficulty).round().clamp(3, 7);
+  static Map<String, double> _paramsFor(double difficulty) =>
+      GameLevelProfiles.myDay.paramsAt(LevelScale.difficultyToLevel(difficulty));
 
-  /// Mode: 'ordering' at low difficulty, 'orientation' at higher.
+  /// Number of events to order based on difficulty (docs/PROGRESSION_PLAN.md §5.3).
+  static int eventCountFor(double difficulty) => _paramsFor(difficulty)['eventCount']!.toInt();
+
+  /// The typical mode at this difficulty. Actual selection is a random roll
+  /// against `orientationChance`, so a single call is descriptive rather
+  /// than exactly what the next generated item will use.
   static String modeFor(double difficulty) =>
-      difficulty < 0.5 ? 'ordering' : 'orientation';
+      _paramsFor(difficulty)['orientationChance']! >= 0.5 ? 'orientation' : 'ordering';
+
+  /// How many calendar-question tiers are unlocked (docs/PROGRESSION_PLAN.md §5.3).
+  static int questionTierFor(double difficulty) => _paramsFor(difficulty)['questionTier']!.toInt();
+
+  /// +/- range of nearby dates offered for the "date" question.
+  static int dateOptionSpreadFor(double difficulty) => _paramsFor(difficulty)['dateOptionSpread']!.round();
 
   /// The elder's routine, earliest first.
   static List<Map<String, Object>> _routineFrom(GameContent content) {
@@ -147,14 +161,16 @@ class MyDayGame implements CognitiveGame {
   @override
   GameItem generateItem(double difficulty, GameContent content) {
     final routine = _routineFrom(content);
-    final mode = routine.length >= minOrderingEvents
-        ? modeFor(difficulty)
+    final params = _paramsFor(difficulty);
+    final wantsOrientation = _random.nextDouble() < params['orientationChance']!;
+    final mode = routine.length >= minOrderingEvents && !wantsOrientation
+        ? 'ordering'
         : 'orientation';
 
     if (mode == 'ordering') {
       // Pick routine items and shuffle them for the elder to reorder
       final routinePool = routine;
-      final count = min(eventCountFor(difficulty), routinePool.length);
+      final count = min(params['eventCount']!.toInt(), routinePool.length);
 
       // Pick evenly spaced items so the ordering is clear
       final step = routinePool.length / count;
@@ -184,21 +200,24 @@ class MyDayGame implements CognitiveGame {
     } else {
       // Orientation question. Routine questions need an answer from the
       // elder's own routine; calendar questions are always available.
+      final questionTier = params['questionTier']!.toInt();
       final eligible = <(Map<String, Object>, ({String answer, List<String> options})?)>[];
-      var minDifficulty = double.infinity;
       for (final q in _orientationQuestions) {
         final routineAnswer = _routineQuestion(q['id'] as String, routine);
         final needsRoutine =
             q['id'] == 'after_lunch' || q['id'] == 'before_dinner';
         if (needsRoutine && routineAnswer == null) continue;
-        final qMin = q['difficulty_min'] as double;
-        minDifficulty = min(minDifficulty, qMin);
-        if (difficulty >= qMin) eligible.add((q, routineAnswer));
+        final tier = q['tier'] as int;
+        if (questionTier >= tier) eligible.add((q, routineAnswer));
       }
       if (eligible.isEmpty) {
-        return generateItem(minDifficulty, content);
+        // 'season' has tier 1 and no routine dependency, so this should be
+        // unreachable in practice; fall back to the gentlest level rather
+        // than looping forever if it ever is.
+        return generateItem(LevelScale.levelToDifficulty(1.0), content);
       }
       final (question, routineAnswer) = eligible[_random.nextInt(eligible.length)];
+      final dateOptionSpread = params['dateOptionSpread']!.round();
 
       return GameItem(
         id: 'myday_orient_${question['id']}',
@@ -206,12 +225,14 @@ class MyDayGame implements CognitiveGame {
         context: {
           'mode': 'orientation',
           'questionId': question['id'],
+          'dateOptionSpread': dateOptionSpread,
           if (routineAnswer != null) 'answer': routineAnswer.answer,
           'contentVersion': content.version,
         },
         payload: {
           'question': question,
           'mode': 'orientation',
+          'dateOptionSpread': dateOptionSpread,
           if (routineAnswer != null) 'answer': routineAnswer.answer,
           if (routineAnswer != null) 'options': routineAnswer.options,
         },

@@ -40,6 +40,11 @@ class _LampsWidgetState extends State<LampsWidget> {
   late final List<int> _sequence;
   late final String _direction;
 
+  /// How long each lamp stays lit while the sequence plays
+  /// (docs/PROGRESSION_PLAN.md §5.3); 600ms for items generated before this
+  /// existed, matching the old fixed behaviour.
+  late final int _litMs;
+
   Timer? _sequenceTimer;
 
   @override
@@ -50,6 +55,7 @@ class _LampsWidgetState extends State<LampsWidget> {
     _sequence =
         (widget.item.payload['sequence'] as List<Object?>).cast<int>();
     _direction = widget.item.payload['direction'] as String;
+    _litMs = widget.item.payload['litMs'] as int? ?? 600;
 
     // Start showing sequence after a brief delay
     Future.delayed(const Duration(milliseconds: 800), _playSequence);
@@ -76,8 +82,8 @@ class _LampsWidgetState extends State<LampsWidget> {
       _currentLit = _sequence[_sequenceIndex];
     });
 
-    // Light for 600ms, dark for 200ms, then next
-    _sequenceTimer = Timer(const Duration(milliseconds: 600), () {
+    // Light for _litMs, dark for 300ms, then next
+    _sequenceTimer = Timer(Duration(milliseconds: _litMs), () {
       if (!mounted) return;
       setState(() => _currentLit = -1);
       _sequenceTimer = Timer(const Duration(milliseconds: 300), () {

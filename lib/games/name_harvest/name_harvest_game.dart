@@ -4,6 +4,8 @@ import 'dart:math';
 import 'package:flutter/widgets.dart';
 
 import '../../core/ability/estimator.dart';
+import '../../core/progression/game_level_profiles.dart';
+import '../../core/progression/level_scale.dart';
 import '../cognitive_game.dart';
 import '../ghost_hand.dart';
 
@@ -12,6 +14,9 @@ import '../ghost_hand.dart';
 /// Domain: language.
 /// "Tell me all the vegetables you can think of." 60 seconds.
 /// Named items appear as chips.
+///
+/// Difficulty raises how many items count as a good showing, then widens the
+/// pool of categories offered (docs/PROGRESSION_PLAN.md §5.3).
 ///
 /// Among the most sensitive brief screens. Entirely verbal, no reading.
 /// Stores audio always so a human can verify.
@@ -45,19 +50,39 @@ class NameHarvestGame implements CognitiveGame {
     ]);
   }
 
-  /// Categories for fluency tasks.
-  static const List<String> _categories = [
-    'vegetables',
-    'fruits',
-    'animals',
-    'things_in_kitchen',
-    'things_in_market',
+  /// Categories for fluency tasks, grouped by the tier that unlocks them
+  /// (docs/PROGRESSION_PLAN.md §5.3). New tiers or categories can be appended
+  /// here without touching anything else, other than the widget's display
+  /// labels for any brand-new category id.
+  static const List<List<String>> _categoriesByTier = [
+    ['fruits', 'vegetables', 'animals'],
+    ['things_in_kitchen', 'things_in_market'],
+    ['things_that_are_red', 'festival_foods', 'birds'],
   ];
+
+  static Map<String, double> _paramsFor(double difficulty) =>
+      GameLevelProfiles.nameHarvest.paramsAt(LevelScale.difficultyToLevel(difficulty));
+
+  /// How many items named counts as a good showing at this difficulty
+  /// (docs/PROGRESSION_PLAN.md §5.3).
+  static int expectedCountFor(double difficulty) => _paramsFor(difficulty)['expectedCount']!.toInt();
+
+  /// How many category tiers are unlocked.
+  static int categoryTierFor(double difficulty) =>
+      _paramsFor(difficulty)['categoryTier']!.toInt().clamp(1, _categoriesByTier.length);
 
   @override
   GameItem generateItem(double difficulty, GameContent content) {
-    // Pick a category
-    final category = _categories[_random.nextInt(_categories.length)];
+    final params = _paramsFor(difficulty);
+    final expectedCount = params['expectedCount']!.toInt();
+    final categoryTier =
+        params['categoryTier']!.toInt().clamp(1, _categoriesByTier.length);
+
+    final eligibleCategories = _categoriesByTier
+        .take(categoryTier)
+        .expand((tier) => tier)
+        .toList();
+    final category = eligibleCategories[_random.nextInt(eligibleCategories.length)];
 
     return GameItem(
       id: 'name_$category',
@@ -65,6 +90,7 @@ class NameHarvestGame implements CognitiveGame {
       context: {
         'category': category,
         'duration_seconds': 60,
+        'expectedCount': expectedCount,
         'contentVersion': content.version,
       },
       payload: {
@@ -86,8 +112,8 @@ class NameHarvestGame implements CognitiveGame {
   }) {
     // Score: more items named = better performance
     final count = itemsNamed.length;
-    // A rough threshold for "correct" (meeting expectations for difficulty)
-    final expectedMin = max(3, (5 + item.difficulty * 2).round());
+    final expectedMin = (item.context['expectedCount'] as int?) ??
+        max(3, (5 + item.difficulty * 2).round());
     final correct = count >= expectedMin;
 
     _trials.add(TrialResult(
