@@ -272,6 +272,7 @@ class _GameScreenState extends State<GameScreen> {
     if (!mounted) return;
 
     var restNow = false;
+    String? nextGameId;
 
     // Show session summary dialog so user/caregiver sees what was played and how long
     if (_elapsed.inSeconds >= 3) {
@@ -282,6 +283,14 @@ class _GameScreenState extends State<GameScreen> {
 
       final restAdvice = await ProgressionService.instance.restAdvice();
       if (!mounted) return;
+
+      final suggestion = restAdvice.show
+          ? null
+          : await ProgressionService.instance.suggestionFor(gameId: widget.gameId);
+      if (!mounted) return;
+      if (suggestion != null) {
+        unawaited(ProgressionService.instance.onNudgeShown(suggestion));
+      }
 
       await showDialog<void>(
         context: context,
@@ -390,6 +399,37 @@ class _GameScreenState extends State<GameScreen> {
                                     ),
                                   ),
                                 ),
+                                if (suggestion != null) ...[
+                                  const SizedBox(height: 14),
+                                  Text(
+                                    'Would you like to try ${_gameName(suggestion.suggestedGameId)} next?',
+                                    textAlign: TextAlign.center,
+                                    style: const TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.primaryText,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  SizedBox(
+                                    width: double.infinity,
+                                    height: 60,
+                                    child: ElevatedButton(
+                                      onPressed: () {
+                                        unawaited(ProgressionService.instance.onNudgeAccepted(suggestion.suggestedGameId));
+                                        nextGameId = suggestion.suggestedGameId;
+                                        Navigator.of(ctx).pop();
+                                      },
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: gameInfoFor(suggestion.suggestedGameId)?.color ?? AppColors.terracotta,
+                                      ),
+                                      child: Text(
+                                        'Try ${_gameName(suggestion.suggestedGameId)}',
+                                        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ],
                             ),
                           ),
@@ -405,6 +445,10 @@ class _GameScreenState extends State<GameScreen> {
     if (mounted) {
       if (restNow) {
         Navigator.of(context).popUntil((route) => route.isFirst);
+      } else if (nextGameId != null) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => GameScreen(gameId: nextGameId!)),
+        );
       } else {
         Navigator.of(context).pop();
       }

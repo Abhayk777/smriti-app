@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../app_colors.dart';
@@ -14,16 +16,52 @@ import 'game_screen.dart';
 ///
 /// Each game has its own colour and icon. Phones show one large tile per
 /// game with a short description; tablets show a colourful grid.
-class GameSelectScreen extends StatelessWidget {
+class GameSelectScreen extends StatefulWidget {
   const GameSelectScreen({super.key, this.service});
 
   final ProgressionService? service;
+
+  @override
+  State<GameSelectScreen> createState() => _GameSelectScreenState();
+}
+
+class _GameSelectScreenState extends State<GameSelectScreen> {
+  ProgressionService get _service =>
+      widget.service ?? ProgressionService.instance;
+
+  VarietySuggestion? _suggestion;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSuggestion();
+  }
+
+  Future<void> _loadSuggestion() async {
+    final s = await _service.suggestionFor();
+    if (!mounted) return;
+    setState(() => _suggestion = s);
+    if (s != null) {
+      unawaited(_service.onNudgeShown(s));
+    }
+  }
+
+  void _onTrySuggested(GameInfo info) {
+    unawaited(_service.onNudgeAccepted(info.id));
+    _launchGame(context, info);
+  }
+
+  void _onMaybeLater() {
+    unawaited(_service.onNudgeDismissed());
+    setState(() => _suggestion = null);
+  }
 
   @override
   Widget build(BuildContext context) {
     final width = MediaQuery.sizeOf(context).width;
     final compact = width < 520;
     final gutter = Screen.gutter(context);
+    final suggestion = _suggestion;
 
     return Scaffold(
       backgroundColor: AppColors.pageBackground,
@@ -62,37 +100,66 @@ class GameSelectScreen extends StatelessWidget {
                       ),
               ],
             ),
-            RestAdviceCard(service: service),
+            RestAdviceCard(service: widget.service),
+            if (suggestion != null)
+              VarietySuggestionCard(
+                suggestion: suggestion,
+                onTrySuggested: () {
+                  final info = gameInfoFor(suggestion.suggestedGameId);
+                  if (info != null) _onTrySuggested(info);
+                },
+                onMaybeLater: _onMaybeLater,
+              ),
             Expanded(
               child: compact
                   ? ListView.separated(
                       padding: EdgeInsets.fromLTRB(gutter, 18, gutter, 28),
                       itemCount: gameCatalog.length,
                       separatorBuilder: (_, _) => const SizedBox(height: 14),
-                      itemBuilder: (context, index) => FadeSlideIn(
-                        delay: Duration(milliseconds: 40 * index.clamp(0, 6)),
-                        child: _GameTile(
-                          info: gameCatalog[index],
-                          onTap: () => _launchGame(context, gameCatalog[index]),
-                        ),
-                      ),
+                      itemBuilder: (context, index) {
+                        final info = gameCatalog[index];
+                        final isSuggested = suggestion?.suggestedGameId == info.id;
+                        return FadeSlideIn(
+                          delay: Duration(milliseconds: 40 * index.clamp(0, 6)),
+                          child: _GameTile(
+                            info: info,
+                            isSuggested: isSuggested,
+                            onTap: () {
+                              if (isSuggested) {
+                                unawaited(_service.onNudgeAccepted(info.id));
+                              }
+                              _launchGame(context, info);
+                            },
+                          ),
+                        );
+                      },
                     )
                   : GridView.builder(
                       padding: EdgeInsets.fromLTRB(gutter, 20, gutter, 28),
                       gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
                         maxCrossAxisExtent: 380,
-                        mainAxisExtent: 220,
+                        mainAxisExtent: 240,
                         crossAxisSpacing: 18,
                         mainAxisSpacing: 18,
                       ),
                       itemCount: gameCatalog.length,
-                      itemBuilder: (context, index) => FadeSlideIn(
-                        delay: Duration(milliseconds: 40 * index),
-                        child: _GameCard(
-                          info: gameCatalog[index],
-                          onTap: () => _launchGame(context, gameCatalog[index]),
-                        ),
-                      ),
+                      itemBuilder: (context, index) {
+                        final info = gameCatalog[index];
+                        final isSuggested = suggestion?.suggestedGameId == info.id;
+                        return FadeSlideIn(
+                          delay: Duration(milliseconds: 40 * index),
+                          child: _GameCard(
+                            info: info,
+                            isSuggested: isSuggested,
+                            onTap: () {
+                              if (isSuggested) {
+                                unawaited(_service.onNudgeAccepted(info.id));
+                              }
+                              _launchGame(context, info);
+                            },
+                          ),
+                        );
+                      },
                     ),
             ),
           ],
@@ -106,7 +173,9 @@ class GameSelectScreen extends StatelessWidget {
       MaterialPageRoute(
         builder: (_) => GameScreen(gameId: info.id),
       ),
-    );
+    ).then((_) {
+      if (mounted) _loadSuggestion();
+    });
   }
 
   void _showHistoryDialog(BuildContext context) {
@@ -178,10 +247,15 @@ class _RestAdviceCardState extends State<RestAdviceCard> {
 
 /// Phone tile: coloured band with icon, name and a one-line description.
 class _GameTile extends StatelessWidget {
-  const _GameTile({required this.info, required this.onTap});
+  const _GameTile({
+    required this.info,
+    required this.onTap,
+    this.isSuggested = false,
+  });
 
   final GameInfo info;
   final VoidCallback onTap;
+  final bool isSuggested;
 
   @override
   Widget build(BuildContext context) {
@@ -199,6 +273,31 @@ class _GameTile extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                if (isSuggested) ...[
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppColors.marigold,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.star_rounded, size: 16, color: AppColors.primaryText),
+                        SizedBox(width: 4),
+                        Text(
+                          'Try today',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.primaryText,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                ],
                 Text(
                   info.name,
                   style: const TextStyle(
@@ -231,10 +330,15 @@ class _GameTile extends StatelessWidget {
 
 /// Tablet card: coloured card with a large icon, name and description.
 class _GameCard extends StatelessWidget {
-  const _GameCard({required this.info, required this.onTap});
+  const _GameCard({
+    required this.info,
+    required this.onTap,
+    this.isSuggested = false,
+  });
 
   final GameInfo info;
   final VoidCallback onTap;
+  final bool isSuggested;
 
   @override
   Widget build(BuildContext context) {
@@ -243,13 +347,13 @@ class _GameCard extends StatelessWidget {
       color: info.color,
       radius: 28,
       semanticLabel: info.name,
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 18),
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              IconMedallion(icon: info.icon, color: info.color, size: 64),
+              IconMedallion(icon: info.icon, color: info.color, size: 52),
               const Spacer(),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
@@ -269,6 +373,31 @@ class _GameCard extends StatelessWidget {
             ],
           ),
           const Spacer(),
+          if (isSuggested) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: AppColors.marigold,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.star_rounded, size: 16, color: AppColors.primaryText),
+                  SizedBox(width: 4),
+                  Text(
+                    'Try today',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.primaryText,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 6),
+          ],
           Text(
             info.name,
             maxLines: 2,
@@ -519,3 +648,104 @@ class _PlayHistoryDialogState extends State<_PlayHistoryDialog> {
     );
   }
 }
+
+/// A gentle suggestion to try a different game when one has become a repeat
+/// favourite (docs/PROGRESSION_PLAN.md §8).
+class VarietySuggestionCard extends StatelessWidget {
+  const VarietySuggestionCard({
+    super.key,
+    required this.suggestion,
+    required this.onTrySuggested,
+    required this.onMaybeLater,
+  });
+
+  final VarietySuggestion suggestion;
+  final VoidCallback onTrySuggested;
+  final VoidCallback onMaybeLater;
+
+  @override
+  Widget build(BuildContext context) {
+    final favInfo = gameInfoFor(suggestion.favouriteGameId);
+    final favName = favInfo?.name ?? suggestion.favouriteGameId;
+    final sugInfo = gameInfoFor(suggestion.suggestedGameId);
+    final sugName = sugInfo?.name ?? suggestion.suggestedGameId;
+    final sugColor = sugInfo?.color ?? AppColors.terracotta;
+
+    return FadeSlideIn(
+      child: Container(
+        margin: const EdgeInsets.fromLTRB(18, 14, 18, 0),
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: Color.lerp(AppColors.marigold, Colors.white, 0.8),
+          borderRadius: BorderRadius.circular(28),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                IconMedallion(
+                  icon: Icons.lightbulb_rounded,
+                  color: AppColors.marigoldDark,
+                  size: 52,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'You really enjoy $favName!',
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.primaryText,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'How about trying $sugName today? It is good for the mind to play different games.',
+              style: const TextStyle(
+                fontSize: 20,
+                height: 1.3,
+                color: AppColors.primaryText,
+              ),
+            ),
+            const SizedBox(height: 14),
+            SizedBox(
+              height: 60,
+              child: ElevatedButton(
+                onPressed: onTrySuggested,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: sugColor,
+                ),
+                child: Text(
+                  'Try $sugName',
+                  style: const TextStyle(
+                    fontSize: 21,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            SizedBox(
+              height: 60,
+              child: OutlinedButton(
+                onPressed: onMaybeLater,
+                child: const Text(
+                  'Maybe later',
+                  style: TextStyle(
+                    fontSize: 21,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+

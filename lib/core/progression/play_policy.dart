@@ -1,3 +1,4 @@
+import '../ability/estimator.dart';
 import '../db/database.dart';
 import 'progression_config.dart';
 import 'progression_state.dart';
@@ -80,5 +81,145 @@ class PlayPolicy {
   static int displayMinutes(int playSecondsToday) => (playSecondsToday ~/ 60 ~/ 5) * 5;
 
   // ── Variety nudge (§8) ───────────────────────────────────────────────────
-  // Extended in a later task once the suggestion feature is built.
+
+  /// Evaluates whether [gameId] (or any game, if [gameId] is null) qualifies
+  /// as a favourite under docs/PROGRESSION_PLAN.md §8.1.
+  ///
+  /// Criteria:
+  /// 1. playsG >= [repeatPlays] (default 6)
+  /// 2. playsG / allPlays >= [shareOfPlays] (default 0.6)
+  /// 3. At least one other game in [eligibleGameIds] (other != G) has 0 counted plays.
+  static String? findFavouriteGame({
+    required Map<String, int> countedPlaysByGame,
+    required Set<String> eligibleGameIds,
+    String? gameId,
+    int repeatPlays = ProgressionConfig.nudgeRepeatPlays,
+    double shareOfPlays = ProgressionConfig.nudgeShareOfPlays,
+  }) {
+    final allPlays = countedPlaysByGame.values.fold<int>(0, (a, b) => a + b);
+    if (allPlays <= 0) return null;
+
+    bool qualifies(String candidate) {
+      final plays = countedPlaysByGame[candidate] ?? 0;
+      if (plays < repeatPlays) return false;
+      if (plays / allPlays < shareOfPlays) return false;
+      final otherWithZero = eligibleGameIds.any(
+        (other) => other != candidate && (countedPlaysByGame[other] ?? 0) == 0,
+      );
+      return otherWithZero;
+    }
+
+    if (gameId != null) {
+      return qualifies(gameId) ? gameId : null;
+    }
+
+    for (final candidate in eligibleGameIds) {
+      if (qualifies(candidate)) return candidate;
+    }
+    return null;
+  }
+
+  /// Whether a nudge for [favouriteId] is allowed to show right now
+  /// (docs/PROGRESSION_PLAN.md §8.5).
+  static bool isNudgeAvailable({
+    required NudgeState state,
+    required String favouriteId,
+    required DateTime now,
+    int cooldownHours = ProgressionConfig.nudgeCooldownHours,
+  }) {
+    final nowMs = now.millisecondsSinceEpoch;
+    if (state.snoozedUntilMs != null && nowMs < state.snoozedUntilMs!) {
+      return false;
+    }
+    if (state.lastFavouriteId == favouriteId && state.lastShownAtMs != null) {
+      final elapsedMs = nowMs - state.lastShownAtMs!;
+      if (elapsedMs < cooldownHours * 3600 * 1000) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /// Selects the suggested game among [eligibleGameIds] (excluding [favouriteId])
+  /// per docs/PROGRESSION_PLAN.md §8.4:
+  /// 1. Domain with fewest trials in the last 7 days, preferring domains != favourite's.
+  /// 2. Oldest lastPlayedAtMs within that domain (never played / null counts as oldest).
+  /// 3. Catalog order tie-breaker.
+  static String? chooseSuggestedGame({
+    required String favouriteId,
+    required CognitiveDomain favouriteDomain,
+    required Set<String> eligibleGameIds,
+    required Map<String, CognitiveDomain> gameDomains,
+    required Map<CognitiveDomain, int> trialsByDomainLast7Days,
+    required Map<String, int?> lastPlayedAtMsByGame,
+    required List<String> gameCatalogOrder,
+  }) {
+    final candidates = eligibleGameIds.where((g) => g != favouriteId).toList();
+    if (candidates.isEmpty) return null;
+
+    candidates.sort((a, b) {
+      final domainA = gameDomains[a]!;
+      final domainB = gameDomains[b]!;
+
+      final trialsA = trialsByDomainLast7Days[domainA] ?? 0;
+      final trialsB = trialsByDomainLast7Days[domainB] ?? 0;
+      if (trialsA != trialsB) {
+        return trialsA.compareTo(trialsB);
+      }
+
+      final isFavDomainA = domainA == favouriteDomain ? 1 : 0;
+      final isFavDomainB = domainB == favouriteDomain ? 1 : 0;
+      if (isFavDomainA != isFavDomainB) {
+        return isFavDomainA.compareTo(isFavDomainB);
+      }
+
+      final playedA = lastPlayedAtMsByGame[a] ?? 0;
+      final playedB = lastPlayedAtMsByGame[b] ?? 0;
+      if (playedA != playedB) {
+        return playedA.compareTo(playedB);
+      }
+
+      final indexA = gameCatalogOrder.indexOf(a);
+      final indexB = gameCatalogOrder.indexOf(b);
+      return indexA.compareTo(indexB);
+    });
+
+    return candidates.first;
+  }
+
+  /// Returns updated [NudgeState] after the nudge has been shown.
+  static NudgeState afterNudgeShown(
+    NudgeState state, {
+    required String favouriteId,
+    required String suggestedId,
+    required int nowMs,
+  }) {
+    return state.copyWith(
+      lastFavouriteId: favouriteId,
+      lastSuggestedId: suggestedId,
+      lastShownAtMs: nowMs,
+    );
+  }
+
+  /// Returns updated [NudgeState] after "Maybe later" is tapped.
+  /// At 2 dismissals, snoozes for [snoozeDays] (default 2) and resets streak.
+  static NudgeState afterNudgeDismissed(
+    NudgeState state, {
+    required int nowMs,
+    int snoozeDays = ProgressionConfig.nudgeSnoozeDaysAfterTwoDismissals,
+  }) {
+    final streak = state.dismissStreak + 1;
+    if (streak >= 2) {
+      return state.copyWith(
+        dismissStreak: 0,
+        snoozedUntilMs: nowMs + snoozeDays * 24 * 3600 * 1000,
+      );
+    }
+    return state.copyWith(dismissStreak: streak);
+  }
+
+  /// Returns updated [NudgeState] after the suggested game is tapped.
+  static NudgeState afterSuggestedGameTapped(NudgeState state) {
+    return state.copyWith(dismissStreak: 0);
+  }
 }

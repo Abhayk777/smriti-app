@@ -278,4 +278,117 @@ void main() {
       expect(advice.minutesToday, 0);
     });
   });
+
+  group('variety suggestion (docs/PROGRESSION_PLAN.md §8)', () {
+    Future<void> addSessionsForGame({
+      required String gameId,
+      required int sessionCount,
+      int minutesEach = 3,
+      int dayOffset = 0,
+    }) async {
+      for (var i = 0; i < sessionCount; i++) {
+        final sId = _uuid.v4();
+        final startedAt = clock
+            .subtract(Duration(days: dayOffset, minutes: (i + 1) * (minutesEach + 2)))
+            .millisecondsSinceEpoch;
+        final endedAt = startedAt + minutesEach * 60 * 1000;
+        await db.into(db.sessions).insert(
+              SessionsCompanion.insert(
+                id: sId,
+                startedAt: startedAt,
+                gameIds: gameId,
+                endedAt: Value(endedAt),
+                completed: const Value(true),
+              ),
+            );
+        // insert 1 trial so it's a counted play
+        await db.into(db.trialEvents).insert(
+              TrialEventsCompanion.insert(
+                id: _uuid.v4(),
+                sessionId: sId,
+                gameId: gameId,
+                domain: 'executive',
+                itemId: 'item_0',
+                itemDifficulty: 0,
+                thetaBefore: 0,
+                correct: true,
+                initiationMs: 400,
+                movementMs: 400,
+                responseTimeMs: 800,
+                trialIndex: 0,
+                hintLevel: const Value(0),
+                ts: startedAt + 10000,
+                hourOfDay: 9,
+                tzOffsetMin: 0,
+              ),
+            );
+      }
+    }
+
+    test('returns suggestion when favourite has >= 6 plays in 3 days (>= 60% share)', () async {
+      // 6 sessions of market_basket over the last 2 days (3 mins each = 18 mins total, rest card not due)
+      await addSessionsForGame(gameId: 'market_basket', sessionCount: 6, minutesEach: 2, dayOffset: 1);
+
+      final suggestion = await service.suggestionFor();
+      expect(suggestion, isNotNull);
+      expect(suggestion!.favouriteGameId, 'market_basket');
+      expect(suggestion.suggestedGameId, isNotEmpty);
+      expect(suggestion.suggestedGameId, isNot('market_basket'));
+    });
+
+    test('rest card wins over variety suggestion when rest card is due (§9.2)', () async {
+      // 6 sessions of market_basket of 6 minutes each = 36 minutes played today
+      await addSessionsForGame(gameId: 'market_basket', sessionCount: 6, minutesEach: 6, dayOffset: 0);
+
+      // 36 minutes played today: restAdvice().show is true
+      final rest = await service.restAdvice();
+      expect(rest.show, isTrue);
+
+      // When rest is due, suggestionFor returns null
+      final suggestion = await service.suggestionFor();
+      expect(suggestion, isNull);
+    });
+
+    test('onNudgeShown puts suggestion into 24h cooldown', () async {
+      await addSessionsForGame(gameId: 'market_basket', sessionCount: 6, minutesEach: 2, dayOffset: 1);
+
+      final suggestion = (await service.suggestionFor())!;
+      await service.onNudgeShown(suggestion);
+
+      // Now within cooldown: null
+      expect(await service.suggestionFor(), isNull);
+
+      // Advance clock by 25 hours
+      clock = clock.add(const Duration(hours: 25));
+      expect(await service.suggestionFor(), isNotNull);
+    });
+
+    test('two dismissals snooze suggestion for 2 days', () async {
+      await addSessionsForGame(gameId: 'market_basket', sessionCount: 6, minutesEach: 2, dayOffset: 0);
+
+      final suggestion = (await service.suggestionFor())!;
+      expect(suggestion, isNotNull);
+      // First dismissal: increments streak
+      await service.onNudgeDismissed();
+      // Second dismissal: snoozes for 2 days
+      await service.onNudgeDismissed();
+
+      // State is snoozed
+      expect(await service.suggestionFor(), isNull);
+
+      // Advance 48 hours + 1 min: snooze expires, sessions still within 3-day window
+      clock = clock.add(const Duration(hours: 48, minutes: 1));
+      expect(await service.suggestionFor(), isNotNull);
+    });
+
+    test('onNudgeAccepted resets dismiss streak', () async {
+      await service.onNudgeDismissed();
+      var state = await service.repo.getNudgeState();
+      expect(state.dismissStreak, 1);
+
+      await service.onNudgeAccepted('trace_path');
+      state = await service.repo.getNudgeState();
+      expect(state.dismissStreak, 0);
+    });
+  });
 }

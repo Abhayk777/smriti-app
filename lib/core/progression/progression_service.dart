@@ -2,6 +2,7 @@ import '../ability/estimator.dart';
 import '../db/app_database.dart';
 import '../db/database.dart';
 import '../repo/ability_repo.dart';
+import '../repo/content_repo.dart';
 import '../repo/event_repo.dart';
 import 'difficulty_source.dart';
 import 'game_level_profiles.dart';
@@ -12,6 +13,18 @@ import 'progression_config.dart';
 import 'progression_policy.dart';
 import 'progression_repo.dart';
 import 'progression_state.dart';
+
+/// A suggestion to try a different game when one game has become a repeat
+/// favourite (docs/PROGRESSION_PLAN.md §8).
+class VarietySuggestion {
+  const VarietySuggestion({
+    required this.favouriteGameId,
+    required this.suggestedGameId,
+  });
+
+  final String favouriteGameId;
+  final String suggestedGameId;
+}
 
 /// Whether the elder should be shown a gentle rest reminder right now
 /// (docs/PROGRESSION_PLAN.md §9.5). Advice, never a lock: every game stays
@@ -53,12 +66,16 @@ const Map<String, CognitiveDomain> kGameDomains = {
 /// tests. [ProgressionService.instance] is the shared instance screens use;
 /// tests normally construct their own instance instead of touching it.
 class ProgressionService implements GameLevelSource {
-  ProgressionService({SmritiDatabase? db, DateTime Function()? now})
-      : db = db ?? appDatabase,
+  ProgressionService({
+    SmritiDatabase? db,
+    DateTime Function()? now,
+    ContentRepo? contentRepo,
+  })  : db = db ?? appDatabase,
         _now = now ?? DateTime.now,
         repo = ProgressionRepo(db ?? appDatabase),
         eventRepo = EventRepo(db ?? appDatabase),
-        abilityRepo = AbilityRepo(db ?? appDatabase);
+        abilityRepo = AbilityRepo(db ?? appDatabase),
+        contentRepo = contentRepo ?? ContentRepo(db ?? appDatabase);
 
   static ProgressionService? _instance;
 
@@ -74,6 +91,7 @@ class ProgressionService implements GameLevelSource {
   final ProgressionRepo repo;
   final EventRepo eventRepo;
   final AbilityRepo abilityRepo;
+  final ContentRepo contentRepo;
   final DateTime Function() _now;
 
   /// In-memory cache of every game touched this run, so [levelFor] and
@@ -287,6 +305,135 @@ class ProgressionService implements GameLevelSource {
       now.millisecondsSinceEpoch,
     );
     return PlayPolicy.playSecondsToday(sessionsToday);
+  }
+
+  // ── Variety nudge (docs/PROGRESSION_PLAN.md §8) ─────────────────────────
+
+  /// Returns an active variety suggestion if [gameId] (or any game, if
+  /// [gameId] is null) is a repeat favourite and the suggestion is eligible
+  /// and not in cooldown (docs/PROGRESSION_PLAN.md §8).
+  ///
+  /// Returns null if the rest card is currently due (the rest card wins over
+  /// the suggestion, §9.2), if no favourite exists, if the nudge is in
+  /// cooldown or snoozed, or if no other game is eligible.
+  Future<VarietySuggestion?> suggestionFor({String? gameId, DateTime? now}) async {
+    final n = now ?? _now();
+
+    // Rest card wins over the variety suggestion when both are due (§9.2).
+    final rest = await restAdvice(now: n);
+    if (rest.show) return null;
+
+    final settings = await repo.getSettings();
+    final windowDays = settings.effectiveNudgeWindowDays;
+    final repeatPlays = settings.effectiveNudgeRepeatPlays;
+
+    final nudgeState = await repo.getNudgeState();
+    final nowMs = n.millisecondsSinceEpoch;
+    if (nudgeState.snoozedUntilMs != null && nowMs < nudgeState.snoozedUntilMs!) {
+      return null;
+    }
+
+    final windowFromMs = n.subtract(Duration(days: windowDays)).millisecondsSinceEpoch;
+    final sessions = await eventRepo.sessionsBetween(windowFromMs, nowMs);
+    final trialCounts = await eventRepo.trialCountsBySessionBetween(windowFromMs, nowMs);
+
+    final countedPlaysByGame = <String, int>{};
+    for (final s in sessions) {
+      final gid = s.gameIds;
+      if (gid.isEmpty) continue;
+      final tCount = trialCounts[s.id] ?? 0;
+      final durSec = s.completed && s.endedAt != null
+          ? ((s.endedAt! - s.startedAt) / 1000).round()
+          : (s.abandonedAtMs != null ? (s.abandonedAtMs! / 1000).round() : null);
+      final isCounted = tCount > 0 ||
+          (durSec != null && durSec >= ProgressionConfig.minCountedPlaySeconds);
+      if (isCounted) {
+        countedPlaysByGame[gid] = (countedPlaysByGame[gid] ?? 0) + 1;
+      }
+    }
+
+    final livingPeople = await contentRepo.getLivingPeople();
+    final facesEligible = livingPeople.length >= 2;
+    final eligibleGameIds = {
+      for (final g in kGameDomains.keys)
+        if (g != 'faces_of_family' || facesEligible) g,
+    };
+
+    final favourite = PlayPolicy.findFavouriteGame(
+      countedPlaysByGame: countedPlaysByGame,
+      eligibleGameIds: eligibleGameIds,
+      gameId: gameId,
+      repeatPlays: repeatPlays,
+      shareOfPlays: ProgressionConfig.nudgeShareOfPlays,
+    );
+    if (favourite == null) return null;
+
+    final available = PlayPolicy.isNudgeAvailable(
+      state: nudgeState,
+      favouriteId: favourite,
+      now: n,
+      cooldownHours: ProgressionConfig.nudgeCooldownHours,
+    );
+    if (!available) return null;
+
+    final gReports = await genreReports(windowDays: 7);
+    final trialsByDomain = <CognitiveDomain, int>{
+      for (final entry in gReports.entries) entry.key: entry.value.totalTrials,
+    };
+    final lastPlayedAtMsByGame = <String, int?>{};
+    for (final gid in eligibleGameIds) {
+      final prog = await repo.getGameProgress(gid);
+      lastPlayedAtMsByGame[gid] = prog.lastPlayedAtMs;
+    }
+
+    final suggested = PlayPolicy.chooseSuggestedGame(
+      favouriteId: favourite,
+      favouriteDomain: kGameDomains[favourite]!,
+      eligibleGameIds: eligibleGameIds,
+      gameDomains: kGameDomains,
+      trialsByDomainLast7Days: trialsByDomain,
+      lastPlayedAtMsByGame: lastPlayedAtMsByGame,
+      gameCatalogOrder: kGameDomains.keys.toList(),
+    );
+    if (suggested == null) return null;
+
+    return VarietySuggestion(
+      favouriteGameId: favourite,
+      suggestedGameId: suggested,
+    );
+  }
+
+  /// Call when a suggestion card is presented to the elder so the 24h cooldown
+  /// is recorded.
+  Future<void> onNudgeShown(VarietySuggestion suggestion, {DateTime? now}) async {
+    final n = now ?? _now();
+    final state = await repo.getNudgeState();
+    final updated = PlayPolicy.afterNudgeShown(
+      state,
+      favouriteId: suggestion.favouriteGameId,
+      suggestedId: suggestion.suggestedGameId,
+      nowMs: n.millisecondsSinceEpoch,
+    );
+    await repo.saveNudgeState(updated);
+  }
+
+  /// Call when "Maybe later" is tapped.
+  Future<void> onNudgeDismissed({DateTime? now}) async {
+    final n = now ?? _now();
+    final state = await repo.getNudgeState();
+    final updated = PlayPolicy.afterNudgeDismissed(
+      state,
+      nowMs: n.millisecondsSinceEpoch,
+      snoozeDays: ProgressionConfig.nudgeSnoozeDaysAfterTwoDismissals,
+    );
+    await repo.saveNudgeState(updated);
+  }
+
+  /// Call when the elder taps the suggested game.
+  Future<void> onNudgeAccepted(String gameId, {DateTime? now}) async {
+    final state = await repo.getNudgeState();
+    final updated = PlayPolicy.afterSuggestedGameTapped(state);
+    await repo.saveNudgeState(updated);
   }
 
   // ── Internals ────────────────────────────────────────────────────────────
