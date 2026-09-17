@@ -302,7 +302,7 @@ class ProgressionService implements GameLevelSource {
     final startOfDay = DateTime(now.year, now.month, now.day);
     final sessionsToday = await eventRepo.sessionsBetween(
       startOfDay.millisecondsSinceEpoch,
-      now.millisecondsSinceEpoch,
+      now.millisecondsSinceEpoch + 5000,
     );
     return PlayPolicy.playSecondsToday(sessionsToday);
   }

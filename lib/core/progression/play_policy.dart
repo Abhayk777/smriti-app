@@ -22,7 +22,7 @@ class PlayPolicy {
     var total = 0;
     for (final s in sessionsToday) {
       final int seconds;
-      if (s.completed && s.endedAt != null) {
+      if (s.endedAt != null) {
         seconds = ((s.endedAt! - s.startedAt) / 1000).round();
       } else if (s.abandonedAtMs != null) {
         seconds = (s.abandonedAtMs! / 1000).round();

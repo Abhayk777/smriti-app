@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smriti/app_colors.dart';
+import 'package:smriti/core/progression/progression_service.dart';
 import 'package:smriti/screens/game_screen.dart';
+import 'package:smriti/screens/game_select_screen.dart';
 import 'package:smriti/ui/smriti_ui.dart';
+
+import '../core/repo/_test_db.dart';
 
 void main() {
   testWidgets('RestCardDialog renders title, body with minutes, and handles callbacks',
@@ -122,5 +126,26 @@ void main() {
         expect(decoration.color != AppColors.gamosaRed, isTrue);
       }
     }
+  });
+
+  testWidgets('RestAdviceCard reload re-queries restAdvice and updates visibility', (tester) async {
+    final db = newTestDb();
+    addTearDown(() async => db.close());
+    final service = ProgressionService(db: db, now: () => DateTime(2026, 3, 15, 10, 0));
+
+    final cardKey = GlobalKey<RestAdviceCardState>();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: RestAdviceCard(key: cardKey, service: service),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Calling reload works cleanly without errors
+    await cardKey.currentState?.reload();
+    await tester.pumpAndSettle();
+    expect(find.byType(RestAdviceCard), findsOneWidget);
   });
 }

@@ -81,11 +81,33 @@ void main() {
       expect(d, closeTo(LevelScale.levelToDifficulty(5.0), 1e-9));
     });
 
-    test('two misses in a row lower the next difficulty by half a level', () async {
+    test('by default, mid-session difficulty is fixed and does not change on misses or hits', () async {
       final source = LevelDifficultySource<_FakeGame, _FakeResult>(
         _FakeLevelSource({'g': 5.0}),
         (g) => g.id,
         (r) => r.correct,
+      );
+      const game = _FakeGame('g', CognitiveDomain.memory);
+
+      for (var i = 0; i < 10; i++) {
+        source.onTrial(game, const _FakeResult(false));
+      }
+      var d = await source.difficultyFor(game);
+      expect(d, closeTo(LevelScale.levelToDifficulty(5.0), 1e-9));
+
+      for (var i = 0; i < 10; i++) {
+        source.onTrial(game, const _FakeResult(true));
+      }
+      d = await source.difficultyFor(game);
+      expect(d, closeTo(LevelScale.levelToDifficulty(5.0), 1e-9));
+    });
+
+    test('when enableStaircase is true, two misses in a row lower difficulty by half a level', () async {
+      final source = LevelDifficultySource<_FakeGame, _FakeResult>(
+        _FakeLevelSource({'g': 5.0}),
+        (g) => g.id,
+        (r) => r.correct,
+        enableStaircase: true,
       );
       const game = _FakeGame('g', CognitiveDomain.memory);
 
@@ -96,11 +118,12 @@ void main() {
       expect(d, closeTo(LevelScale.levelToDifficulty(4.5), 1e-9));
     });
 
-    test('three hits in a row raise the next difficulty by half a level', () async {
+    test('when enableStaircase is true, three hits in a row raise difficulty by half a level', () async {
       final source = LevelDifficultySource<_FakeGame, _FakeResult>(
         _FakeLevelSource({'g': 5.0}),
         (g) => g.id,
         (r) => r.correct,
+        enableStaircase: true,
       );
       const game = _FakeGame('g', CognitiveDomain.memory);
 
@@ -117,6 +140,7 @@ void main() {
         _FakeLevelSource({'g': 5.0}),
         (g) => g.id,
         (r) => r.correct,
+        enableStaircase: true,
       );
       const game = _FakeGame('g', CognitiveDomain.memory);
 
@@ -130,6 +154,7 @@ void main() {
         _FakeLevelSource({'g': 5.0}),
         (g) => g.id,
         (r) => r.correct,
+        enableStaircase: true,
       );
       const game = _FakeGame('g', CognitiveDomain.memory);
 
@@ -146,6 +171,7 @@ void main() {
         _FakeLevelSource({'g': 5.0}),
         (g) => g.id,
         (r) => r.correct,
+        enableStaircase: true,
       );
       const game = _FakeGame('g', CognitiveDomain.memory);
 
@@ -163,6 +189,7 @@ void main() {
         _FakeLevelSource({'g': ProgressionConfig.minLevel}),
         (g) => g.id,
         (r) => r.correct,
+        enableStaircase: true,
       );
       const game = _FakeGame('g', CognitiveDomain.memory);
 
@@ -178,6 +205,7 @@ void main() {
         _FakeLevelSource({'g': 5.0}, {'g': true}),
         (g) => g.id,
         (r) => r.correct,
+        enableStaircase: true,
       );
       const game = _FakeGame('g', CognitiveDomain.memory);
 

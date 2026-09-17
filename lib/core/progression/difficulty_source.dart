@@ -81,7 +81,12 @@ class ThetaDifficultySource<G extends Object, R extends Object>
 /// stored level.
 class LevelDifficultySource<G extends Object, R extends Object>
     implements DifficultySource<G, R> {
-  LevelDifficultySource(this.service, this.idOf, this.correctOf);
+  LevelDifficultySource(
+    this.service,
+    this.idOf,
+    this.correctOf, {
+    this.enableStaircase = false,
+  });
 
   final GameLevelSource service;
 
@@ -90,6 +95,11 @@ class LevelDifficultySource<G extends Object, R extends Object>
 
   /// Reads `result.correct` without this file importing `TrialResult`.
   final bool Function(R result) correctOf;
+
+  /// Whether the in-session staircase is enabled. Defaults to false so difficulty
+  /// remains strictly fixed to the elder's stored level throughout the session,
+  /// changing only when the 4-day review analyses the elder's pattern.
+  final bool enableStaircase;
 
   double _offset = 0;
   int _hitStreak = 0;
@@ -104,6 +114,7 @@ class LevelDifficultySource<G extends Object, R extends Object>
 
   @override
   void onTrial(G game, R result) {
+    if (!enableStaircase) return;
     if (correctOf(result)) {
       _missStreak = 0;
       _hitStreak++;

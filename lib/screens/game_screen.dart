@@ -265,7 +265,7 @@ class _GameScreenState extends State<GameScreen> {
     if (_sessionEnded) return;
     _sessionEnded = true;
     _timerUpdate?.cancel();
-    _runner?.end(completed: completed);
+    await _runner?.end(completed: completed);
     unawaited(SyncEngine.defaultInstance.run(trigger: SyncTrigger.sessionEnded));
     unawaited(ProgressionService.instance.onSessionEnded(widget.gameId));
 

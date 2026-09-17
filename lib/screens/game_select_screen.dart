@@ -29,6 +29,7 @@ class _GameSelectScreenState extends State<GameSelectScreen> {
   ProgressionService get _service =>
       widget.service ?? ProgressionService.instance;
 
+  final GlobalKey<RestAdviceCardState> _restAdviceKey = GlobalKey<RestAdviceCardState>();
   VarietySuggestion? _suggestion;
 
   @override
@@ -100,7 +101,7 @@ class _GameSelectScreenState extends State<GameSelectScreen> {
                       ),
               ],
             ),
-            RestAdviceCard(service: widget.service),
+            RestAdviceCard(key: _restAdviceKey, service: widget.service),
             if (suggestion != null)
               VarietySuggestionCard(
                 suggestion: suggestion,
@@ -174,7 +175,10 @@ class _GameSelectScreenState extends State<GameSelectScreen> {
         builder: (_) => GameScreen(gameId: info.id),
       ),
     ).then((_) {
-      if (mounted) _loadSuggestion();
+      if (mounted) {
+        _loadSuggestion();
+        _restAdviceKey.currentState?.reload();
+      }
     });
   }
 
@@ -192,10 +196,10 @@ class RestAdviceCard extends StatefulWidget {
   final ProgressionService? service;
 
   @override
-  State<RestAdviceCard> createState() => _RestAdviceCardState();
+  State<RestAdviceCard> createState() => RestAdviceCardState();
 }
 
-class _RestAdviceCardState extends State<RestAdviceCard> {
+class RestAdviceCardState extends State<RestAdviceCard> {
   RestAdvice? _advice;
   bool _hidden = false;
 
@@ -205,6 +209,11 @@ class _RestAdviceCardState extends State<RestAdviceCard> {
   void initState() {
     super.initState();
     _load();
+  }
+
+  Future<void> reload() async {
+    _hidden = false;
+    await _load();
   }
 
   Future<void> _load() async {
