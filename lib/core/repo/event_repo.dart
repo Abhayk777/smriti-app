@@ -79,6 +79,60 @@ class EventRepo {
         .get();
   }
 
+  /// Trials of one game with `ts` in `[fromMs, toMs)`, oldest first.
+  ///
+  /// Read-only: used by the progression review (docs/PROGRESSION_PLAN.md §4.4,
+  /// §6.2) to score the elder's last few days of play. Never updates or
+  /// deletes a row.
+  Future<List<TrialEvent>> trialsForGameBetween(
+    String gameId,
+    int fromMs,
+    int toMs,
+  ) {
+    return (db.select(db.trialEvents)
+          ..where((t) =>
+              t.gameId.equals(gameId) &
+              t.ts.isBiggerOrEqualValue(fromMs) &
+              t.ts.isSmallerThanValue(toMs))
+          ..orderBy([(t) => OrderingTerm(expression: t.ts)]))
+        .get();
+  }
+
+  /// Sessions whose `startedAt` is in `[fromMs, toMs)`, oldest first.
+  ///
+  /// Read-only: used by the progression review and the daily rest card
+  /// (docs/PROGRESSION_PLAN.md §4.4, §6.2, §9.1).
+  Future<List<Session>> sessionsBetween(int fromMs, int toMs) {
+    return (db.select(db.sessions)
+          ..where((t) =>
+              t.startedAt.isBiggerOrEqualValue(fromMs) &
+              t.startedAt.isSmallerThanValue(toMs))
+          ..orderBy([(t) => OrderingTerm(expression: t.startedAt)]))
+        .get();
+  }
+
+  /// Number of `TrialEvents` rows per `sessionId`, for trials with `ts` in
+  /// `[fromMs, toMs)`.
+  ///
+  /// Used to decide whether a short session still counts as a play
+  /// (docs/PROGRESSION_PLAN.md §3, §4.4): a session with at least one trial
+  /// counts even if it ran under the 30-second floor.
+  Future<Map<String, int>> trialCountsBySessionBetween(
+    int fromMs,
+    int toMs,
+  ) async {
+    final rows = await (db.select(db.trialEvents)
+          ..where((t) =>
+              t.ts.isBiggerOrEqualValue(fromMs) &
+              t.ts.isSmallerThanValue(toMs)))
+        .get();
+    final counts = <String, int>{};
+    for (final row in rows) {
+      counts[row.sessionId] = (counts[row.sessionId] ?? 0) + 1;
+    }
+    return counts;
+  }
+
   // REMINDER EVENTS
 
   Future<void> insertReminderEvent(ReminderEventsCompanion event) async {

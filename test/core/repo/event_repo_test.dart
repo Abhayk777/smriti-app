@@ -219,4 +219,134 @@ void main() {
 
     await repo.markTrialsSynced([]);
   });
+
+  group('trialsForGameBetween', () {
+    setUp(() async {
+      await repo.insertSession(
+        SessionsCompanion.insert(
+          id: 's1',
+          startedAt: 1000,
+          gameIds: 'market_basket',
+        ),
+      );
+    });
+
+    TrialEventsCompanion trialAt(String id, int ts, {String gameId = 'market_basket'}) =>
+        TrialEventsCompanion.insert(
+          id: id,
+          sessionId: 's1',
+          gameId: gameId,
+          domain: 'memory',
+          itemId: 'item_$id',
+          itemDifficulty: 0,
+          thetaBefore: 0,
+          correct: true,
+          initiationMs: 100,
+          movementMs: 100,
+          responseTimeMs: 200,
+          trialIndex: 0,
+          ts: ts,
+          hourOfDay: 9,
+          tzOffsetMin: 330,
+        );
+
+    test('includes the from boundary and excludes the to boundary', () async {
+      await repo.insertTrials([
+        trialAt('before', 999),
+        trialAt('atFrom', 1000),
+        trialAt('middle', 1500),
+        trialAt('atTo', 2000),
+        trialAt('after', 2001),
+      ]);
+
+      final rows = await repo.trialsForGameBetween('market_basket', 1000, 2000);
+      expect(rows.map((r) => r.id), ['atFrom', 'middle']);
+    });
+
+    test('orders oldest first', () async {
+      await repo.insertTrials([
+        trialAt('c', 300),
+        trialAt('a', 100),
+        trialAt('b', 200),
+      ]);
+
+      final rows = await repo.trialsForGameBetween('market_basket', 0, 1000);
+      expect(rows.map((r) => r.id), ['a', 'b', 'c']);
+    });
+
+    test('filters by gameId', () async {
+      await repo.insertTrials([
+        trialAt('mb', 100),
+        trialAt('other', 100, gameId: 'sort_harvest'),
+      ]);
+
+      final rows = await repo.trialsForGameBetween('market_basket', 0, 1000);
+      expect(rows.map((r) => r.id), ['mb']);
+    });
+  });
+
+  group('sessionsBetween', () {
+    test('includes the from boundary and excludes the to boundary, oldest first', () async {
+      await repo.insertSession(
+        SessionsCompanion.insert(id: 'before', startedAt: 999, gameIds: 'g'),
+      );
+      await repo.insertSession(
+        SessionsCompanion.insert(id: 'atFrom', startedAt: 1000, gameIds: 'g'),
+      );
+      await repo.insertSession(
+        SessionsCompanion.insert(id: 'middle', startedAt: 1500, gameIds: 'g'),
+      );
+      await repo.insertSession(
+        SessionsCompanion.insert(id: 'atTo', startedAt: 2000, gameIds: 'g'),
+      );
+
+      final rows = await repo.sessionsBetween(1000, 2000);
+      expect(rows.map((r) => r.id), ['atFrom', 'middle']);
+    });
+  });
+
+  group('trialCountsBySessionBetween', () {
+    test('counts trials per sessionId within the window only', () async {
+      await repo.insertSession(
+        SessionsCompanion.insert(id: 's1', startedAt: 0, gameIds: 'g'),
+      );
+      await repo.insertSession(
+        SessionsCompanion.insert(id: 's2', startedAt: 0, gameIds: 'g'),
+      );
+
+      TrialEventsCompanion t(String id, String sessionId, int ts) =>
+          TrialEventsCompanion.insert(
+            id: id,
+            sessionId: sessionId,
+            gameId: 'market_basket',
+            domain: 'memory',
+            itemId: 'item_$id',
+            itemDifficulty: 0,
+            thetaBefore: 0,
+            correct: true,
+            initiationMs: 100,
+            movementMs: 100,
+            responseTimeMs: 200,
+            trialIndex: 0,
+            ts: ts,
+            hourOfDay: 9,
+            tzOffsetMin: 330,
+          );
+
+      await repo.insertTrials([
+        t('a', 's1', 1000),
+        t('b', 's1', 1100),
+        t('c', 's2', 1200),
+        t('outside', 's1', 5000),
+      ]);
+
+      final counts = await repo.trialCountsBySessionBetween(0, 2000);
+      expect(counts, {'s1': 2, 's2': 1});
+    });
+
+    test('returns an empty map when nothing is in range', () async {
+      final counts = await repo.trialCountsBySessionBetween(0, 100);
+      expect(counts, isEmpty);
+    });
+  });
 }
