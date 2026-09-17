@@ -3,9 +3,74 @@
 Implementation plan for SIH problem statement 26003 ("progressive games that change level
 according to the user's performance").
 
-Status: **plan only, nothing in this document is built yet.**
+Status: **T1-T8 built, committed, and green. T9 (daily rest card) is in progress,
+uncommitted, on branch `complete-app` — see §0a for exactly what is done and what is
+left.** T10-T12 are not started.
 Audience: any engineer or coding agent building this feature in the Smriti Flutter app.
 Read `AGENTS.md` and `docs/APP-BUILD-SPEC.md` §1, §3, §5, §7 and §11 before starting.
+
+---
+
+## 0a. Handoff status (read this first if resuming mid-build)
+
+**Committed so far** (commits `7dd5182`..`e3b561f` on `complete-app`, one per task,
+T1 through T8): `progression_config.dart`, `level_scale.dart`, `difficulty_axis.dart`,
+`game_level_profiles.dart`, `trial_scoring.dart`, `EventRepo` read helpers,
+`progression_state.dart`, `progression_repo.dart`, the different-patient wipe in
+`pairing_service.dart`, `performance_report.dart`, `progression_policy.dart`,
+`difficulty_source.dart`, `SessionRunner`'s pluggable difficulty source, all 9 games'
+`generateItem` rewritten onto `GameLevelProfiles`, `level_generation_test.dart` (88
+tests), `progression_service.dart`, and `game_screen.dart`/`home_screen.dart` wiring for
+session start/end and `runDueReviews`. `flutter analyze` is clean and `flutter test`
+passes except the one pre-existing failure named in §0 rule 2.
+
+**T9 (daily rest card), uncommitted work already in the tree:**
+- `play_policy.dart` — done: `playSecondsToday`, `dayKeyOf`, `forToday`, `restCardDue`,
+  `afterRestCardShown`, `afterRestCardAnswered`, `displayMinutes`. All pass
+  (`play_policy_test.dart`, 18 tests).
+- `progression_service.dart` — done: `RestAdvice`, `restAdvice()`, `onRestCardAnswered()`,
+  `_playSecondsToday()`. All pass (`progression_service_test.dart`, the
+  `restAdvice / onRestCardAnswered` group, 5 tests).
+- `lib/screens/game_select_screen.dart` — done: `RestAdviceCard` (`StatefulWidget`),
+  wired into the screen's `build()` right under the header. Uses
+  `AppColors.leafGreen`, `IconMedallion(icon: Icons.local_cafe_rounded, ...)`, no
+  warning/error/timer icons, no red. Copy matches §10.
+- `lib/screens/game_screen.dart` — **not started**. The end-of-session dialog still needs
+  the rest-card variant per §9.2 rule 1 and §9.4 (replacing the usual "Back to Games"
+  layout with the rest-card content when `restAdvice().show` is true at
+  `_endSession`/after `runner.end`).
+- Widget tests for T9 — **not started**: nothing under `test/screens/` yet covers
+  `RestAdviceCard` or the end-of-session dialog's rest-card variant. Write them per the
+  acceptance list in T9 (§13), including the "no game ever blocked at 120 minutes" and
+  "no error/warning/timer/hourglass icon or red colour" checks.
+- The "rest card wins over the variety suggestion when both are due" rule (T9's last
+  acceptance bullet) has nothing to conflict with yet since T10 doesn't exist — leave a
+  one-line `// TODO(T10):` note only if you touch that spot, don't build precedence logic
+  early.
+
+**Root cause already found and fixed, do not re-investigate:** an earlier debugging pass
+suspected a bug in `playSecondsToday`/`restAdvice` because a test using one 20-30 minute
+session read back as far fewer minutes. The actual cause is correct-as-designed: §9.1
+caps each session's contribution at 8 minutes (`ProgressionConfig.maxCountedSessionSeconds
+= 8*60`) because `SessionRunner` never lets a real session run past 6 minutes, so nothing
+in production is ever this long. The bug was in the test's fixture, not the code: a single
+huge fake session isn't representative. It's already fixed in
+`progression_service_test.dart` — the `restAdvice / onRestCardAnswered` group now spreads
+play across several ≤8-minute sessions via an `addPlayMinutes(totalMinutes)` helper. Model
+any new rest-card test fixtures on that helper, never on one long session.
+
+**Also fixed while investigating T9:** `lib/screens/game_select_screen.dart` had a stray
+missing `);\n  }\n}` right after `RestAdviceCard`'s `build()` method (a leftover from an
+interrupted edit) that made the whole file fail to parse. That has been closed correctly;
+`flutter analyze` is clean again. If `flutter analyze` ever reports a wall of `Expected to
+find ','`/`undefined_identifier` errors again in one file, look for an unclosed
+widget-tree call a screenful above the first reported line, not at the line itself — the
+parser only notices several tokens after the real gap.
+
+**Next steps, in order:** finish `game_screen.dart`'s end-of-session rest-card variant,
+write T9's widget tests, run `flutter analyze` + `flutter test` (must match §0 rule 2),
+commit T9 with the same one-task-per-commit style as T1-T8, then proceed to T10, T11, T12
+per §13. Do not restart or redo T1-T8.
 
 ---
 

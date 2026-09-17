@@ -198,4 +198,84 @@ void main() {
     expect(facesProgress.history, hasLength(1));
     expect(facesProgress.history.single.decision.name, 'raise');
   });
+
+  group('restAdvice / onRestCardAnswered (docs/PROGRESSION_PLAN.md §9)', () {
+    // Real sessions are capped at 6 minutes by SessionRunner, so
+    // playSecondsToday caps each session's contribution at 8 minutes
+    // (docs/PROGRESSION_PLAN.md §9.1). A single 20+ minute session can never
+    // occur in production, so play time here is spread across several
+    // sessions of at most 8 minutes each, exactly like real usage, ending
+    // further and further before "now" so they never overlap.
+    var nextEndOffsetMin = 1;
+
+    Future<void> addPlayMinutes(int totalMinutes) async {
+      var remaining = totalMinutes;
+      while (remaining > 0) {
+        final chunk = remaining > 8 ? 8 : remaining;
+        final startedAt = clock
+            .subtract(Duration(minutes: nextEndOffsetMin + chunk))
+            .millisecondsSinceEpoch;
+        final endedAt =
+            clock.subtract(Duration(minutes: nextEndOffsetMin)).millisecondsSinceEpoch;
+        await db.into(db.sessions).insert(
+              SessionsCompanion.insert(
+                id: _uuid.v4(),
+                startedAt: startedAt,
+                gameIds: 'market_basket',
+                endedAt: Value(endedAt),
+                completed: const Value(true),
+              ),
+            );
+        remaining -= chunk;
+        nextEndOffsetMin += chunk;
+      }
+    }
+
+    test('not due below the threshold', () async {
+      await addPlayMinutes(20); // 20 minutes played today, across sessions
+      final advice = await service.restAdvice();
+      expect(advice.show, isFalse);
+      expect(advice.minutesToday, 20);
+    });
+
+    test('due once today\'s play reaches the threshold', () async {
+      await addPlayMinutes(30); // exactly 30 minutes played today
+      final advice = await service.restAdvice();
+      expect(advice.show, isTrue);
+      expect(advice.minutesToday, 30);
+    });
+
+    test('never due when dailyRestMinutes is turned off', () async {
+      await db.appConfigsDao.setValue(
+        'progression.v1.settings',
+        '{"dailyRestMinutes": 0}',
+      );
+      await addPlayMinutes(60); // an hour played today
+      final advice = await service.restAdvice();
+      expect(advice.show, isFalse);
+    });
+
+    test('"Keep playing" pushes the next reminder to 15 more minutes of play', () async {
+      await addPlayMinutes(30);
+      expect((await service.restAdvice()).show, isTrue);
+
+      await service.onRestCardAnswered(keepPlaying: true);
+      // Still at 30 minutes: not due again immediately.
+      expect((await service.restAdvice()).show, isFalse);
+
+      await addPlayMinutes(15); // 15 more minutes played
+      expect((await service.restAdvice()).show, isTrue);
+    });
+
+    test('a new day resets the reminder', () async {
+      await addPlayMinutes(30);
+      expect((await service.restAdvice()).show, isTrue);
+      await service.onRestCardAnswered(keepPlaying: false);
+
+      clock = DateTime(clock.year, clock.month, clock.day + 1, 9, 0);
+      final advice = await service.restAdvice();
+      expect(advice.show, isFalse);
+      expect(advice.minutesToday, 0);
+    });
+  });
 }

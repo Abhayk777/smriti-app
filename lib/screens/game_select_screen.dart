@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../app_colors.dart';
 import '../core/db/app_database.dart';
 import '../core/db/database.dart';
+import '../core/progression/progression_service.dart';
 import '../core/repo/event_repo.dart';
 import '../games/game_catalog.dart';
 import '../ui/smriti_ui.dart';
@@ -14,7 +15,9 @@ import 'game_screen.dart';
 /// Each game has its own colour and icon. Phones show one large tile per
 /// game with a short description; tablets show a colourful grid.
 class GameSelectScreen extends StatelessWidget {
-  const GameSelectScreen({super.key});
+  const GameSelectScreen({super.key, this.service});
+
+  final ProgressionService? service;
 
   @override
   Widget build(BuildContext context) {
@@ -59,6 +62,7 @@ class GameSelectScreen extends StatelessWidget {
                       ),
               ],
             ),
+            RestAdviceCard(service: service),
             Expanded(
               child: compact
                   ? ListView.separated(
@@ -76,8 +80,8 @@ class GameSelectScreen extends StatelessWidget {
                   : GridView.builder(
                       padding: EdgeInsets.fromLTRB(gutter, 20, gutter, 28),
                       gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                        maxCrossAxisExtent: 340,
-                        mainAxisExtent: 210,
+                        maxCrossAxisExtent: 380,
+                        mainAxisExtent: 220,
                         crossAxisSpacing: 18,
                         mainAxisSpacing: 18,
                       ),
@@ -109,6 +113,65 @@ class GameSelectScreen extends StatelessWidget {
     showDialog(
       context: context,
       builder: (context) => const _PlayHistoryDialog(),
+    );
+  }
+}
+/// A calm, closable daily-rest suggestion. It never controls game launching.
+class RestAdviceCard extends StatefulWidget {
+  const RestAdviceCard({super.key, this.service});
+
+  final ProgressionService? service;
+
+  @override
+  State<RestAdviceCard> createState() => _RestAdviceCardState();
+}
+
+class _RestAdviceCardState extends State<RestAdviceCard> {
+  RestAdvice? _advice;
+  bool _hidden = false;
+
+  ProgressionService get _service => widget.service ?? ProgressionService.instance;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final advice = await _service.restAdvice();
+    if (mounted) setState(() => _advice = advice);
+  }
+
+  Future<void> _answer(bool keepPlaying) async {
+    await _service.onRestCardAnswered(keepPlaying: keepPlaying);
+    if (!mounted) return;
+    setState(() => _hidden = true);
+    if (!keepPlaying) Navigator.of(context).popUntil((route) => route.isFirst);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final advice = _advice;
+    if (_hidden || advice == null || !advice.show) return const SizedBox.shrink();
+    return FadeSlideIn(
+      child: Container(
+        margin: const EdgeInsets.fromLTRB(18, 14, 18, 0),
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(color: Color.lerp(AppColors.leafGreen, Colors.white, 0.85), borderRadius: BorderRadius.circular(28)),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(children: [IconMedallion(icon: Icons.local_cafe_rounded, color: AppColors.leafGreen, size: 52), const SizedBox(width: 12), const Expanded(child: Text('Time for a little rest', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800, color: AppColors.primaryText)))]),
+            const SizedBox(height: 12),
+            Text('You have played for ${advice.minutesToday} minutes today. Well done! How about a cup of tea or a short walk?', style: const TextStyle(fontSize: 20, height: 1.3, color: AppColors.primaryText)),
+            const SizedBox(height: 14),
+            SizedBox(height: 64, child: ElevatedButton(onPressed: () => _answer(false), style: ElevatedButton.styleFrom(backgroundColor: AppColors.leafGreen), child: const Text('Rest now', style: TextStyle(fontSize: 21, fontWeight: FontWeight.w800)))),
+            const SizedBox(height: 10),
+            SizedBox(height: 64, child: OutlinedButton(onPressed: () => _answer(true), child: const Text('Keep playing', style: TextStyle(fontSize: 21, fontWeight: FontWeight.w800)))),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -186,10 +249,10 @@ class _GameCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              IconMedallion(icon: info.icon, color: info.color, size: 72),
+              IconMedallion(icon: info.icon, color: info.color, size: 64),
               const Spacer(),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                 decoration: BoxDecoration(
                   color: Color.lerp(info.color, Colors.black, 0.22),
                   borderRadius: BorderRadius.circular(20),
@@ -197,7 +260,7 @@ class _GameCard extends StatelessWidget {
                 child: Text(
                   info.domain,
                   style: const TextStyle(
-                    fontSize: 15,
+                    fontSize: 14,
                     fontWeight: FontWeight.w700,
                     color: AppColors.onColor,
                   ),

@@ -271,12 +271,17 @@ class _GameScreenState extends State<GameScreen> {
 
     if (!mounted) return;
 
+    var restNow = false;
+
     // Show session summary dialog so user/caregiver sees what was played and how long
     if (_elapsed.inSeconds >= 3) {
       final mins = _elapsed.inMinutes;
       final secs = _elapsed.inSeconds % 60;
       final durationStr = mins > 0 ? '${mins}m ${secs}s' : '${secs}s';
       final name = _gameName(widget.gameId);
+
+      final restAdvice = await ProgressionService.instance.restAdvice();
+      if (!mounted) return;
 
       await showDialog<void>(
         context: context,
@@ -286,103 +291,124 @@ class _GameScreenState extends State<GameScreen> {
           return Dialog(
             clipBehavior: Clip.antiAlias,
             insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 420),
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Container(
-                      color: _color,
-                      padding: EdgeInsets.symmetric(vertical: isCompact ? 16 : 26),
+              child: restAdvice.show
+                  ? RestCardDialog(
+                      isCompact: isCompact,
+                      minutesToday: restAdvice.minutesToday,
+                      onRestNow: () {
+                        unawaited(ProgressionService.instance.onRestCardAnswered(keepPlaying: false));
+                        restNow = true;
+                        Navigator.of(ctx).pop();
+                      },
+                      onKeepPlaying: () {
+                        unawaited(ProgressionService.instance.onRestCardAnswered(keepPlaying: true));
+                        Navigator.of(ctx).pop();
+                      },
+                    )
+                  : SingleChildScrollView(
                       child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          PopIn(
-                            child: IconMedallion(
-                              icon: Icons.emoji_events_rounded,
-                              color: _color,
-                              size: isCompact ? 64 : 88,
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            completed ? 'Session Complete' : 'Great Effort',
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              fontSize: 28,
-                              fontWeight: FontWeight.w800,
-                              color: AppColors.onColor,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const GamosaBand(height: 10),
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
-                      child: Column(
-                        children: [
-                          Text(
-                            name,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.primaryText,
-                            ),
-                          ),
-                          const SizedBox(height: 14),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-                            decoration: BoxDecoration(
-                              color: AppColors.pageBackground,
-                              borderRadius: BorderRadius.circular(40),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
+                            color: _color,
+                            padding: EdgeInsets.symmetric(vertical: isCompact ? 16 : 26),
+                            child: Column(
                               children: [
-                                Icon(Icons.schedule_rounded, color: _color, size: 26),
-                                const SizedBox(width: 10),
-                                Flexible(
-                                  child: Text(
-                                    'Time Played: $durationStr',
-                                    style: const TextStyle(
-                                      fontSize: 19,
-                                      fontWeight: FontWeight.w700,
-                                      color: AppColors.primaryText,
+                                PopIn(
+                                  child: IconMedallion(
+                                    icon: Icons.emoji_events_rounded,
+                                    color: _color,
+                                    size: isCompact ? 64 : 88,
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                Text(
+                                  completed ? 'Session Complete' : 'Great Effort',
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                    fontSize: 28,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppColors.onColor,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const GamosaBand(height: 10),
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+                            child: Column(
+                              children: [
+                                Text(
+                                  name,
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.primaryText,
+                                  ),
+                                ),
+                                const SizedBox(height: 14),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.pageBackground,
+                                    borderRadius: BorderRadius.circular(40),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.schedule_rounded, color: _color, size: 26),
+                                      const SizedBox(width: 10),
+                                      Flexible(
+                                        child: Text(
+                                          'Time Played: $durationStr',
+                                          style: const TextStyle(
+                                            fontSize: 19,
+                                            fontWeight: FontWeight.w700,
+                                            color: AppColors.primaryText,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                SizedBox(height: isCompact ? 16 : 22),
+                                SizedBox(
+                                  width: double.infinity,
+                                  height: 64,
+                                  child: ElevatedButton(
+                                    onPressed: () => Navigator.of(ctx).pop(),
+                                    style: ElevatedButton.styleFrom(backgroundColor: _color),
+                                    child: const Text(
+                                      'Back to Games',
+                                      style: TextStyle(fontSize: 21, fontWeight: FontWeight.w800),
                                     ),
                                   ),
                                 ),
                               ],
                             ),
                           ),
-                          SizedBox(height: isCompact ? 16 : 22),
-                          SizedBox(
-                            width: double.infinity,
-                            height: 64,
-                            child: ElevatedButton(
-                              onPressed: () => Navigator.of(ctx).pop(),
-                              style: ElevatedButton.styleFrom(backgroundColor: _color),
-                              child: const Text(
-                                'Back to Games',
-                                style: TextStyle(fontSize: 21, fontWeight: FontWeight.w800),
-                              ),
-                            ),
-                          ),
                         ],
                       ),
                     ),
-                  ],
-                ),
-              ),
             ),
           );
         },
       );
     }
 
-    if (mounted) Navigator.of(context).pop();
+    if (mounted) {
+      if (restNow) {
+        Navigator.of(context).popUntil((route) => route.isFirst);
+      } else {
+        Navigator.of(context).pop();
+      }
+    }
   }
 
   @override
@@ -705,4 +731,99 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   String _gameName(String id) => gameInfoFor(id)?.name ?? id;
+}
+
+/// Presentational dialog content shown when the daily rest advice is due.
+class RestCardDialog extends StatelessWidget {
+  const RestCardDialog({
+    super.key,
+    required this.isCompact,
+    required this.minutesToday,
+    required this.onRestNow,
+    required this.onKeepPlaying,
+  });
+
+  final bool isCompact;
+  final int minutesToday;
+  final VoidCallback onRestNow;
+  final VoidCallback onKeepPlaying;
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeSlideIn(
+      child: Container(
+        padding: EdgeInsets.all(isCompact ? 18 : 24),
+        decoration: BoxDecoration(
+          color: Color.lerp(AppColors.leafGreen, Colors.white, 0.85),
+          borderRadius: BorderRadius.circular(28),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                IconMedallion(
+                  icon: Icons.local_cafe_rounded,
+                  color: AppColors.leafGreen,
+                  size: isCompact ? 48 : 56,
+                ),
+                const SizedBox(width: 14),
+                const Expanded(
+                  child: Text(
+                    'Time for a little rest',
+                    style: TextStyle(
+                      fontSize: 26,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.primaryText,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: isCompact ? 12 : 16),
+            Text(
+              'You have played for $minutesToday minutes today. Well done! How about a cup of tea or a short walk?',
+              style: const TextStyle(
+                fontSize: 20,
+                height: 1.3,
+                color: AppColors.primaryText,
+              ),
+            ),
+            SizedBox(height: isCompact ? 16 : 22),
+            SizedBox(
+              height: 64,
+              child: ElevatedButton(
+                onPressed: onRestNow,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.leafGreen,
+                ),
+                child: const Text(
+                  'Rest now',
+                  style: TextStyle(
+                    fontSize: 21,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            SizedBox(
+              height: 64,
+              child: OutlinedButton(
+                onPressed: onKeepPlaying,
+                child: const Text(
+                  'Keep playing',
+                  style: TextStyle(
+                    fontSize: 21,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }

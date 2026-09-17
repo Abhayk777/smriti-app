@@ -7,10 +7,23 @@ import 'difficulty_source.dart';
 import 'game_level_profiles.dart';
 import 'level_scale.dart';
 import 'performance_report.dart';
+import 'play_policy.dart';
 import 'progression_config.dart';
 import 'progression_policy.dart';
 import 'progression_repo.dart';
 import 'progression_state.dart';
+
+/// Whether the elder should be shown a gentle rest reminder right now
+/// (docs/PROGRESSION_PLAN.md §9.5). Advice, never a lock: every game stays
+/// playable regardless of [show].
+class RestAdvice {
+  const RestAdvice({required this.show, required this.minutesToday});
+
+  final bool show;
+
+  /// Whole minutes played today, rounded down to the nearest 5.
+  final int minutesToday;
+}
 
 /// Every game id and the cognitive domain it belongs to
 /// (docs/PROGRESSION_PLAN.md §3). Duplicated here, rather than imported from
@@ -214,6 +227,66 @@ class ProgressionService implements GameLevelSource {
     return {
       for (final entry in byDomain.entries) entry.key: GenreReport.build(entry.key, entry.value),
     };
+  }
+
+  // ── Daily rest card (docs/PROGRESSION_PLAN.md §9) ───────────────────────
+
+  /// Whether a gentle rest reminder is due right now, and today's play time
+  /// to show on it. Marks the card as shown (so it is not repeated
+  /// immediately) whenever it returns `show: true`.
+  Future<RestAdvice> restAdvice({DateTime? now}) async {
+    final n = now ?? _now();
+    final settings = await repo.getSettings();
+    final thresholdSeconds = settings.effectiveDailyRestMinutes * 60;
+    final todayKey = PlayPolicy.dayKeyOf(n);
+
+    final stored = await repo.getRestState(todayKey);
+    final rolledOver = stored.dayKey != todayKey;
+    var state = PlayPolicy.forToday(stored, todayKey, thresholdSeconds);
+
+    final seconds = await _playSecondsToday(n);
+    final due = PlayPolicy.restCardDue(state, seconds, thresholdSeconds);
+
+    if (due) {
+      state = PlayPolicy.afterRestCardShown(state);
+      await repo.saveRestState(state);
+    } else if (rolledOver) {
+      // Persist the new-day rollover even when the card isn't due yet.
+      await repo.saveRestState(state);
+    }
+
+    return RestAdvice(show: due, minutesToday: PlayPolicy.displayMinutes(seconds));
+  }
+
+  /// Call when the elder answers the rest card, however they answered it
+  /// (closing it any other way counts as "Keep playing",
+  /// docs/PROGRESSION_PLAN.md §9.3).
+  Future<void> onRestCardAnswered({required bool keepPlaying, DateTime? now}) async {
+    final n = now ?? _now();
+    final settings = await repo.getSettings();
+    final thresholdSeconds = settings.effectiveDailyRestMinutes * 60;
+    final todayKey = PlayPolicy.dayKeyOf(n);
+
+    var state = await repo.getRestState(todayKey);
+    state = PlayPolicy.forToday(state, todayKey, thresholdSeconds);
+
+    final seconds = await _playSecondsToday(n);
+    final updated = PlayPolicy.afterRestCardAnswered(
+      state,
+      keptPlaying: keepPlaying,
+      playSecondsToday: seconds,
+      repeatMinutes: ProgressionConfig.restCardRepeatMinutes,
+    );
+    await repo.saveRestState(updated);
+  }
+
+  Future<int> _playSecondsToday(DateTime now) async {
+    final startOfDay = DateTime(now.year, now.month, now.day);
+    final sessionsToday = await eventRepo.sessionsBetween(
+      startOfDay.millisecondsSinceEpoch,
+      now.millisecondsSinceEpoch,
+    );
+    return PlayPolicy.playSecondsToday(sessionsToday);
   }
 
   // ── Internals ────────────────────────────────────────────────────────────
