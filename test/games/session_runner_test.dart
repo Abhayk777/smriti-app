@@ -6,6 +6,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smriti/core/ability/estimator.dart';
 import 'package:smriti/core/db/database.dart';
+import 'package:smriti/core/progression/difficulty_source.dart';
+import 'package:smriti/core/progression/level_scale.dart';
+import 'package:smriti/core/progression/progression_config.dart';
 import 'package:smriti/core/repo/ability_repo.dart';
 import 'package:smriti/core/repo/event_repo.dart';
 import 'package:smriti/games/cognitive_game.dart';
@@ -416,4 +419,162 @@ void main() {
     // Everything the sync layer needs is queued.
     expect(await eventRepo.unsyncedSessions(), hasLength(1));
   });
+
+  group('DifficultySource (docs/PROGRESSION_PLAN.md §7)', () {
+    test('with no difficultySource supplied, trialContext is byte-identical '
+        'to the game\'s own context (today\'s behaviour, unchanged)', () async {
+      final runner = newRunner();
+      await runner.start([game]);
+      final item = (await runner.nextItem(game))!;
+
+      await playTrial(runner, item, chosenIds: targetsOf(item));
+
+      final rows = await eventRepo.getTrialsForSession(runner.sessionId!);
+      expect(rows.single.trialContext, jsonEncode(item.context));
+
+      await runner.end(completed: true);
+    });
+
+    test('a LevelDifficultySource drives the item difficulty from the stored level',
+        () async {
+      final levelSource = _FakeLevelSource({'market_basket': 5.0});
+      final runner = SessionRunner(
+        eventRepo: eventRepo,
+        abilityRepo: abilityRepo,
+        content: content,
+        now: now,
+        difficultySource: LevelDifficultySource<CognitiveGame, TrialResult>(
+          levelSource,
+          (g) => g.id,
+          (r) => r.correct,
+        ),
+      );
+      await runner.start([game]);
+      final item = (await runner.nextItem(game))!;
+
+      expect(item.difficulty, closeTo(LevelScale.levelToDifficulty(5.0), 1e-9));
+
+      await runner.end(completed: false);
+    });
+
+    test('two misses in a row lower the next item\'s effective level by 0.5', () async {
+      final levelSource = _FakeLevelSource({'market_basket': 5.0});
+      final runner = SessionRunner(
+        eventRepo: eventRepo,
+        abilityRepo: abilityRepo,
+        content: content,
+        now: now,
+        difficultySource: LevelDifficultySource<CognitiveGame, TrialResult>(
+          levelSource,
+          (g) => g.id,
+          (r) => r.correct,
+        ),
+      );
+      await runner.start([game]);
+
+      final first = (await runner.nextItem(game))!;
+      await playTrial(runner, first, chosenIds: const []); // incorrect
+      final second = (await runner.nextItem(game))!;
+      await playTrial(runner, second, chosenIds: const []); // incorrect
+
+      final third = (await runner.nextItem(game))!;
+      expect(third.difficulty, closeTo(LevelScale.levelToDifficulty(4.5), 1e-9));
+
+      await runner.end(completed: false);
+    });
+
+    test('three hits in a row raise the next item\'s effective level by 0.5', () async {
+      final levelSource = _FakeLevelSource({'market_basket': 5.0});
+      final runner = SessionRunner(
+        eventRepo: eventRepo,
+        abilityRepo: abilityRepo,
+        content: content,
+        now: now,
+        difficultySource: LevelDifficultySource<CognitiveGame, TrialResult>(
+          levelSource,
+          (g) => g.id,
+          (r) => r.correct,
+        ),
+      );
+      await runner.start([game]);
+
+      for (var i = 0; i < 3; i++) {
+        final item = (await runner.nextItem(game))!;
+        await playTrial(runner, item, chosenIds: targetsOf(item)); // correct
+      }
+
+      final next = (await runner.nextItem(game))!;
+      expect(next.difficulty, closeTo(LevelScale.levelToDifficulty(5.5), 1e-9));
+
+      await runner.end(completed: true);
+    });
+
+    test('the staircase offset stays within its bound across many trials', () async {
+      final levelSource = _FakeLevelSource({'market_basket': 5.0});
+      final runner = SessionRunner(
+        eventRepo: eventRepo,
+        abilityRepo: abilityRepo,
+        content: content,
+        now: now,
+        difficultySource: LevelDifficultySource<CognitiveGame, TrialResult>(
+          levelSource,
+          (g) => g.id,
+          (r) => r.correct,
+        ),
+      );
+      await runner.start([game]);
+
+      for (var i = 0; i < 15; i++) {
+        final item = (await runner.nextItem(game))!;
+        await playTrial(runner, item, chosenIds: targetsOf(item)); // correct
+      }
+
+      final next = (await runner.nextItem(game))!;
+      final maxLevel = 5.0 + ProgressionConfig.staircaseMaxOffset;
+      expect(next.difficulty, closeTo(LevelScale.levelToDifficulty(maxLevel), 1e-9));
+
+      await runner.end(completed: true);
+    });
+
+    test('trialContext carries the progression block from the difficulty source',
+        () async {
+      final levelSource = _FakeLevelSource({'market_basket': 5.0});
+      final runner = SessionRunner(
+        eventRepo: eventRepo,
+        abilityRepo: abilityRepo,
+        content: content,
+        now: now,
+        difficultySource: LevelDifficultySource<CognitiveGame, TrialResult>(
+          levelSource,
+          (g) => g.id,
+          (r) => r.correct,
+        ),
+      );
+      await runner.start([game]);
+      final item = (await runner.nextItem(game))!;
+      await playTrial(runner, item, chosenIds: targetsOf(item));
+
+      final rows = await eventRepo.getTrialsForSession(runner.sessionId!);
+      final context = jsonDecode(rows.single.trialContext!) as Map<String, Object?>;
+      expect(context['progression'], isNotNull);
+      final progression = context['progression'] as Map<String, Object?>;
+      expect(progression['level'], 5.0);
+      expect(progression['v'], 1);
+      // The game's own context keys are still present alongside it.
+      expect(context['targetIds'], isNotNull);
+
+      await runner.end(completed: true);
+    });
+  });
+}
+
+class _FakeLevelSource implements GameLevelSource {
+  _FakeLevelSource(this.levels);
+  final Map<String, double> levels;
+
+  @override
+  double levelFor(String gameId) => levels[gameId]!;
+
+  @override
+  bool concernFor(String gameId) => false;
 }

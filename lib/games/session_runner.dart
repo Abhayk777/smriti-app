@@ -5,8 +5,8 @@ import 'package:drift/drift.dart' show Value;
 import 'package:flutter/widgets.dart';
 import 'package:uuid/uuid.dart';
 
-import '../core/ability/estimator.dart';
 import '../core/db/database.dart';
+import '../core/progression/difficulty_source.dart';
 import '../core/repo/ability_repo.dart';
 import '../core/repo/event_repo.dart';
 import 'cognitive_game.dart';
@@ -40,14 +40,24 @@ class SessionRunner {
     DateTime Function()? now,
     this.sessionCap = const Duration(minutes: 6),
     this.maxHintLevel = 2,
+    DifficultySource<CognitiveGame, TrialResult>? difficultySource,
   })  : _uuid = uuid ?? const Uuid(),
-        _now = now ?? DateTime.now;
+        _now = now ?? DateTime.now,
+        // Unchanged today's behaviour when nothing is supplied
+        // (docs/PROGRESSION_PLAN.md §7), so every existing caller and test
+        // keeps working exactly as before.
+        difficultySource = difficultySource ??
+            ThetaDifficultySource<CognitiveGame, TrialResult>(
+              abilityRepo,
+              (g) => g.primaryDomain,
+            );
 
   final EventRepo eventRepo;
   final AbilityRepo abilityRepo;
   final GameContent content;
   final Duration sessionCap;
   final int maxHintLevel;
+  final DifficultySource<CognitiveGame, TrialResult> difficultySource;
 
   final Uuid _uuid;
   final DateTime Function() _now;
@@ -123,10 +133,8 @@ class SessionRunner {
     _thetaBefore = record.theta;
     _hintLevel = 0;
 
-    final item = game.generateItem(
-      AbilityEstimator.nextDifficulty(record.theta),
-      content,
-    );
+    final difficulty = await difficultySource.difficultyFor(game);
+    final item = game.generateItem(difficulty, content);
 
     _currentGame = game;
     _currentItem = item;
@@ -180,7 +188,10 @@ class SessionRunner {
         chosenId: Value(result.chosenId),
         errorClass: Value(result.errorClass),
         trialIndex: _trialIndex,
-        trialContext: Value(jsonEncode(item.context)),
+        trialContext: Value(jsonEncode({
+          ...item.context,
+          ...difficultySource.contextFor(game),
+        })),
         hintLevel: Value(_hintLevel),
         metrics: Value(jsonEncode(result.metrics)),
         ts: ts.millisecondsSinceEpoch,
@@ -196,6 +207,7 @@ class SessionRunner {
       responseTimeMs: responseTimeMs,
       now: ts,
     );
+    difficultySource.onTrial(game, result);
 
     _trialIndex++;
     _currentItem = null;
