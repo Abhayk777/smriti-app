@@ -1,7 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smriti/core/ability/estimator.dart';
 import 'package:smriti/core/auth/pairing_service.dart';
+import 'package:smriti/core/db/app_database.dart';
 import 'package:smriti/core/db/database.dart';
+import 'package:smriti/core/progression/progression_repo.dart';
+import 'package:smriti/core/progression/progression_state.dart';
 import 'package:smriti/core/repo/ability_repo.dart';
 
 import '../repo/_test_db.dart';
@@ -286,6 +289,58 @@ void main() {
 
       // Untouched domains are still seeded.
       expect(await abilityRepo.getRecord(CognitiveDomain.language), isNotNull);
+    });
+
+    test('re-pairing to a DIFFERENT patient wipes progressive game levels too',
+        () async {
+      // The wipe branch in _completePairing reads and writes the global
+      // `appDatabase`, so it must point at this test's in-memory database.
+      appDatabase = db;
+      addTearDown(() => appDatabase = db);
+
+      final progressionRepo = ProgressionRepo(db);
+      await progressionRepo.saveGameProgress(
+        GameProgress.fresh('market_basket').copyWith(level: 6.5, seeded: true),
+      );
+      await progressionRepo.saveNudgeState(
+        NudgeState.initial().copyWith(dismissStreak: 2),
+      );
+
+      final gateway = FakePairingGateway(
+        response: PairingResponse(status: 200, data: successBody()),
+      );
+      await serviceWith(gateway).redeemToken('ACDEFGHJ');
+      expect(await db.appConfigsDao.getValue('patientId'),
+          '3f1c9b2e-5d47-4a1e-9c3a-77f0e2a4b118');
+      expect((await progressionRepo.getGameProgress('market_basket')).level,
+          6.5,
+          reason: 'still the same patient; nothing should be cleared yet');
+
+      // A different device now redeems a token for a DIFFERENT patient.
+      final otherPatientGateway = FakePairingGateway(
+        response: PairingResponse(
+          status: 200,
+          data: {
+            'refresh_token': 'refresh-token-other',
+            'patient_id': 'a-completely-different-patient-id',
+            'device_user_id': 'other-device-user',
+            'lang_code': 'as',
+            'elder_name': 'Deuta',
+            'age': 70,
+            'education_years': 8,
+          },
+        ),
+      );
+      await serviceWith(otherPatientGateway).redeemToken('OTHERCODE');
+
+      expect(await db.appConfigsDao.getValue('patientId'),
+          'a-completely-different-patient-id');
+      expect(
+        (await progressionRepo.getGameProgress('market_basket')).level,
+        1.0,
+        reason: 'the previous patient\'s level must not leak to the new one',
+      );
+      expect((await progressionRepo.getNudgeState()).dismissStreak, 0);
     });
   });
 

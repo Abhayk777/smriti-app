@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../db/app_database.dart';
 import '../db/dao/app_configs_dao.dart';
+import '../progression/progression_repo.dart';
 import '../repo/ability_repo.dart';
 import '../repo/content_repo.dart';
 import '../sync/content_puller.dart';
@@ -307,6 +308,10 @@ class PairingService {
       await db.delete(db.reminderEvents).go();
       await db.delete(db.sessions).go();
       await db.delete(db.trialEvents).go();
+      // Progressive game levels belong to the previous patient too
+      // (docs/PROGRESSION_PLAN.md §12). Re-pairing the SAME patient must
+      // never reach this branch, so their levels are always preserved.
+      await ProgressionRepo(db).clearAll();
     }
 
     final age = _requireInt(data, 'age');
