@@ -392,15 +392,67 @@ void main() {
       }
     }
 
-    test('returns suggestion when favourite has >= 6 plays in 3 days (>= 60% share)', () async {
-      // 6 sessions of market_basket over the last 2 days (3 mins each = 18 mins total, rest card not due)
-      await addSessionsForGame(gameId: 'market_basket', sessionCount: 6, minutesEach: 2, dayOffset: 1);
+    test('returns suggestion when favourite has >= 6 plays in a day (>= 60% share)', () async {
+      // 6 sessions of market_basket today (2 mins each = 12 mins total, rest card not due)
+      await addSessionsForGame(gameId: 'market_basket', sessionCount: 6, minutesEach: 2, dayOffset: 0);
 
       final suggestion = await service.suggestionFor();
       expect(suggestion, isNotNull);
       expect(suggestion!.favouriteGameId, 'market_basket');
       expect(suggestion.suggestedGameId, isNotEmpty);
       expect(suggestion.suggestedGameId, isNot('market_basket'));
+    });
+
+    test('6 plays on day 1 resets on day 2 so yesterday plays do not trigger favourite today', () async {
+      // User plays market_basket 6 times on Day 1 (dayOffset: 1 = yesterday)
+      await addSessionsForGame(gameId: 'market_basket', sessionCount: 6, minutesEach: 2, dayOffset: 1);
+
+      // On Day 2 (today), yesterday's count has reset to 0
+      final countedToday = await service.countedPlaysByGame();
+      expect(countedToday['market_basket'] ?? 0, 0);
+
+      final favToday = await service.detectFavouriteGame();
+      expect(favToday, isNull);
+
+      final suggestionToday = await service.suggestionFor();
+      expect(suggestionToday, isNull);
+    });
+
+    test('every day favourite can be different based on that day 6 plays', () async {
+      // Day 1: User plays market_basket 6 times
+      await addSessionsForGame(gameId: 'market_basket', sessionCount: 6, minutesEach: 2, dayOffset: 1);
+
+      // Day 2 (today): User plays trace_path 6 times
+      await addSessionsForGame(gameId: 'trace_path', sessionCount: 6, minutesEach: 2, dayOffset: 0);
+
+      final countedToday = await service.countedPlaysByGame();
+      expect(countedToday['market_basket'] ?? 0, 0);
+      expect(countedToday['trace_path'], 6);
+
+      // Favourite on Day 2 is trace_path, completely different from Day 1
+      final favToday = await service.detectFavouriteGame();
+      expect(favToday, 'trace_path');
+
+      final suggestionToday = await service.suggestionFor();
+      expect(suggestionToday, isNotNull);
+      expect(suggestionToday!.favouriteGameId, 'trace_path');
+    });
+
+    test('switching games within the same day does not reset the 6 count as long as share >= 60%', () async {
+      // User plays game 1 3 times, then game 2 1 time, then game 3 1 time, then game 1 3 times today
+      await addSessionsForGame(gameId: 'market_basket', sessionCount: 3, minutesEach: 2, dayOffset: 0);
+      await addSessionsForGame(gameId: 'sort_harvest', sessionCount: 1, minutesEach: 2, dayOffset: 0);
+      await addSessionsForGame(gameId: 'sounds_home', sessionCount: 1, minutesEach: 2, dayOffset: 0);
+      await addSessionsForGame(gameId: 'market_basket', sessionCount: 3, minutesEach: 2, dayOffset: 0);
+
+      final counted = await service.countedPlaysByGame();
+      expect(counted['market_basket'], 6);
+      expect(counted['sort_harvest'], 1);
+      expect(counted['sounds_home'], 1);
+
+      // Total plays = 8. market_basket = 6 / 8 = 75% >= 60%, trace_path has 0 plays
+      final fav = await service.detectFavouriteGame();
+      expect(fav, 'market_basket');
     });
 
     test('rest card wins over variety suggestion when rest card is due (§9.2)', () async {
@@ -417,7 +469,7 @@ void main() {
     });
 
     test('onNudgeShown puts suggestion into 24h cooldown', () async {
-      await addSessionsForGame(gameId: 'market_basket', sessionCount: 6, minutesEach: 2, dayOffset: 1);
+      await addSessionsForGame(gameId: 'market_basket', sessionCount: 6, minutesEach: 2, dayOffset: 0);
 
       final suggestion = (await service.suggestionFor())!;
       await service.onNudgeShown(suggestion);
@@ -425,8 +477,11 @@ void main() {
       // Now within cooldown: null
       expect(await service.suggestionFor(), isNull);
 
-      // Advance clock by 25 hours
+      // Advance clock by 25 hours into next day
       clock = clock.add(const Duration(hours: 25));
+
+      // On the new day, sessions must be played today to qualify as favourite
+      await addSessionsForGame(gameId: 'market_basket', sessionCount: 6, minutesEach: 2, dayOffset: 0);
       expect(await service.suggestionFor(), isNotNull);
     });
 
@@ -443,8 +498,9 @@ void main() {
       // State is snoozed
       expect(await service.suggestionFor(), isNull);
 
-      // Advance 48 hours + 1 min: snooze expires, sessions still within 3-day window
+      // Advance 48 hours + 1 min: snooze expires, sessions on new day qualify
       clock = clock.add(const Duration(hours: 48, minutes: 1));
+      await addSessionsForGame(gameId: 'market_basket', sessionCount: 6, minutesEach: 2, dayOffset: 0);
       expect(await service.suggestionFor(), isNotNull);
     });
 

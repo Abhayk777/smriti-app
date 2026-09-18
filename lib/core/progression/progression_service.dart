@@ -423,13 +423,17 @@ class ProgressionService implements GameLevelSource {
   }
 
   /// Returns counted plays by game id over the current nudge window.
+  /// Defaults to today (calendar day start to now), resetting every day.
   /// (Counted play = ≥ 30s play duration or ≥ 1 completed round).
   Future<Map<String, int>> countedPlaysByGame({DateTime? now}) async {
     final n = now ?? _now();
     final settings = await repo.getSettings();
     final windowDays = settings.effectiveNudgeWindowDays;
     final nowMs = n.millisecondsSinceEpoch;
-    final windowFromMs = n.subtract(Duration(days: windowDays)).millisecondsSinceEpoch;
+    final startOfToday = DateTime(n.year, n.month, n.day);
+    final windowFromMs = windowDays <= 1
+        ? startOfToday.millisecondsSinceEpoch
+        : startOfToday.subtract(Duration(days: windowDays - 1)).millisecondsSinceEpoch;
     final sessions = await eventRepo.sessionsBetween(windowFromMs, nowMs);
     final trialCounts = await eventRepo.trialCountsBySessionBetween(windowFromMs, nowMs);
 
@@ -520,7 +524,6 @@ class ProgressionService implements GameLevelSource {
     if (rest.show) return null;
 
     final settings = await repo.getSettings();
-    final windowDays = settings.effectiveNudgeWindowDays;
     final repeatPlays = settings.effectiveNudgeRepeatPlays;
 
     final nudgeState = await repo.getNudgeState();
@@ -529,26 +532,7 @@ class ProgressionService implements GameLevelSource {
       return null;
     }
 
-    final windowFromMs = n.subtract(Duration(days: windowDays)).millisecondsSinceEpoch;
-    final sessions = await eventRepo.sessionsBetween(windowFromMs, nowMs);
-    final trialCounts = await eventRepo.trialCountsBySessionBetween(windowFromMs, nowMs);
-
-    final countedPlaysByGame = <String, int>{};
-    for (final s in sessions) {
-      final gids = s.gameIds.split(',').map((g) => g.trim()).where((g) => g.isNotEmpty);
-      if (gids.isEmpty) continue;
-      final tCount = trialCounts[s.id] ?? 0;
-      final durSec = s.completed && s.endedAt != null
-          ? ((s.endedAt! - s.startedAt) / 1000).round()
-          : (s.abandonedAtMs != null ? (s.abandonedAtMs! / 1000).round() : null);
-      final isCounted = tCount > 0 ||
-          (durSec != null && durSec >= ProgressionConfig.minCountedPlaySeconds);
-      if (isCounted) {
-        for (final gid in gids) {
-          countedPlaysByGame[gid] = (countedPlaysByGame[gid] ?? 0) + 1;
-        }
-      }
-    }
+    final countedPlaysByGame = await this.countedPlaysByGame(now: n);
 
     final livingPeople = await contentRepo.getLivingPeople();
     final facesEligible = livingPeople.length >= 2;

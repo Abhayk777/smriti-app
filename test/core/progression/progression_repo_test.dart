@@ -120,7 +120,7 @@ void main() {
       expect(loaded.effectiveDailyRestMinutes, 45);
       expect(loaded.effectiveNudgeRepeatPlays, 4);
       // Untouched fields still fall back to the constant.
-      expect(loaded.effectiveNudgeWindowDays, 4);
+      expect(loaded.effectiveNudgeWindowDays, 1);
       expect(loaded.effectiveReviewEveryDays, 4);
     });
   });

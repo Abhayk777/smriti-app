@@ -42,7 +42,7 @@ class ProgressionConfig {
 
   // Variety nudge (docs/PROGRESSION_PLAN.md §8)
   static const int nudgeRepeatPlays = 6; // X
-  static const int nudgeWindowDays = 4; // Y
+  static const int nudgeWindowDays = 1; // Y: daily window (resets each day)
   static const double nudgeShareOfPlays = 0.6;
   static const int nudgeCooldownHours = 24;
   static const int nudgeSnoozeDaysAfterTwoDismissals = 2;

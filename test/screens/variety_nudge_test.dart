@@ -21,7 +21,7 @@ void main() {
     required String gameId,
     int sessionCount = 6,
     int minutesEach = 2,
-    int dayOffset = 1,
+    int dayOffset = 0,
   }) async {
     for (var i = 0; i < sessionCount; i++) {
       final sId = uuid.v4();
