@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../app_colors.dart';
+import '../../core/i18n/app_strings.dart';
+import '../../core/i18n/locale_controller.dart';
 import '../../ui/smriti_ui.dart';
 import '../cognitive_game.dart';
 import 'trace_path_game.dart';
@@ -100,14 +102,15 @@ class _TracePathWidgetState extends State<TracePathWidget> {
 
   @override
   Widget build(BuildContext context) {
+    final lang = LocaleController.instance.currentLanguage;
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
           Text(
             _variant == 'A'
-                ? 'Tap the stones in order: 1, 2, 3...'
-                : 'Tap alternating: 1, A, 2, B, 3, C...',
+                ? AppStrings.tracePathSequential(lang)
+                : AppStrings.tracePathAlternating(lang),
             textAlign: TextAlign.center,
             style: const TextStyle(
               fontSize: 21,

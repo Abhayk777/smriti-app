@@ -4,6 +4,7 @@ import 'package:android_intent_plus/android_intent.dart';
 import 'package:flutter/foundation.dart';
 
 import '../db/database.dart';
+import '../i18n/app_strings.dart';
 
 /// Hands a fired reminder to the native `ReminderReceiver`, which posts the
 /// notification and opens the full-screen `ReminderActivity`.
@@ -43,11 +44,15 @@ class ReminderLauncher {
     }
   }
 
-  static Future<void> showMedication(Medication med, String reminderEventId) {
+  static Future<void> showMedication(
+    Medication med,
+    String reminderEventId, [
+    String lang = 'en',
+  ]) {
     return show(
       medicationId: med.id,
       reminderEventId: reminderEventId,
-      title: 'Time for ${med.name}',
+      title: AppStrings.timeForMedication(lang, med.name),
       body: med.dose,
       photoPath: med.pillPhotoPath,
     );

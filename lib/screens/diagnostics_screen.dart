@@ -7,6 +7,8 @@ import '../app_colors.dart';
 import '../core/ability/estimator.dart';
 import '../core/db/app_database.dart';
 import '../core/db/database.dart';
+import '../core/i18n/app_strings.dart';
+import '../core/i18n/locale_controller.dart';
 import '../core/progression/game_level_profiles.dart';
 import '../core/progression/level_scale.dart';
 import '../core/progression/performance_report.dart';
@@ -280,6 +282,45 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
               // Content Section
               _buildSectionTitle('Content'),
               _buildInfoRow('Content Version', _contentVersion ?? 'Not set'),
+              const SizedBox(height: 8),
+
+              // App Language Section
+              _buildSectionTitle('App Language (Offline)'),
+              ListenableBuilder(
+                listenable: LocaleController.instance,
+                builder: (context, _) {
+                  final current = LocaleController.instance.currentLanguage;
+                  return Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppColors.raisedSurface,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: current,
+                        isExpanded: true,
+                        icon: const Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.primaryText),
+                        onChanged: (newCode) {
+                          if (newCode != null) {
+                            LocaleController.instance.setLanguage(newCode);
+                          }
+                        },
+                        items: kSupportedLanguages.map((meta) {
+                          return DropdownMenuItem<String>(
+                            value: meta.code,
+                            child: Text(
+                              '${meta.nativeName} (${meta.englishName} — ${meta.region})',
+                              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                  );
+                },
+              ),
               const SizedBox(height: 8),
               
               // Sync Section

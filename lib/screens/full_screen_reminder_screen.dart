@@ -16,6 +16,8 @@ import '../core/reminders/reminder_isolate.dart';
 import '../core/reminders/reminder_screen_channel.dart';
 import '../core/repo/content_repo.dart';
 import '../core/repo/event_repo.dart';
+import '../core/i18n/app_strings.dart';
+import '../core/i18n/locale_controller.dart';
 import '../core/sync/sync_engine.dart';
 import '../ui/smriti_ui.dart';
 
@@ -229,7 +231,8 @@ class _FullScreenReminderScreenState extends State<FullScreenReminderScreen>
       }
     }
 
-    await _showDoneAndFinish('Thank you!');
+    final lang = LocaleController.instance.currentLanguage;
+    await _showDoneAndFinish(AppStrings.medicineRecordedWellDone(lang));
   }
 
   /// Handles "Remind in 10 Mins" (Snooze) action.
@@ -271,7 +274,8 @@ class _FullScreenReminderScreenState extends State<FullScreenReminderScreen>
       }
     }
 
-    await _showDoneAndFinish('I will remind you again in 10 minutes');
+    final lang = LocaleController.instance.currentLanguage;
+    await _showDoneAndFinish(AppStrings.willRemindIn10Minutes(lang));
   }
 
   Future<void> _showDoneAndFinish(String message) async {
@@ -312,17 +316,23 @@ class _FullScreenReminderScreenState extends State<FullScreenReminderScreen>
 
   @override
   Widget build(BuildContext context) {
-    return PopScope(
-      // The elder answers with a button; back must not silently dismiss.
-      canPop: false,
-      child: Scaffold(
-        backgroundColor: AppColors.pageBackground,
-        body: SafeArea(child: _buildBody()),
-      ),
+    return ListenableBuilder(
+      listenable: LocaleController.instance,
+      builder: (context, _) {
+        final lang = LocaleController.instance.currentLanguage;
+        return PopScope(
+          // The elder answers with a button; back must not silently dismiss.
+          canPop: false,
+          child: Scaffold(
+            backgroundColor: AppColors.pageBackground,
+            body: SafeArea(child: _buildBody(lang)),
+          ),
+        );
+      },
     );
   }
 
-  Widget _buildBody() {
+  Widget _buildBody(String lang) {
     if (_isLoading) {
       return const Center(
         child: CircularProgressIndicator(color: AppColors.terracotta),
@@ -350,20 +360,20 @@ class _FullScreenReminderScreenState extends State<FullScreenReminderScreen>
             padding: EdgeInsets.all(pad),
             child: Column(
               children: [
-                _buildHeading(med, large: true),
+                _buildHeading(med, large: true, lang: lang),
                 const SizedBox(height: 20),
                 Expanded(
                   child: Row(
                     children: [
                       Expanded(
-                        child: _buildMedicine(med, hasPhoto, hasVoice),
+                        child: _buildMedicine(med, hasPhoto, hasVoice, lang),
                       ),
                       const SizedBox(width: 32),
                       Expanded(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [_buildActions()],
+                          children: [_buildActions(lang)],
                         ),
                       ),
                     ],
@@ -379,11 +389,11 @@ class _FullScreenReminderScreenState extends State<FullScreenReminderScreen>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _buildHeading(med, large: false),
+              _buildHeading(med, large: false, lang: lang),
               const SizedBox(height: 12),
-              Expanded(child: _buildMedicine(med, hasPhoto, hasVoice)),
+              Expanded(child: _buildMedicine(med, hasPhoto, hasVoice, lang)),
               const SizedBox(height: 16),
-              _buildActions(),
+              _buildActions(lang),
             ],
           ),
         );
@@ -430,7 +440,7 @@ class _FullScreenReminderScreenState extends State<FullScreenReminderScreen>
   }
 
   /// "Time for Your Medicine" with the scheduled time underneath.
-  Widget _buildHeading(Medication? med, {required bool large}) {
+  Widget _buildHeading(Medication? med, {required bool large, required String lang}) {
     return Row(
       children: [
         ScaleTransition(
@@ -448,7 +458,7 @@ class _FullScreenReminderScreenState extends State<FullScreenReminderScreen>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Time for Your Medicine',
+                AppStrings.timeForYourMedicine(lang),
                 style: TextStyle(
                   fontSize: large ? 32 : 26,
                   fontWeight: FontWeight.w800,
@@ -473,7 +483,7 @@ class _FullScreenReminderScreenState extends State<FullScreenReminderScreen>
   }
 
   /// Photo, name, dose and the single "hear again" control, centred.
-  Widget _buildMedicine(Medication? med, bool hasPhoto, bool hasVoice) {
+  Widget _buildMedicine(Medication? med, bool hasPhoto, bool hasVoice, String lang) {
     return LayoutBuilder(
       builder: (context, constraints) {
         // Room left for the photo after name, dose and voice button.
@@ -520,7 +530,7 @@ class _FullScreenReminderScreenState extends State<FullScreenReminderScreen>
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  'Dose: ${med?.dose ?? "As directed"}',
+                  AppStrings.doseLabel(lang, med?.dose ?? "As directed"),
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     fontSize: 23,
@@ -530,7 +540,7 @@ class _FullScreenReminderScreenState extends State<FullScreenReminderScreen>
                 ),
                 if (hasVoice) ...[
                   const SizedBox(height: 16),
-                  _buildVoiceButton(),
+                  _buildVoiceButton(lang),
                 ],
               ],
             ),
@@ -542,7 +552,7 @@ class _FullScreenReminderScreenState extends State<FullScreenReminderScreen>
 
   /// One control for the caregiver's voice: shows when it is playing and
   /// replays it on tap.
-  Widget _buildVoiceButton() {
+  Widget _buildVoiceButton(String lang) {
     final playing = _isPlayingAudio;
     return BouncyTap(
       onTap: _actionCompleted ? null : _replayVoice,
@@ -570,7 +580,7 @@ class _FullScreenReminderScreenState extends State<FullScreenReminderScreen>
             ),
             const SizedBox(width: 12),
             Text(
-              playing ? 'Listening...' : 'Hear Voice Again',
+              playing ? AppStrings.listening(lang) : AppStrings.hearVoiceAgain(lang),
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w700,
@@ -584,7 +594,7 @@ class _FullScreenReminderScreenState extends State<FullScreenReminderScreen>
   }
 
   // Large "I Have Taken It" & "Remind in 10 Mins" buttons
-  Widget _buildActions() {
+  Widget _buildActions(String lang) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
@@ -603,9 +613,9 @@ class _FullScreenReminderScreenState extends State<FullScreenReminderScreen>
             ),
             icon: const Icon(Icons.check_circle_rounded,
                 size: 40, color: AppColors.onColor),
-            label: const Text(
-              'I Have Taken It',
-              style: TextStyle(
+            label: Text(
+              AppStrings.iHaveTakenIt(lang),
+              style: const TextStyle(
                 fontSize: 27,
                 fontWeight: FontWeight.w800,
               ),
@@ -625,9 +635,9 @@ class _FullScreenReminderScreenState extends State<FullScreenReminderScreen>
               ),
             ),
             icon: const Icon(Icons.snooze_rounded, size: 30),
-            label: const Text(
-              'Remind in 10 Mins',
-              style: TextStyle(fontSize: 21, fontWeight: FontWeight.w700),
+            label: Text(
+              AppStrings.remindIn10Mins(lang),
+              style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w700),
             ),
           ),
         ),

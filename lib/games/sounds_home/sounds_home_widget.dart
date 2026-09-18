@@ -6,6 +6,8 @@ import 'package:flutter/services.dart';
 import 'package:just_audio/just_audio.dart';
 
 import '../../app_colors.dart';
+import '../../core/i18n/app_strings.dart';
+import '../../core/i18n/locale_controller.dart';
 import '../../ui/smriti_ui.dart';
 import '../cognitive_game.dart';
 import 'sounds_home_game.dart';
@@ -299,6 +301,7 @@ class _SoundsHomeWidgetState extends State<SoundsHomeWidget>
   // ── Intro ──────────────────────────────────────────────────────────────────
 
   Widget _buildIntro(BuildContext context) {
+    final lang = LocaleController.instance.currentLanguage;
     final playing = _currentSound.isNotEmpty;
     return Center(
       child: SingleChildScrollView(
@@ -308,10 +311,10 @@ class _SoundsHomeWidgetState extends State<SoundsHomeWidget>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text(
-                'Listen for the bird',
+              Text(
+                AppStrings.listenForBird(lang),
                 textAlign: TextAlign.center,
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 30,
                   fontWeight: FontWeight.w800,
                   color: AppColors.onColor,
@@ -319,8 +322,7 @@ class _SoundsHomeWidgetState extends State<SoundsHomeWidget>
               ),
               const SizedBox(height: 10),
               Text(
-                'You will hear sounds from the village. Tap the drum each '
-                'time you hear the bird.',
+                AppStrings.soundsHomeIntro(lang),
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 20,
@@ -330,9 +332,11 @@ class _SoundsHomeWidgetState extends State<SoundsHomeWidget>
               ),
               const SizedBox(height: 28),
               _buildSoundBubble(
+                SoundsHomeGame.targetSound,
                 _looks[SoundsHomeGame.targetSound]!,
                 active: playing,
                 size: 150,
+                lang: lang,
               ),
               const SizedBox(height: 28),
               SizedBox(
@@ -348,9 +352,9 @@ class _SoundsHomeWidgetState extends State<SoundsHomeWidget>
                     ),
                   ),
                   icon: const Icon(Icons.volume_up_rounded, size: 32),
-                  label: const Text(
-                    'Hear the bird',
-                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
+                  label: Text(
+                    AppStrings.hearTheBird(lang),
+                    style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
                   ),
                 ),
               ),
@@ -368,9 +372,9 @@ class _SoundsHomeWidgetState extends State<SoundsHomeWidget>
                     ),
                   ),
                   icon: const Icon(Icons.play_arrow_rounded, size: 40),
-                  label: const Text(
-                    'Start',
-                    style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800),
+                  label: Text(
+                    AppStrings.start(lang),
+                    style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w800),
                   ),
                 ),
               ),
@@ -384,6 +388,7 @@ class _SoundsHomeWidgetState extends State<SoundsHomeWidget>
   // ── Timed task ─────────────────────────────────────────────────────────────
 
   Widget _buildTask(BuildContext context) {
+    final lang = LocaleController.instance.currentLanguage;
     final isCompact = MediaQuery.of(context).size.height < 500;
     final remaining = _durationSeconds - _elapsedSeconds;
     final progress = _elapsedSeconds / _durationSeconds;
@@ -425,7 +430,7 @@ class _SoundsHomeWidgetState extends State<SoundsHomeWidget>
 
           // Instruction
           Text(
-            'Tap the drum when you hear the bird',
+            AppStrings.tapDrumWhenHearBird(lang),
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: isCompact ? 19 : 23,
@@ -445,7 +450,7 @@ class _SoundsHomeWidgetState extends State<SoundsHomeWidget>
                       size: isCompact ? 44 : 64,
                       color: AppColors.onColor.withValues(alpha: 0.35),
                     )
-                  : _buildSoundBubble(look, active: true, size: isCompact ? 96 : 140),
+                  : _buildSoundBubble(_currentSound, look, active: true, size: isCompact ? 96 : 140, lang: lang),
             ),
           ),
 
@@ -466,7 +471,7 @@ class _SoundsHomeWidgetState extends State<SoundsHomeWidget>
                     final scale = 1.0 - sin(t * pi) * 0.08;
                     return Transform.scale(scale: scale, child: child);
                   },
-                  child: _buildDrum(drumSize),
+                  child: _buildDrum(drumSize, lang),
                 ),
               ),
             )
@@ -481,7 +486,7 @@ class _SoundsHomeWidgetState extends State<SoundsHomeWidget>
     );
   }
 
-  Widget _buildDrum(double size) {
+  Widget _buildDrum(double size, String lang) {
     return Container(
       width: size,
       height: size,
@@ -507,7 +512,7 @@ class _SoundsHomeWidgetState extends State<SoundsHomeWidget>
             children: [
               Icon(Icons.touch_app_rounded, size: size * 0.24, color: AppColors.onColor),
               Text(
-                'Tap',
+                AppStrings.drumTap(lang),
                 style: TextStyle(
                   fontSize: size * 0.12,
                   fontWeight: FontWeight.w800,
@@ -522,7 +527,7 @@ class _SoundsHomeWidgetState extends State<SoundsHomeWidget>
   }
 
   /// A round badge for a sound, with rings rippling out while it plays.
-  Widget _buildSoundBubble(_SoundLook look, {required bool active, required double size}) {
+  Widget _buildSoundBubble(String soundId, _SoundLook look, {required bool active, required double size, required String lang}) {
     return SizedBox(
       width: size * 1.5,
       height: size * 1.5,
@@ -565,7 +570,7 @@ class _SoundsHomeWidgetState extends State<SoundsHomeWidget>
                         )
                       : Icon(look.icon, size: size * 0.42, color: _ground),
                   Text(
-                    look.label,
+                    AppStrings.soundLabel(lang, soundId),
                     style: TextStyle(
                       fontSize: (size * 0.14).clamp(14.0, 22.0),
                       fontWeight: FontWeight.w800,

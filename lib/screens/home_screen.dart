@@ -4,10 +4,13 @@ import 'package:flutter/material.dart';
 
 import '../app_colors.dart';
 import '../core/db/app_database.dart';
+import '../core/i18n/app_strings.dart';
+import '../core/i18n/locale_controller.dart';
 import '../core/progression/progression_service.dart';
 import '../core/sync/sync_engine.dart';
 import '../ui/day_scene.dart';
 import '../ui/smriti_ui.dart';
+import '../widgets/language_switcher_button.dart';
 import 'diagnostics_screen.dart';
 import 'family_screen.dart';
 import 'game_select_screen.dart';
@@ -83,12 +86,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     if (mounted) setState(() => _elderName = name);
   }
 
-  String _greeting() {
-    final hour = _now.hour;
-    if (hour < 12) return 'Good morning';
-    if (hour < 17) return 'Good afternoon';
-    return 'Good evening';
-  }
+  String _greeting(String lang) => AppStrings.greeting(lang, _now.hour);
 
   IconData _greetingIcon() {
     final hour = _now.hour;
@@ -99,17 +97,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   String _timeString() => formatClock(_now.hour, _now.minute);
 
-  String _dateString() {
-    const days = [
-      '', 'Monday', 'Tuesday', 'Wednesday', 'Thursday',
-      'Friday', 'Saturday', 'Sunday'
-    ];
-    const months = [
-      '', 'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December'
-    ];
-    return '${days[_now.weekday]}, ${_now.day} ${months[_now.month]}';
-  }
+  String _dateString(String lang) => AppStrings.formattedDate(lang, _now);
 
   void _onDiagnosticsTap() {
     _diagnosticsTapCount++;
@@ -130,7 +118,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     Navigator.of(context).push(MaterialPageRoute(builder: (_) => screen));
   }
 
-  Future<void> _onPlayTap() async {
+  Future<void> _onPlayTap(String lang) async {
     final isLocked = await ProgressionService.instance.isGamesLocked();
     if (!mounted) return;
     if (isLocked) {
@@ -138,16 +126,16 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         context: context,
         builder: (ctx) => AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-          title: const Row(
+          title: Row(
             children: [
-              Icon(Icons.local_cafe_rounded, color: AppColors.leafGreen, size: 32),
-              SizedBox(width: 12),
-              Expanded(child: Text('Games are Resting')),
+              const Icon(Icons.local_cafe_rounded, color: AppColors.leafGreen, size: 32),
+              const SizedBox(width: 12),
+              Expanded(child: Text(AppStrings.gamesAreResting(lang))),
             ],
           ),
-          content: const Text(
-            'Games are taking a peaceful break right now. How about checking your family messages or your daily routine?',
-            style: TextStyle(fontSize: 18, height: 1.4),
+          content: Text(
+            AppStrings.gamesRestingPrompt(lang),
+            style: const TextStyle(fontSize: 18, height: 1.4),
           ),
           actions: [
             TextButton(
@@ -155,14 +143,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 Navigator.of(ctx).pop();
                 _open(const FamilyScreen());
               },
-              child: const Text('My Family', style: TextStyle(fontSize: 17)),
+              child: Text(AppStrings.myFamily(lang), style: const TextStyle(fontSize: 17)),
             ),
             TextButton(
               onPressed: () {
                 Navigator.of(ctx).pop();
                 _open(const MyDayScreen());
               },
-              child: const Text('My Day', style: TextStyle(fontSize: 17)),
+              child: Text(AppStrings.myDay(lang), style: const TextStyle(fontSize: 17)),
             ),
             ElevatedButton(
               onPressed: () => Navigator.of(ctx).pop(),
@@ -182,43 +170,49 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.pageBackground,
-      bottomNavigationBar: _buildFooter(),
-      body: SafeArea(
-        bottom: false,
-        child: Stack(
-          children: [
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final wide = constraints.maxWidth >= 720 &&
-                    constraints.maxWidth > constraints.maxHeight;
-                return wide
-                    ? _buildWideLayout(constraints)
-                    : _buildPortraitLayout(constraints);
-              },
-            ),
+    return ListenableBuilder(
+      listenable: LocaleController.instance,
+      builder: (context, _) {
+        final lang = LocaleController.instance.currentLanguage;
+        return Scaffold(
+          backgroundColor: AppColors.pageBackground,
+          bottomNavigationBar: _buildFooter(lang),
+          body: SafeArea(
+            bottom: false,
+            child: Stack(
+              children: [
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final wide = constraints.maxWidth >= 720 &&
+                        constraints.maxWidth > constraints.maxHeight;
+                    return wide
+                        ? _buildWideLayout(constraints, lang)
+                        : _buildPortraitLayout(constraints, lang);
+                  },
+                ),
 
-            // Hidden diagnostics tap area (bottom-left corner)
-            Positioned(
-              left: 0,
-              bottom: 0,
-              child: GestureDetector(
-                onTap: _onDiagnosticsTap,
-                behavior: HitTestBehavior.translucent,
-                child: const SizedBox(width: 100, height: 100),
-              ),
+                // Hidden diagnostics tap area (bottom-left corner)
+                Positioned(
+                  left: 0,
+                  bottom: 0,
+                  child: GestureDetector(
+                    onTap: _onDiagnosticsTap,
+                    behavior: HitTestBehavior.translucent,
+                    child: const SizedBox(width: 100, height: 100),
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
   // ── Layouts ────────────────────────────────────────────────────────────────
 
   // Phones, and tablets held upright.
-  Widget _buildPortraitLayout(BoxConstraints constraints) {
+  Widget _buildPortraitLayout(BoxConstraints constraints, String lang) {
     final gutter = constraints.maxWidth >= 600 ? 32.0 : 18.0;
     final tileHeight = constraints.maxWidth >= 600 ? 140.0 : 120.0;
 
@@ -229,14 +223,21 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            FadeSlideIn(child: _buildGreetingCard()),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: const [
+                LanguageSwitcherButton(),
+              ],
+            ),
+            const SizedBox(height: 10),
+            FadeSlideIn(child: _buildGreetingCard(lang)),
             const SizedBox(height: 28),
             FadeSlideIn(
               delay: const Duration(milliseconds: 80),
-              child: _sectionTitle('What would you like to do?'),
+              child: _sectionTitle(AppStrings.whatWouldYouLikeToDo(lang)),
             ),
             const SizedBox(height: 14),
-            ..._buildTiles(tileHeight, gap: 16),
+            ..._buildTiles(tileHeight, lang, gap: 16),
           ],
         ),
       ),
@@ -244,7 +245,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   // Tablets in landscape.
-  Widget _buildWideLayout(BoxConstraints constraints) {
+  Widget _buildWideLayout(BoxConstraints constraints, String lang) {
     final tileHeight =
         ((constraints.maxHeight - 48 - 40 - 32) / 3).clamp(110.0, 170.0);
     return Row(
@@ -254,7 +255,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           flex: 5,
           child: Padding(
             padding: const EdgeInsets.fromLTRB(32, 24, 12, 24),
-            child: FadeSlideIn(child: _buildGreetingCard(tall: true)),
+            child: FadeSlideIn(child: _buildGreetingCard(lang, tall: true)),
           ),
         ),
         Expanded(
@@ -264,9 +265,19 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _sectionTitle('What would you like to do?'),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Expanded(
+                      child: _sectionTitle(AppStrings.whatWouldYouLikeToDo(lang)),
+                    ),
+                    const SizedBox(width: 8),
+                    const LanguageSwitcherButton(),
+                  ],
+                ),
                 const SizedBox(height: 14),
-                ..._buildTiles(tileHeight, gap: 16),
+                ..._buildTiles(tileHeight, lang, gap: 16),
               ],
             ),
           ),
@@ -289,27 +300,27 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
-  List<Widget> _buildTiles(double height, {required double gap}) {
+  List<Widget> _buildTiles(double height, String lang, {required double gap}) {
     final tiles = [
       ActionTile(
-        title: 'Play',
-        subtitle: 'Games for the mind',
+        title: AppStrings.play(lang),
+        subtitle: AppStrings.gamesForMind(lang),
         icon: Icons.extension_rounded,
         color: AppColors.terracotta,
         height: height,
-        onTap: _onPlayTap,
+        onTap: () => _onPlayTap(lang),
       ),
       ActionTile(
-        title: 'My Family',
-        subtitle: 'Your loved ones',
+        title: AppStrings.myFamily(lang),
+        subtitle: AppStrings.yourLovedOnes(lang),
         icon: Icons.people_alt_rounded,
         color: AppColors.indigo,
         height: height,
         onTap: () => _open(const FamilyScreen()),
       ),
       ActionTile(
-        title: 'My Day',
-        subtitle: 'Your day at a glance',
+        title: AppStrings.myDay(lang),
+        subtitle: AppStrings.yourDayAtGlance(lang),
         icon: Icons.wb_sunny_rounded,
         color: AppColors.marigold,
         foreground: AppColors.primaryText,
@@ -333,7 +344,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   /// Greeting, time and date stacked above a hill landscape. Everything is in
   /// a column, so long names and large system fonts never run into the hills.
-  Widget _buildGreetingCard({bool tall = false}) {
+  Widget _buildGreetingCard(String lang, {bool tall = false}) {
     final nameSize = tall ? 52.0 : 40.0;
     final lightText = DayScene.prefersLightText(_now);
     final ink = lightText ? AppColors.onColor : AppColors.primaryText;
@@ -369,7 +380,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     const SizedBox(width: 8),
                     Flexible(
                       child: Text(
-                        _elderName.isNotEmpty ? '${_greeting()},' : _greeting(),
+                        _elderName.isNotEmpty ? '${_greeting(lang)},' : _greeting(lang),
                         style: TextStyle(
                           fontSize: nameSize * 0.58,
                           fontWeight: FontWeight.w600,
@@ -409,7 +420,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               ),
               _infoChip(
                 icon: Icons.calendar_today_rounded,
-                label: _dateString(),
+                label: _dateString(lang),
                 color: AppColors.indigo,
                 big: tall,
               ),
@@ -490,7 +501,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   // ── Footer ─────────────────────────────────────────────────────────────────
 
-  Widget _buildFooter() {
+  Widget _buildFooter(String lang) {
     final bottomInset = MediaQuery.paddingOf(context).bottom;
     return Container(
       decoration: const BoxDecoration(
@@ -504,7 +515,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           children: [
             Expanded(
               child: _FooterButton(
-                label: 'Message',
+                label: AppStrings.message(lang),
                 icon: Icons.mic_rounded,
                 color: AppColors.riverTeal,
                 onTap: () => _open(const VoiceMemoScreen()),
@@ -513,7 +524,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             const SizedBox(width: 12),
             Expanded(
               child: _FooterButton(
-                label: 'Medicine',
+                label: AppStrings.medications(lang),
                 icon: Icons.medication_rounded,
                 color: AppColors.leafGreen,
                 onTap: () => _open(const MedicineScreen()),

@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import '../app_colors.dart';
 import '../core/db/app_database.dart';
 import '../core/db/database.dart';
+import '../core/i18n/app_strings.dart';
+import '../core/i18n/locale_controller.dart';
 import '../core/repo/content_repo.dart';
 import '../core/sync/sync_engine.dart';
 import '../ui/smriti_ui.dart';
@@ -17,7 +19,9 @@ import '../ui/smriti_ui.dart';
 /// Highlights the current / next item. Past items are dimmed.
 /// No medication items are shown here; those live in MedicineScreen.
 class MyDayScreen extends StatefulWidget {
-  const MyDayScreen({super.key});
+  const MyDayScreen({super.key, this.syncInBackground = true});
+
+  final bool syncInBackground;
 
   @override
   State<MyDayScreen> createState() => _MyDayScreenState();
@@ -53,7 +57,9 @@ class _MyDayScreenState extends State<MyDayScreen> {
     });
     // Pull the latest routine in the background; the subscription above
     // redraws the timeline whenever a sync (this one or any other) lands.
-    unawaited(SyncEngine.defaultInstance.run(trigger: SyncTrigger.manual));
+    if (widget.syncInBackground) {
+      unawaited(SyncEngine.defaultInstance.run(trigger: SyncTrigger.manual));
+    }
   }
 
   @override
@@ -73,42 +79,48 @@ class _MyDayScreenState extends State<MyDayScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.pageBackground,
-      body: SafeArea(
-        child: Column(
-          children: [
-            ScreenHeader(
-              title: 'My Day',
-              subtitle: _dateString(),
-              icon: Icons.wb_sunny_rounded,
-              color: AppColors.marigoldDark,
+    return ListenableBuilder(
+      listenable: LocaleController.instance,
+      builder: (context, _) {
+        final lang = LocaleController.instance.currentLanguage;
+        return Scaffold(
+          backgroundColor: AppColors.pageBackground,
+          body: SafeArea(
+            child: Column(
+              children: [
+                ScreenHeader(
+                  title: AppStrings.myDay(lang),
+                  subtitle: _dateString(lang),
+                  icon: Icons.wb_sunny_rounded,
+                  color: AppColors.marigoldDark,
+                ),
+                Expanded(
+                  child: _loading
+                      ? const Center(
+                          child: CircularProgressIndicator(color: AppColors.marigold),
+                        )
+                      : _items.isEmpty
+                          ? _buildEmpty(lang)
+                          : _buildTimeline(lang),
+                ),
+              ],
             ),
-            Expanded(
-              child: _loading
-                  ? const Center(
-                      child: CircularProgressIndicator(color: AppColors.marigold),
-                    )
-                  : _items.isEmpty
-                      ? _buildEmpty()
-                      : _buildTimeline(),
-            ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
-  Widget _buildEmpty() {
-    return const EmptyState(
+  Widget _buildEmpty(String lang) {
+    return EmptyState(
       icon: Icons.event_note_rounded,
       color: AppColors.marigoldDark,
-      title: 'Your routine will be updated soon',
-      message: 'Your family will add your daily plan here.',
+      title: AppStrings.routineEmptyTitle(lang),
+      message: AppStrings.routineEmptyMessage(lang),
     );
   }
 
-  Widget _buildTimeline() {
+  Widget _buildTimeline(String lang) {
     // Find the "active" index: first item whose time >= now, or last
     int activeIndex = _items.length - 1;
     for (int i = 0; i < _items.length; i++) {
@@ -128,6 +140,7 @@ class _MyDayScreenState extends State<MyDayScreen> {
           nextTime: allPast ? null : _formatTime(_items[activeIndex].timeMin),
           done: doneCount,
           total: _items.length,
+          lang: lang,
         ),
       ),
       const SizedBox(height: 8),
@@ -137,7 +150,7 @@ class _MyDayScreenState extends State<MyDayScreen> {
       final item = _items[index];
       final part = _DayPart.of(item.timeMin);
       if (part != lastPart) {
-        rows.add(_PartHeading(part: part));
+        rows.add(_PartHeading(part: part, lang: lang));
         lastPart = part;
       }
       final isPast = item.timeMin < _nowMin;
@@ -153,6 +166,7 @@ class _MyDayScreenState extends State<MyDayScreen> {
             timeLabel: _formatTime(item.timeMin),
             isLast: index == _items.length - 1 ||
                 _DayPart.of(_items[index + 1].timeMin) != part,
+            lang: lang,
           ),
         ),
       );
@@ -167,16 +181,8 @@ class _MyDayScreenState extends State<MyDayScreen> {
     );
   }
 
-  String _dateString() {
-    const days = [
-      '', 'Monday', 'Tuesday', 'Wednesday', 'Thursday',
-      'Friday', 'Saturday', 'Sunday'
-    ];
-    const months = [
-      '', 'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December'
-    ];
-    return '${days[_now.weekday]}, ${_now.day} ${months[_now.month]}';
+  String _dateString(String lang) {
+    return AppStrings.formattedDate(lang, _now);
   }
 }
 
@@ -213,12 +219,14 @@ class _SummaryCard extends StatelessWidget {
     required this.nextTime,
     required this.done,
     required this.total,
+    required this.lang,
   });
 
   final RoutineItem? next;
   final String? nextTime;
   final int done;
   final int total;
+  final String lang;
 
   @override
   Widget build(BuildContext context) {
@@ -255,7 +263,7 @@ class _SummaryCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      next == null ? "That's all for today" : 'Coming up next',
+                      next == null ? AppStrings.thatsAllForToday(lang) : AppStrings.comingUpNext(lang),
                       style: TextStyle(
                         fontSize: 17,
                         fontWeight: FontWeight.w600,
@@ -263,7 +271,9 @@ class _SummaryCard extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      next?.labelKey ?? 'Time to rest',
+                      next == null
+                          ? AppStrings.routineLabel(lang, 'Time to rest')
+                          : AppStrings.routineLabel(lang, next!.labelKey),
                       style: TextStyle(
                         fontSize: 26,
                         fontWeight: FontWeight.w800,
@@ -299,7 +309,7 @@ class _SummaryCard extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            '$done of $total so far today',
+            AppStrings.doneCountSoFar(lang, done, total),
             style: TextStyle(
               fontSize: 17,
               fontWeight: FontWeight.w700,
@@ -314,9 +324,10 @@ class _SummaryCard extends StatelessWidget {
 
 /// "Morning", "Afternoon" and so on, as a coloured chip.
 class _PartHeading extends StatelessWidget {
-  const _PartHeading({required this.part});
+  const _PartHeading({required this.part, required this.lang});
 
   final _DayPart part;
+  final String lang;
 
   @override
   Widget build(BuildContext context) {
@@ -341,7 +352,7 @@ class _PartHeading extends StatelessWidget {
                 ),
                 const SizedBox(width: 10),
                 Text(
-                  part.label,
+                  AppStrings.dayPartLabel(lang, part.name),
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.w800,
@@ -367,6 +378,7 @@ class _TimelineItem extends StatelessWidget {
     required this.isActive,
     required this.timeLabel,
     required this.isLast,
+    required this.lang,
   });
 
   final RoutineItem entry;
@@ -375,6 +387,7 @@ class _TimelineItem extends StatelessWidget {
   final bool isActive;
   final String timeLabel;
   final bool isLast;
+  final String lang;
 
   @override
   Widget build(BuildContext context) {
@@ -460,7 +473,7 @@ class _TimelineItem extends StatelessWidget {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    entry.labelKey,
+                                    AppStrings.routineLabel(lang, entry.labelKey),
                                     style: TextStyle(
                                       fontSize: isActive ? 24 : 21,
                                       fontWeight: FontWeight.w800,
@@ -501,7 +514,7 @@ class _TimelineItem extends StatelessWidget {
                                   borderRadius: BorderRadius.circular(20),
                                 ),
                                 child: Text(
-                                  'Now',
+                                  AppStrings.nowBadge(lang),
                                   style: TextStyle(
                                     fontSize: 17,
                                     fontWeight: FontWeight.w800,

@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../app_colors.dart';
+import '../../core/i18n/app_strings.dart';
+import '../../core/i18n/locale_controller.dart';
 import '../cognitive_game.dart';
 import 'name_harvest_game.dart';
 
@@ -95,24 +97,13 @@ class _NameHarvestWidgetState extends State<NameHarvestWidget>
     Future.delayed(const Duration(milliseconds: 800), widget.onComplete);
   }
 
-  String _categoryLabel(String category) {
-    const labels = {
-      'vegetables': 'vegetables',
-      'fruits': 'fruits',
-      'animals': 'animals',
-      'things_in_kitchen': 'things in the kitchen',
-      'things_in_market': 'things at the market',
-      'things_that_are_red': 'things that are red',
-      'festival_foods': 'festival foods',
-      'birds': 'birds',
-    };
-    return labels[category] ?? category;
-  }
-
   @override
   Widget build(BuildContext context) {
+    final lang = LocaleController.instance.currentLanguage;
     final category = widget.item.payload['category'] as String;
     final isCompact = MediaQuery.of(context).size.height < 500;
+    final categoryName = AppStrings.harvestCategory(lang, category);
+    final promptText = AppStrings.nameAllCategoryPrompt(lang, categoryName);
 
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 16, vertical: isCompact ? 6 : 20),
@@ -159,7 +150,7 @@ class _NameHarvestWidgetState extends State<NameHarvestWidget>
                 const SizedBox(width: 14),
                 Expanded(
                   child: Text(
-                    'Name all the ${_categoryLabel(category)} you can think of:',
+                    promptText,
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
@@ -207,7 +198,7 @@ class _NameHarvestWidgetState extends State<NameHarvestWidget>
             ),
             const SizedBox(height: 16),
             Text(
-              'Name all the ${_categoryLabel(category)} you can think of:',
+              promptText,
               style: const TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.w600,
@@ -228,7 +219,7 @@ class _NameHarvestWidgetState extends State<NameHarvestWidget>
                     style: TextStyle(
                         fontSize: isCompact ? 16 : 20, color: AppColors.primaryText),
                     decoration: InputDecoration(
-                      hintText: 'Type an item...',
+                      hintText: AppStrings.typeAnItem(lang),
                       hintStyle: TextStyle(
                           fontSize: isCompact ? 14 : 18, color: AppColors.secondaryText),
                       filled: true,
@@ -284,7 +275,7 @@ class _NameHarvestWidgetState extends State<NameHarvestWidget>
 
           // Count
           Text(
-            '${_namedItems.length} items named',
+            AppStrings.itemsNamed(lang, _namedItems.length),
             style: TextStyle(
               fontSize: isCompact ? 14 : 18,
               fontWeight: FontWeight.w600,

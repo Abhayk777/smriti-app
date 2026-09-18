@@ -14,6 +14,7 @@ import '../repo/event_repo.dart';
 import 'alarm_scheduler.dart';
 import 'reminder_launcher.dart';
 import 'reminder_screen_channel.dart';
+import '../i18n/app_strings.dart';
 
 /// `reminder_events.channel` for reminders the device itself shows (ladder
 /// steps 0 and 1), per APP-BUILD-SPEC.md §10. Older builds wrote
@@ -128,7 +129,8 @@ Future<void> fireReminderCallback(int id, Map<String, dynamic> params) async {
     );
     
     // Step 5: Show the full-screen reminder
-    await ReminderLauncher.showMedication(med, reminderEventId);
+    final lang = await db.appConfigsDao.getValue('language_code') ?? 'en';
+    await ReminderLauncher.showMedication(med, reminderEventId, lang);
 
     // Step 7: Schedule ladder steps
     await _scheduleLadderStep(
@@ -202,11 +204,13 @@ Future<void> fireTestReminderCallback(int id, Map<String, dynamic> params) async
   final testEventId = '${ReminderRequest.testEventPrefix}${const Uuid().v4()}';
 
   Medication? med;
+  String lang = 'en';
   final db = await _openDatabaseConnection();
   if (db != null) {
     try {
       final meds = await ContentRepo(db).getMedications(activeOnly: true);
       med = meds.isNotEmpty ? meds.first : null;
+      lang = await db.appConfigsDao.getValue('language_code') ?? 'en';
     } catch (_) {
     } finally {
       await db.close();
@@ -214,12 +218,12 @@ Future<void> fireTestReminderCallback(int id, Map<String, dynamic> params) async
   }
 
   if (med != null) {
-    await ReminderLauncher.showMedication(med, testEventId);
+    await ReminderLauncher.showMedication(med, testEventId, lang);
   } else {
     await ReminderLauncher.show(
       medicationId: 'test',
       reminderEventId: testEventId,
-      title: 'Test reminder',
+      title: AppStrings.timeForMedication(lang, 'Medicine'),
       body: 'This is how medicine reminders will look',
     );
   }
@@ -335,7 +339,8 @@ Future<void> _fireLadderCallback(int id, Map<String, dynamic> params) async {
       case 1:
         // Step 1: Show the reminder again (same event, so the same
         // notification is re-alerted and an open screen replays the voice)
-        await ReminderLauncher.showMedication(med, reminderEventId);
+        final lang = await db.appConfigsDao.getValue('language_code') ?? 'en';
+        await ReminderLauncher.showMedication(med, reminderEventId, lang);
         break;
       
       case 2:

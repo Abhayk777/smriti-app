@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../app_colors.dart';
+import '../../core/i18n/app_strings.dart';
+import '../../core/i18n/locale_controller.dart';
 import '../../ui/smriti_ui.dart';
 import '../cognitive_game.dart';
 import 'my_day_game.dart';
@@ -165,10 +167,11 @@ class _MyDayWidgetState extends State<MyDayWidget> {
   }
 
   Widget _buildOrderingMode(bool isCompact) {
+    final lang = LocaleController.instance.currentLanguage;
     return Column(
       children: [
         Text(
-          'Put these in order, from morning to night:',
+          AppStrings.putInOrderMorningToNight(lang),
           style: TextStyle(
             fontSize: isCompact ? 17 : 22,
             fontWeight: FontWeight.w600,
@@ -204,7 +207,7 @@ class _MyDayWidgetState extends State<MyDayWidget> {
               ),
             ),
             child: Text(
-              'Done',
+              AppStrings.done(lang),
               style: TextStyle(
                 fontSize: isCompact ? 17 : 20,
                 fontWeight: FontWeight.w700,
@@ -253,10 +256,18 @@ class _MyDayWidgetState extends State<MyDayWidget> {
   }
 
   Widget _buildOrientationMode(bool isCompact) {
+    final lang = LocaleController.instance.currentLanguage;
     final question =
         (widget.item.payload['question'] as Map<String, Object>?) ?? {};
-    final questionText =
+    final questionId = (widget.item.context['questionId'] as String?) ??
+        (question['id'] as String?) ?? '';
+    final defaultQuestionText =
         question['question'] as String? ?? 'What day is it today?';
+    final questionText = AppStrings.orientationQuestion(
+      lang,
+      questionId,
+      defaultText: defaultQuestionText,
+    );
 
     return SingleChildScrollView(
       child: Column(
@@ -298,7 +309,7 @@ class _MyDayWidgetState extends State<MyDayWidget> {
                       border: Border.all(color: AppColors.border, width: 1.5),
                     ),
                     child: Text(
-                      option,
+                      AppStrings.displayOrientationOption(lang, questionId, option),
                       style: TextStyle(
                         fontSize: isCompact ? 18 : 21,
                         fontWeight: FontWeight.w700,

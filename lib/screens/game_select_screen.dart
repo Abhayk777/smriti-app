@@ -5,10 +5,13 @@ import 'package:flutter/material.dart';
 import '../app_colors.dart';
 import '../core/db/app_database.dart';
 import '../core/db/database.dart';
+import '../core/i18n/app_strings.dart';
+import '../core/i18n/locale_controller.dart';
 import '../core/progression/progression_service.dart';
 import '../core/repo/event_repo.dart';
 import '../games/game_catalog.dart';
 import '../ui/smriti_ui.dart';
+import '../widgets/language_switcher_button.dart';
 import 'diagnostics_screen.dart';
 import 'game_screen.dart';
 
@@ -70,7 +73,7 @@ class _GameSelectScreenState extends State<GameSelectScreen> {
     setState(() => _suggestion = null);
   }
 
-  Widget _buildRestingBanner(BuildContext context, bool compact) {
+  Widget _buildRestingBanner(BuildContext context, bool compact, String lang) {
     final remainingMinutes = _lockRemaining != null
         ? (_lockRemaining!.inMinutes + 1)
         : 180;
@@ -93,7 +96,7 @@ class _GameSelectScreenState extends State<GameSelectScreen> {
             const SizedBox(width: 14),
             Expanded(
               child: Text(
-                'Games are resting for another $remainingMinutes minutes. Take a peaceful break!',
+                AppStrings.restingBannerText(lang, remainingMinutes),
                 style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
@@ -114,112 +117,123 @@ class _GameSelectScreenState extends State<GameSelectScreen> {
     final gutter = Screen.gutter(context);
     final suggestion = _suggestion;
 
-    return Scaffold(
-      backgroundColor: AppColors.pageBackground,
-      body: SafeArea(
-        child: Column(
-          children: [
-            ScreenHeader(
-              title: 'Choose a Game',
-              subtitle: compact ? null : 'Pick any game you like',
-              icon: Icons.extension_rounded,
-              color: AppColors.terracotta,
-              actions: [
-                IconButton(
-                  tooltip: 'Sync & Diagnostics',
-                  onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const DiagnosticsScreen()),
-                    );
-                  },
-                  iconSize: 28,
-                  icon: const Icon(Icons.sync_rounded, color: AppColors.secondaryText),
+    return ListenableBuilder(
+      listenable: LocaleController.instance,
+      builder: (context, _) {
+        final lang = LocaleController.instance.currentLanguage;
+        return Scaffold(
+          backgroundColor: AppColors.pageBackground,
+          body: SafeArea(
+            child: Column(
+              children: [
+                ScreenHeader(
+                  title: AppStrings.games(lang),
+                  subtitle: compact ? null : AppStrings.gamesForMind(lang),
+                  icon: Icons.extension_rounded,
+                  color: AppColors.terracotta,
+                  actions: [
+                    const LanguageSwitcherButton(),
+                    const SizedBox(width: 4),
+                    IconButton(
+                      tooltip: 'Sync & Diagnostics',
+                      onPressed: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => const DiagnosticsScreen()),
+                        );
+                      },
+                      iconSize: 28,
+                      icon: const Icon(Icons.sync_rounded, color: AppColors.secondaryText),
+                    ),
+                    const SizedBox(width: 4),
+                    compact
+                        ? IconButton(
+                            tooltip: AppStrings.playHistory(lang),
+                            onPressed: () => _showHistoryDialog(context),
+                            iconSize: 28,
+                            icon: const Icon(Icons.bar_chart_rounded,
+                                color: AppColors.terracottaDark),
+                          )
+                        : OutlinedButton.icon(
+                            onPressed: () => _showHistoryDialog(context),
+                            icon: const Icon(Icons.bar_chart_rounded, size: 24),
+                            label: Text(AppStrings.playHistory(lang)),
+                          ),
+                  ],
                 ),
-                const SizedBox(width: 4),
-                compact
-                    ? IconButton(
-                        tooltip: 'Play History',
-                        onPressed: () => _showHistoryDialog(context),
-                        iconSize: 28,
-                        icon: const Icon(Icons.bar_chart_rounded,
-                            color: AppColors.terracottaDark),
-                      )
-                    : OutlinedButton.icon(
-                        onPressed: () => _showHistoryDialog(context),
-                        icon: const Icon(Icons.bar_chart_rounded, size: 24),
-                        label: const Text('Play History'),
-                      ),
+                if (_isLocked)
+                  _buildRestingBanner(context, compact, lang)
+                else ...[
+                  RestAdviceCard(key: _restAdviceKey, service: widget.service, lang: lang),
+                  if (suggestion != null)
+                    VarietySuggestionCard(
+                      suggestion: suggestion,
+                      lang: lang,
+                      onTrySuggested: () {
+                        final info = gameInfoFor(suggestion.suggestedGameId);
+                        if (info != null) _onTrySuggested(info);
+                      },
+                      onMaybeLater: _onMaybeLater,
+                    ),
+                ],
+                Expanded(
+                  child: compact
+                      ? ListView.separated(
+                          padding: EdgeInsets.fromLTRB(gutter, 18, gutter, 28),
+                          itemCount: gameCatalog.length,
+                          separatorBuilder: (_, _) => const SizedBox(height: 14),
+                          itemBuilder: (context, index) {
+                            final info = gameCatalog[index];
+                            final isSuggested = suggestion?.suggestedGameId == info.id;
+                            return FadeSlideIn(
+                              delay: Duration(milliseconds: 40 * index.clamp(0, 6)),
+                              child: _GameTile(
+                                info: info,
+                                lang: lang,
+                                isSuggested: isSuggested,
+                                onTap: () {
+                                  if (isSuggested) {
+                                    unawaited(_service.onNudgeAccepted(info.id));
+                                  }
+                                  _launchGame(info);
+                                },
+                              ),
+                            );
+                          },
+                        )
+                      : GridView.builder(
+                          padding: EdgeInsets.fromLTRB(gutter, 20, gutter, 28),
+                          gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                            maxCrossAxisExtent: 380,
+                            mainAxisExtent: 240,
+                            crossAxisSpacing: 18,
+                            mainAxisSpacing: 18,
+                          ),
+                          itemCount: gameCatalog.length,
+                          itemBuilder: (context, index) {
+                            final info = gameCatalog[index];
+                            final isSuggested = suggestion?.suggestedGameId == info.id;
+                            return FadeSlideIn(
+                              delay: Duration(milliseconds: 40 * index),
+                              child: _GameCard(
+                                info: info,
+                                lang: lang,
+                                isSuggested: isSuggested,
+                                onTap: () {
+                                  if (isSuggested) {
+                                    unawaited(_service.onNudgeAccepted(info.id));
+                                  }
+                                  _launchGame(info);
+                                },
+                              ),
+                            );
+                          },
+                        ),
+                ),
               ],
             ),
-            if (_isLocked)
-              _buildRestingBanner(context, compact)
-            else ...[
-              RestAdviceCard(key: _restAdviceKey, service: widget.service),
-              if (suggestion != null)
-                VarietySuggestionCard(
-                  suggestion: suggestion,
-                  onTrySuggested: () {
-                    final info = gameInfoFor(suggestion.suggestedGameId);
-                    if (info != null) _onTrySuggested(info);
-                  },
-                  onMaybeLater: _onMaybeLater,
-                ),
-            ],
-            Expanded(
-              child: compact
-                  ? ListView.separated(
-                      padding: EdgeInsets.fromLTRB(gutter, 18, gutter, 28),
-                      itemCount: gameCatalog.length,
-                      separatorBuilder: (_, _) => const SizedBox(height: 14),
-                      itemBuilder: (context, index) {
-                        final info = gameCatalog[index];
-                        final isSuggested = suggestion?.suggestedGameId == info.id;
-                        return FadeSlideIn(
-                          delay: Duration(milliseconds: 40 * index.clamp(0, 6)),
-                          child: _GameTile(
-                            info: info,
-                            isSuggested: isSuggested,
-                            onTap: () {
-                              if (isSuggested) {
-                                unawaited(_service.onNudgeAccepted(info.id));
-                              }
-                              _launchGame(info);
-                            },
-                          ),
-                        );
-                      },
-                    )
-                  : GridView.builder(
-                      padding: EdgeInsets.fromLTRB(gutter, 20, gutter, 28),
-                      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                        maxCrossAxisExtent: 380,
-                        mainAxisExtent: 240,
-                        crossAxisSpacing: 18,
-                        mainAxisSpacing: 18,
-                      ),
-                      itemCount: gameCatalog.length,
-                      itemBuilder: (context, index) {
-                        final info = gameCatalog[index];
-                        final isSuggested = suggestion?.suggestedGameId == info.id;
-                        return FadeSlideIn(
-                          delay: Duration(milliseconds: 40 * index),
-                          child: _GameCard(
-                            info: info,
-                            isSuggested: isSuggested,
-                            onTap: () {
-                              if (isSuggested) {
-                                unawaited(_service.onNudgeAccepted(info.id));
-                              }
-                              _launchGame(info);
-                            },
-                          ),
-                        );
-                      },
-                    ),
-            ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
@@ -256,9 +270,10 @@ class _GameSelectScreenState extends State<GameSelectScreen> {
 }
 /// A calm, closable daily-rest suggestion. It never controls game launching.
 class RestAdviceCard extends StatefulWidget {
-  const RestAdviceCard({super.key, this.service});
+  const RestAdviceCard({super.key, this.service, this.lang});
 
   final ProgressionService? service;
+  final String? lang;
 
   @override
   State<RestAdviceCard> createState() => RestAdviceCardState();
@@ -297,6 +312,7 @@ class RestAdviceCardState extends State<RestAdviceCard> {
   Widget build(BuildContext context) {
     final advice = _advice;
     if (_hidden || advice == null || !advice.show) return const SizedBox.shrink();
+    final l = widget.lang ?? LocaleController.instance.currentLanguage;
     return FadeSlideIn(
       child: Container(
         margin: const EdgeInsets.fromLTRB(18, 14, 18, 0),
@@ -305,13 +321,17 @@ class RestAdviceCardState extends State<RestAdviceCard> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Row(children: [IconMedallion(icon: Icons.local_cafe_rounded, color: AppColors.leafGreen, size: 52), const SizedBox(width: 12), const Expanded(child: Text('Time for a little rest', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800, color: AppColors.primaryText)))]),
+            Row(children: [
+              const IconMedallion(icon: Icons.local_cafe_rounded, color: AppColors.leafGreen, size: 52),
+              const SizedBox(width: 12),
+              Expanded(child: Text(AppStrings.timeToRestYourEyes(l), style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w800, color: AppColors.primaryText))),
+            ]),
             const SizedBox(height: 12),
-            Text('You have played for ${advice.minutesToday} minutes today. Well done! How about a cup of tea or a short walk?', style: const TextStyle(fontSize: 20, height: 1.3, color: AppColors.primaryText)),
+            Text(AppStrings.playedTodayMessage(l, advice.minutesToday), style: const TextStyle(fontSize: 20, height: 1.3, color: AppColors.primaryText)),
             const SizedBox(height: 14),
-            SizedBox(height: 64, child: ElevatedButton(onPressed: () => _answer(false), style: ElevatedButton.styleFrom(backgroundColor: AppColors.leafGreen), child: const Text('Rest now', style: TextStyle(fontSize: 21, fontWeight: FontWeight.w800)))),
+            SizedBox(height: 64, child: ElevatedButton(onPressed: () => _answer(false), style: ElevatedButton.styleFrom(backgroundColor: AppColors.leafGreen), child: Text(AppStrings.restNow(l), style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w800)))),
             const SizedBox(height: 10),
-            SizedBox(height: 64, child: OutlinedButton(onPressed: () => _answer(true), child: const Text('Keep playing', style: TextStyle(fontSize: 21, fontWeight: FontWeight.w800)))),
+            SizedBox(height: 64, child: OutlinedButton(onPressed: () => _answer(true), child: Text(AppStrings.keepPlaying(l), style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w800)))),
           ],
         ),
       ),
@@ -324,20 +344,26 @@ class _GameTile extends StatelessWidget {
   const _GameTile({
     required this.info,
     required this.onTap,
+    this.lang,
     this.isSuggested = false,
   });
 
   final GameInfo info;
   final VoidCallback onTap;
+  final String? lang;
   final bool isSuggested;
 
   @override
   Widget build(BuildContext context) {
+    final l = lang ?? LocaleController.instance.currentLanguage;
+    final title = AppStrings.gameTitle(l, info.id);
+    final desc = AppStrings.gameDescription(l, info.id);
+
     return PressableCard(
       onTap: onTap,
       color: info.color,
       radius: 26,
-      semanticLabel: info.name,
+      semanticLabel: title,
       padding: const EdgeInsets.fromLTRB(14, 14, 10, 14),
       child: Row(
         children: [
@@ -354,14 +380,14 @@ class _GameTile extends StatelessWidget {
                       color: AppColors.marigold,
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Row(
+                    child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.star_rounded, size: 16, color: AppColors.primaryText),
-                        SizedBox(width: 4),
+                        const Icon(Icons.star_rounded, size: 16, color: AppColors.primaryText),
+                        const SizedBox(width: 4),
                         Text(
-                          'Try today',
-                          style: TextStyle(
+                          AppStrings.tryToday(l),
+                          style: const TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w700,
                             color: AppColors.primaryText,
@@ -373,7 +399,7 @@ class _GameTile extends StatelessWidget {
                   const SizedBox(height: 6),
                 ],
                 Text(
-                  info.name,
+                  title,
                   style: const TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.w800,
@@ -383,7 +409,7 @@ class _GameTile extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  info.description,
+                  desc,
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w500,
@@ -407,20 +433,26 @@ class _GameCard extends StatelessWidget {
   const _GameCard({
     required this.info,
     required this.onTap,
+    this.lang,
     this.isSuggested = false,
   });
 
   final GameInfo info;
   final VoidCallback onTap;
+  final String? lang;
   final bool isSuggested;
 
   @override
   Widget build(BuildContext context) {
+    final l = lang ?? LocaleController.instance.currentLanguage;
+    final title = AppStrings.gameTitle(l, info.id);
+    final desc = AppStrings.gameDescription(l, info.id);
+
     return PressableCard(
       onTap: onTap,
       color: info.color,
       radius: 28,
-      semanticLabel: info.name,
+      semanticLabel: title,
       padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -454,14 +486,14 @@ class _GameCard extends StatelessWidget {
                 color: AppColors.marigold,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Row(
+              child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.star_rounded, size: 16, color: AppColors.primaryText),
-                  SizedBox(width: 4),
+                  const Icon(Icons.star_rounded, size: 16, color: AppColors.primaryText),
+                  const SizedBox(width: 4),
                   Text(
-                    'Try today',
-                    style: TextStyle(
+                    AppStrings.tryToday(l),
+                    style: const TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
                       color: AppColors.primaryText,
@@ -473,7 +505,7 @@ class _GameCard extends StatelessWidget {
             const SizedBox(height: 6),
           ],
           Text(
-            info.name,
+            title,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
@@ -485,7 +517,7 @@ class _GameCard extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            info.description,
+            desc,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
@@ -731,18 +763,25 @@ class VarietySuggestionCard extends StatelessWidget {
     required this.suggestion,
     required this.onTrySuggested,
     required this.onMaybeLater,
+    this.lang,
   });
 
   final VarietySuggestion suggestion;
   final VoidCallback onTrySuggested;
   final VoidCallback onMaybeLater;
+  final String? lang;
 
   @override
   Widget build(BuildContext context) {
+    final l = lang ?? LocaleController.instance.currentLanguage;
     final favInfo = gameInfoFor(suggestion.favouriteGameId);
-    final favName = favInfo?.name ?? suggestion.favouriteGameId;
+    final favName = favInfo != null
+        ? AppStrings.gameTitle(l, favInfo.id)
+        : suggestion.favouriteGameId;
     final sugInfo = gameInfoFor(suggestion.suggestedGameId);
-    final sugName = sugInfo?.name ?? suggestion.suggestedGameId;
+    final sugName = sugInfo != null
+        ? AppStrings.gameTitle(l, sugInfo.id)
+        : suggestion.suggestedGameId;
     final sugColor = sugInfo?.color ?? AppColors.terracotta;
 
     return FadeSlideIn(
@@ -758,7 +797,7 @@ class VarietySuggestionCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                IconMedallion(
+                const IconMedallion(
                   icon: Icons.lightbulb_rounded,
                   color: AppColors.marigoldDark,
                   size: 52,
@@ -766,7 +805,7 @@ class VarietySuggestionCard extends StatelessWidget {
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    'You really enjoy $favName!',
+                    AppStrings.varietyEnjoy(l, favName),
                     style: const TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.w800,
@@ -778,7 +817,7 @@ class VarietySuggestionCard extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             Text(
-              'How about trying $sugName today? It is good for the mind to play different games.',
+              AppStrings.varietyTry(l, sugName),
               style: const TextStyle(
                 fontSize: 20,
                 height: 1.3,
@@ -794,7 +833,7 @@ class VarietySuggestionCard extends StatelessWidget {
                   backgroundColor: sugColor,
                 ),
                 child: Text(
-                  'Try $sugName',
+                  AppStrings.tryGame(l, sugName),
                   style: const TextStyle(
                     fontSize: 21,
                     fontWeight: FontWeight.w800,
@@ -807,9 +846,9 @@ class VarietySuggestionCard extends StatelessWidget {
               height: 60,
               child: OutlinedButton(
                 onPressed: onMaybeLater,
-                child: const Text(
-                  'Maybe later',
-                  style: TextStyle(
+                child: Text(
+                  AppStrings.maybeLater(l),
+                  style: const TextStyle(
                     fontSize: 21,
                     fontWeight: FontWeight.w800,
                   ),

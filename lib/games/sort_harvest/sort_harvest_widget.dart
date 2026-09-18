@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../app_colors.dart';
+import '../../core/i18n/app_strings.dart';
+import '../../core/i18n/locale_controller.dart';
 import '../../ui/smriti_ui.dart';
 import '../cognitive_game.dart';
 import 'sort_harvest_game.dart';
@@ -82,6 +84,7 @@ class _SortHarvestWidgetState extends State<SortHarvestWidget> {
   @override
   Widget build(BuildContext context) {
     final isCompact = MediaQuery.of(context).size.height < 500;
+    final lang = LocaleController.instance.currentLanguage;
 
     return SingleChildScrollView(
       padding: EdgeInsets.symmetric(horizontal: 16, vertical: isCompact ? 8 : 20),
@@ -89,7 +92,7 @@ class _SortHarvestWidgetState extends State<SortHarvestWidget> {
         children: [
           // Instruction
           Text(
-            'Place this item where it belongs:',
+            AppStrings.placeItemWhereBelongs(lang),
             style: TextStyle(
               fontSize: isCompact ? 18 : 22,
               fontWeight: FontWeight.w600,
@@ -99,7 +102,7 @@ class _SortHarvestWidgetState extends State<SortHarvestWidget> {
           SizedBox(height: isCompact ? 10 : 24),
 
           // Card to sort
-          _buildCard(isCompact),
+          _buildCard(isCompact, lang),
           SizedBox(height: isCompact ? 14 : 32),
 
           // Sorting mats
@@ -108,7 +111,7 @@ class _SortHarvestWidgetState extends State<SortHarvestWidget> {
               alignment: WrapAlignment.center,
               spacing: isCompact ? 12 : 20,
               runSpacing: isCompact ? 12 : 20,
-              children: _mats.map((m) => _buildMat(m, isCompact)).toList(),
+              children: _mats.map((m) => _buildMat(m, isCompact, lang)).toList(),
             )
           else
             const Center(
@@ -122,8 +125,9 @@ class _SortHarvestWidgetState extends State<SortHarvestWidget> {
     );
   }
 
-  Widget _buildCard(bool isCompact) {
+  Widget _buildCard(bool isCompact, String lang) {
     final size = isCompact ? 84.0 : 140.0;
+    final rawId = _card['id']?.split('_').first ?? '';
     return Container(
       width: size,
       height: size,
@@ -136,12 +140,12 @@ class _SortHarvestWidgetState extends State<SortHarvestWidget> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Text(
-            _card['emoji'] ?? '🌿',
-            style: TextStyle(fontSize: isCompact ? 32 : 48),
+            _card['emoji'] ?? '🧺',
+            style: TextStyle(fontSize: isCompact ? 34 : 60),
           ),
-          const SizedBox(height: 4),
+          SizedBox(height: isCompact ? 2 : 4),
           Text(
-            _card['id']?.split('_').first ?? '',
+            AppStrings.marketItemName(lang, rawId),
             style: TextStyle(
               fontSize: isCompact ? 13 : 16,
               fontWeight: FontWeight.w600,
@@ -153,7 +157,7 @@ class _SortHarvestWidgetState extends State<SortHarvestWidget> {
     );
   }
 
-  Widget _buildMat(String mat, bool isCompact) {
+  Widget _buildMat(String mat, bool isCompact, String lang) {
     final color = _colorForMat(mat);
     return BouncyTap(
       onTap: () => _onMatTap(mat),
@@ -179,7 +183,7 @@ class _SortHarvestWidgetState extends State<SortHarvestWidget> {
             ),
             SizedBox(height: isCompact ? 6 : 12),
             Text(
-              mat.replaceAll('_', ' '),
+              AppStrings.harvestMatLabel(lang, mat),
               style: TextStyle(
                 fontSize: isCompact ? 13 : 16,
                 fontWeight: FontWeight.w700,

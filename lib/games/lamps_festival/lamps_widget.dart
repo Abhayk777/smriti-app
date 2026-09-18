@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../core/i18n/app_strings.dart';
+import '../../core/i18n/locale_controller.dart';
 import '../../ui/smriti_ui.dart';
 import '../cognitive_game.dart';
 import 'lamps_game.dart';
@@ -138,6 +140,7 @@ class _LampsWidgetState extends State<LampsWidget> {
 
   @override
   Widget build(BuildContext context) {
+    final lang = LocaleController.instance.currentLanguage;
     return Container(
       decoration: const BoxDecoration(color: Color(0xFF1C2638)),
       child: Padding(
@@ -147,12 +150,12 @@ class _LampsWidgetState extends State<LampsWidget> {
             // Status text
             Text(
               _phase == 'watching'
-                  ? 'Watch the lamps light up...'
+                  ? AppStrings.watchLampsLightUp(lang)
                   : _phase == 'tapping'
                       ? _direction == 'backward'
-                          ? 'Now tap them in REVERSE order'
-                          : 'Now tap them in the same order'
-                      : 'Well done!',
+                          ? AppStrings.tapLampsReverseOrder(lang)
+                          : AppStrings.tapLampsSameOrder(lang)
+                      : AppStrings.wellDone(lang),
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 23,

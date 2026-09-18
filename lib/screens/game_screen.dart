@@ -6,6 +6,8 @@ import 'package:flutter/services.dart';
 
 import '../app_colors.dart';
 import '../core/db/app_database.dart';
+import '../core/i18n/app_strings.dart';
+import '../core/i18n/locale_controller.dart';
 import '../core/progression/difficulty_source.dart';
 import '../core/progression/progression_service.dart';
 import '../core/repo/ability_repo.dart';
@@ -356,7 +358,8 @@ class _GameScreenState extends State<GameScreen> {
       final mins = _elapsed.inMinutes;
       final secs = _elapsed.inSeconds % 60;
       final durationStr = mins > 0 ? '${mins}m ${secs}s' : '${secs}s';
-      final name = _gameName(widget.gameId);
+      final lang = LocaleController.instance.currentLanguage;
+      final name = AppStrings.gameTitle(lang, widget.gameId);
 
       final restAdvice = await ProgressionService.instance.restAdvice();
       if (!mounted) return;
@@ -423,7 +426,7 @@ class _GameScreenState extends State<GameScreen> {
                                 ),
                                 const SizedBox(height: 12),
                                 Text(
-                                  completed ? 'Session Complete' : 'Great Effort',
+                                  completed ? AppStrings.sessionComplete(lang) : 'Great Effort',
                                   textAlign: TextAlign.center,
                                   style: const TextStyle(
                                     fontSize: 28,
@@ -480,9 +483,9 @@ class _GameScreenState extends State<GameScreen> {
                                   child: ElevatedButton(
                                     onPressed: () => Navigator.of(ctx).pop(),
                                     style: ElevatedButton.styleFrom(backgroundColor: _color),
-                                    child: const Text(
-                                      'Back to Games',
-                                      style: TextStyle(fontSize: 21, fontWeight: FontWeight.w800),
+                                    child: Text(
+                                      AppStrings.backToGames(lang),
+                                      style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w800),
                                     ),
                                   ),
                                 ),
@@ -583,13 +586,14 @@ class _GameScreenState extends State<GameScreen> {
     }
 
     if (_needsFamily) {
+      final lang = LocaleController.instance.currentLanguage;
       return Scaffold(
         backgroundColor: AppColors.pageBackground,
         body: SafeArea(
           child: Column(
             children: [
               ScreenHeader(
-                title: _gameName(widget.gameId),
+                title: _gameName(widget.gameId, lang),
                 icon: _info?.icon ?? Icons.people_alt_rounded,
                 color: _color,
               ),
@@ -597,9 +601,8 @@ class _GameScreenState extends State<GameScreen> {
                 child: EmptyState(
                   icon: Icons.people_alt_rounded,
                   color: _color,
-                  title: 'Your family photos are on their way',
-                  message: 'This game uses your own family. It will be ready '
-                      'once your caregiver adds at least two family members.',
+                  title: AppStrings.familyPhotosOnTheirWay(lang),
+                  message: AppStrings.familyGameNeedMembers(lang),
                 ),
               ),
               Padding(
@@ -611,9 +614,9 @@ class _GameScreenState extends State<GameScreen> {
                     onPressed: () => Navigator.of(context).pop(),
                     style: ElevatedButton.styleFrom(backgroundColor: _color),
                     icon: const Icon(Icons.arrow_back_rounded, size: 28),
-                    label: const Text(
-                      'Back to Games',
-                      style: TextStyle(fontSize: 21, fontWeight: FontWeight.w800),
+                    label: Text(
+                      AppStrings.backToGames(lang),
+                      style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w800),
                     ),
                   ),
                 ),
@@ -861,7 +864,10 @@ class _GameScreenState extends State<GameScreen> {
     );
   }
 
-  String _gameName(String id) => gameInfoFor(id)?.name ?? id;
+  String _gameName(String id, [String? lang]) {
+    final l = lang ?? LocaleController.instance.currentLanguage;
+    return AppStrings.gameTitle(l, id);
+  }
 }
 
 /// Presentational dialog content shown when the daily rest advice is due.
@@ -881,6 +887,7 @@ class RestCardDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final lang = LocaleController.instance.currentLanguage;
     return FadeSlideIn(
       child: Container(
         padding: EdgeInsets.all(isCompact ? 18 : 24),
@@ -900,10 +907,10 @@ class RestCardDialog extends StatelessWidget {
                   size: isCompact ? 48 : 56,
                 ),
                 const SizedBox(width: 14),
-                const Expanded(
+                Expanded(
                   child: Text(
-                    'Time for a little rest',
-                    style: TextStyle(
+                    AppStrings.timeToRestYourEyes(lang),
+                    style: const TextStyle(
                       fontSize: 26,
                       fontWeight: FontWeight.w800,
                       color: AppColors.primaryText,
@@ -914,7 +921,7 @@ class RestCardDialog extends StatelessWidget {
             ),
             SizedBox(height: isCompact ? 12 : 16),
             Text(
-              'You have played for $minutesToday minutes today. Well done! How about a cup of tea or a short walk?',
+              AppStrings.playedTodayMessage(lang, minutesToday),
               style: const TextStyle(
                 fontSize: 20,
                 height: 1.3,
@@ -929,9 +936,9 @@ class RestCardDialog extends StatelessWidget {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.leafGreen,
                 ),
-                child: const Text(
-                  'Rest now',
-                  style: TextStyle(
+                child: Text(
+                  AppStrings.restNow(lang),
+                  style: const TextStyle(
                     fontSize: 21,
                     fontWeight: FontWeight.w800,
                   ),
@@ -943,9 +950,9 @@ class RestCardDialog extends StatelessWidget {
               height: 64,
               child: OutlinedButton(
                 onPressed: onKeepPlaying,
-                child: const Text(
-                  'Keep playing',
-                  style: TextStyle(
+                child: Text(
+                  AppStrings.keepPlaying(lang),
+                  style: const TextStyle(
                     fontSize: 21,
                     fontWeight: FontWeight.w800,
                   ),
@@ -972,6 +979,7 @@ class BreakLockDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final lang = LocaleController.instance.currentLanguage;
     return SingleChildScrollView(
       child: Container(
         padding: EdgeInsets.all(isCompact ? 20 : 28),
@@ -991,10 +999,10 @@ class BreakLockDialog extends StatelessWidget {
                   size: isCompact ? 48 : 56,
                 ),
                 const SizedBox(width: 14),
-                const Expanded(
+                Expanded(
                   child: Text(
-                    'Time for a good rest',
-                    style: TextStyle(
+                    AppStrings.timeForGoodRest(lang),
+                    style: const TextStyle(
                       fontSize: 26,
                       fontWeight: FontWeight.w800,
                       color: AppColors.primaryText,
@@ -1004,9 +1012,9 @@ class BreakLockDialog extends StatelessWidget {
               ],
             ),
             SizedBox(height: isCompact ? 12 : 16),
-            const Text(
-              'You have had a wonderful playtime today! It is time to rest your eyes and mind. Games are taking a peaceful break and will be back in 3 hours.',
-              style: TextStyle(
+            Text(
+              AppStrings.breakLockBody(lang),
+              style: const TextStyle(
                 fontSize: 20,
                 height: 1.3,
                 color: AppColors.primaryText,
@@ -1025,9 +1033,9 @@ class BreakLockDialog extends StatelessWidget {
                   ),
                 ),
                 icon: const Icon(Icons.home_rounded, size: 28),
-                label: const Text(
-                  'Rest now',
-                  style: TextStyle(
+                label: Text(
+                  AppStrings.restNow(lang),
+                  style: const TextStyle(
                     fontSize: 21,
                     fontWeight: FontWeight.w800,
                   ),

@@ -9,6 +9,8 @@ import '../core/db/app_database.dart';
 import '../core/db/database.dart';
 import '../core/files/file_paths.dart';
 import '../core/files/local_media.dart';
+import '../core/i18n/app_strings.dart';
+import '../core/i18n/locale_controller.dart';
 import '../core/repo/content_repo.dart';
 import '../core/sync/sync_engine.dart';
 import '../ui/smriti_ui.dart';
@@ -72,38 +74,44 @@ class _FamilyScreenState extends State<FamilyScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.pageBackground,
-      body: SafeArea(
-        child: Column(
-          children: [
-            const ScreenHeader(
-              title: 'My Family',
-              subtitle: 'The people who love you',
-              icon: Icons.people_alt_rounded,
-              color: AppColors.indigo,
+    return ListenableBuilder(
+      listenable: LocaleController.instance,
+      builder: (context, _) {
+        final lang = LocaleController.instance.currentLanguage;
+        return Scaffold(
+          backgroundColor: AppColors.pageBackground,
+          body: SafeArea(
+            child: Column(
+              children: [
+                ScreenHeader(
+                  title: AppStrings.myFamily(lang),
+                  subtitle: AppStrings.thePeopleWhoLoveYou(lang),
+                  icon: Icons.people_alt_rounded,
+                  color: AppColors.indigo,
+                ),
+                Expanded(
+                  child: _loading
+                      ? const Center(
+                          child: CircularProgressIndicator(color: AppColors.indigo),
+                        )
+                      : _people.isEmpty
+                          ? _buildEmpty(lang)
+                          : _buildGrid(),
+                ),
+              ],
             ),
-            Expanded(
-              child: _loading
-                  ? const Center(
-                      child: CircularProgressIndicator(color: AppColors.indigo),
-                    )
-                  : _people.isEmpty
-                      ? _buildEmpty()
-                      : _buildGrid(),
-            ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
-  Widget _buildEmpty() {
-    return const EmptyState(
+  Widget _buildEmpty(String lang) {
+    return EmptyState(
       icon: Icons.people_alt_rounded,
       color: AppColors.indigo,
-      title: 'Your family will appear here',
-      message: 'Photos show up once your caregiver adds them.',
+      title: AppStrings.familyWillAppearHere(lang),
+      message: AppStrings.photosShowUpPrompt(lang),
     );
   }
 

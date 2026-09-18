@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../app_colors.dart';
+import '../../core/i18n/app_strings.dart';
+import '../../core/i18n/locale_controller.dart';
 import '../../ui/smriti_ui.dart';
 import '../cognitive_game.dart';
 import 'weaving_game.dart';
@@ -66,13 +68,14 @@ class _WeavingWidgetState extends State<WeavingWidget> {
 
   @override
   Widget build(BuildContext context) {
+    final lang = LocaleController.instance.currentLanguage;
     return Padding(
       padding: const EdgeInsets.all(20),
       child: Column(
         children: [
-          const Text(
-            'Which pattern matches?',
-            style: TextStyle(
+          Text(
+            AppStrings.whichPatternMatches(lang),
+            style: const TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.w600,
               color: AppColors.primaryText,

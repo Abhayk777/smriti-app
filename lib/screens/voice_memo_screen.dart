@@ -13,6 +13,8 @@ import '../app_colors.dart';
 import '../core/db/app_database.dart';
 import '../core/db/database.dart';
 import '../core/files/file_paths.dart';
+import '../core/i18n/app_strings.dart';
+import '../core/i18n/locale_controller.dart';
 import '../core/repo/memo_repo.dart';
 import '../core/sync/sync_engine.dart';
 import '../ui/smriti_ui.dart';
@@ -218,7 +220,7 @@ class _VoiceMemoScreenState extends State<VoiceMemoScreen> {
     return '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
   }
 
-  String _formatMemoDate(int millis) {
+  String _formatMemoDate(int millis, String lang) {
     final dt = DateTime.fromMillisecondsSinceEpoch(millis);
     final now = DateTime.now();
     final isToday = dt.year == now.year && dt.month == now.month && dt.day == now.day;
@@ -226,58 +228,64 @@ class _VoiceMemoScreenState extends State<VoiceMemoScreen> {
     final period = dt.hour >= 12 ? 'PM' : 'AM';
     final timeStr = '$h:${dt.minute.toString().padLeft(2, '0')} $period';
     if (isToday) {
-      return 'Today at $timeStr';
+      return AppStrings.todayAtTime(lang, timeStr);
     }
     return '${dt.day}/${dt.month} at $timeStr';
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.pageBackground,
-      body: SafeArea(
-        child: Column(
-          children: [
-            _buildHeader(context),
-            Expanded(
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final wide = constraints.maxWidth >= 720 &&
-                      constraints.maxWidth > constraints.maxHeight;
-                  if (wide) {
-                    return Row(
-                      children: [
-                        // Left panel: Record action
-                        Expanded(flex: 4, child: _buildRecordPanel()),
-                        Container(width: 1.5, color: AppColors.border),
-                        // Right panel: Memo list
-                        Expanded(flex: 5, child: _buildMemosList()),
-                      ],
-                    );
-                  }
-                  return Column(
-                    children: [
-                      SizedBox(
-                        height: (constraints.maxHeight * 0.46).clamp(260.0, 380.0),
-                        child: _buildRecordPanel(),
-                      ),
-                      Container(height: 1.5, color: AppColors.border),
-                      Expanded(child: _buildMemosList()),
-                    ],
-                  );
-                },
-              ),
+    return ListenableBuilder(
+      listenable: LocaleController.instance,
+      builder: (context, _) {
+        final lang = LocaleController.instance.currentLanguage;
+        return Scaffold(
+          backgroundColor: AppColors.pageBackground,
+          body: SafeArea(
+            child: Column(
+              children: [
+                _buildHeader(context, lang),
+                Expanded(
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final wide = constraints.maxWidth >= 720 &&
+                          constraints.maxWidth > constraints.maxHeight;
+                      if (wide) {
+                        return Row(
+                          children: [
+                            // Left panel: Record action
+                            Expanded(flex: 4, child: _buildRecordPanel(lang)),
+                            Container(width: 1.5, color: AppColors.border),
+                            // Right panel: Memo list
+                            Expanded(flex: 5, child: _buildMemosList(lang)),
+                          ],
+                        );
+                      }
+                      return Column(
+                        children: [
+                          SizedBox(
+                            height: (constraints.maxHeight * 0.46).clamp(260.0, 380.0),
+                            child: _buildRecordPanel(lang),
+                          ),
+                          Container(height: 1.5, color: AppColors.border),
+                          Expanded(child: _buildMemosList(lang)),
+                        ],
+                      );
+                    },
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
+  Widget _buildHeader(BuildContext context, String lang) {
     return ScreenHeader(
-      title: 'Message',
-      subtitle: 'Send a voice message to your family',
+      title: AppStrings.message(lang),
+      subtitle: AppStrings.sendVoiceMessageToFamily(lang),
       icon: Icons.mic_rounded,
       color: AppColors.riverTeal,
       onBack: () async {
@@ -290,7 +298,7 @@ class _VoiceMemoScreenState extends State<VoiceMemoScreen> {
     );
   }
 
-  Widget _buildRecordPanel() {
+  Widget _buildRecordPanel(String lang) {
     final color = _isRecording ? AppColors.recordingDot : AppColors.riverTeal;
     return Center(
       child: SingleChildScrollView(
@@ -300,7 +308,7 @@ class _VoiceMemoScreenState extends State<VoiceMemoScreen> {
           children: [
             Semantics(
               button: true,
-              label: _isRecording ? 'Stop recording' : 'Start recording',
+              label: _isRecording ? AppStrings.tapToStop(lang) : AppStrings.tapToRecord(lang),
               child: GestureDetector(
                 onTap: _toggleRecord,
                 child: AnimatedContainer(
@@ -329,7 +337,7 @@ class _VoiceMemoScreenState extends State<VoiceMemoScreen> {
             ),
             const SizedBox(height: 20),
             Text(
-              _isRecording ? 'Recording...' : 'Tap to Record',
+              _isRecording ? AppStrings.recording(lang) : AppStrings.tapToRecord(lang),
               style: TextStyle(
                 fontSize: 26,
                 fontWeight: FontWeight.w800,
@@ -340,7 +348,7 @@ class _VoiceMemoScreenState extends State<VoiceMemoScreen> {
             Text(
               _isRecording
                   ? _formatDuration(_recordSeconds)
-                  : 'Send a voice message',
+                  : AppStrings.sendAVoiceMessage(lang),
               style: TextStyle(
                 fontSize: _isRecording ? 30 : 18,
                 fontWeight: _isRecording ? FontWeight.w800 : FontWeight.w500,
@@ -354,7 +362,7 @@ class _VoiceMemoScreenState extends State<VoiceMemoScreen> {
     );
   }
 
-  Widget _buildMemosList() {
+  Widget _buildMemosList(String lang) {
     if (_loadingMemos) {
       return const Center(
         child: CircularProgressIndicator(color: AppColors.riverTeal),
@@ -362,10 +370,10 @@ class _VoiceMemoScreenState extends State<VoiceMemoScreen> {
     }
 
     if (_memos.isEmpty) {
-      return const EmptyState(
+      return EmptyState(
         icon: Icons.mic_none_rounded,
         color: AppColors.riverTeal,
-        title: 'No messages sent yet.',
+        title: AppStrings.noMessagesYet(lang),
       );
     }
 
@@ -375,11 +383,11 @@ class _VoiceMemoScreenState extends State<VoiceMemoScreen> {
       itemCount: _memos.length + 1,
       itemBuilder: (context, index) {
         if (index == 0) {
-          return const Padding(
-            padding: EdgeInsets.only(bottom: 12, left: 4),
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 12, left: 4),
             child: Text(
-              'Your messages',
-              style: TextStyle(
+              AppStrings.yourVoiceMessages(lang),
+              style: const TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w700,
                 color: AppColors.primaryText,
@@ -425,7 +433,7 @@ class _VoiceMemoScreenState extends State<VoiceMemoScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        _formatMemoDate(memo.recordedAt),
+                        _formatMemoDate(memo.recordedAt, lang),
                         style: const TextStyle(
                           fontSize: 19,
                           fontWeight: FontWeight.w700,

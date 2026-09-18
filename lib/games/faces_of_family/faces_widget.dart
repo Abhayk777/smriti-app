@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 
 import '../../app_colors.dart';
 import '../../core/files/local_media.dart';
+import '../../core/i18n/app_strings.dart';
+import '../../core/i18n/locale_controller.dart';
 import '../../ui/smriti_ui.dart';
 import '../cognitive_game.dart';
 import 'faces_game.dart';
@@ -115,9 +117,10 @@ class _FacesWidgetState extends State<FacesWidget> {
     final size = MediaQuery.sizeOf(context);
     final isCompact = size.height < 500;
     final wide = size.width > size.height && size.width >= 720;
+    final lang = LocaleController.instance.currentLanguage;
 
     final prompt = Text(
-      _promptForMode(_mode),
+      _promptForMode(_mode, lang),
       style: TextStyle(
         fontSize: isCompact ? 20 : 26,
         fontWeight: FontWeight.w800,
@@ -172,19 +175,19 @@ class _FacesWidgetState extends State<FacesWidget> {
     );
   }
 
-  String _promptForMode(String mode) {
+  String _promptForMode(String mode, String lang) {
     switch (mode) {
       case 'recognition_3':
       case 'recognition_2':
-        return 'Who is this person?';
+        return AppStrings.whoIsThisPerson(lang);
       case 'free_naming':
-        return 'Can you name this person?';
+        return AppStrings.canYouNameThisPerson(lang);
       case 'relationship':
-        return 'How is this person related to you?';
+        return AppStrings.howIsPersonRelated(lang);
       case 'last_contact':
-        return 'When did you last see this person?';
+        return AppStrings.whenDidYouLastSeePerson(lang);
       default:
-        return 'Who is this person?';
+        return AppStrings.whoIsThisPerson(lang);
     }
   }
 

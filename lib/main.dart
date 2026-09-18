@@ -8,6 +8,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:workmanager/workmanager.dart';
 
 import 'core/auth/supabase_bootstrap.dart';
+import 'core/i18n/locale_controller.dart';
 import 'core/reminders/native_reminder_bridge.dart';
 import 'core/sync/sync_engine.dart';
 import 'screens/main_screen.dart';
@@ -74,6 +75,13 @@ Future<void> main() async {
     SyncEngine.defaultInstance.run(trigger: SyncTrigger.manual);
   } catch (e) {
     debugPrint('Error initializing SyncEngine: $e');
+  }
+
+  // Initialize LocaleController from local SQLite
+  try {
+    await LocaleController.instance.init();
+  } catch (e) {
+    debugPrint('Error initializing LocaleController: $e');
   }
 
   // Phones in portrait, tablets in landscape. On Android MainActivity sets

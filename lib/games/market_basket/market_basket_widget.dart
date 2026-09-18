@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../app_colors.dart';
+import '../../core/i18n/app_strings.dart';
+import '../../core/i18n/locale_controller.dart';
 import '../../ui/smriti_ui.dart';
 import '../cognitive_game.dart';
 import 'market_basket_game.dart';
@@ -130,20 +132,21 @@ class _MarketBasketWidgetState extends State<MarketBasketWidget>
   @override
   Widget build(BuildContext context) {
     final isCompact = MediaQuery.of(context).size.height < 500;
+    final lang = LocaleController.instance.currentLanguage;
     return Padding(
       padding: EdgeInsets.all(isCompact ? 8 : 20),
-      child: _buildPhase(isCompact),
+      child: _buildPhase(isCompact, lang),
     );
   }
 
-  Widget _buildPhase(bool isCompact) {
+  Widget _buildPhase(bool isCompact, String lang) {
     switch (_phase) {
       case 'showing_list':
-        return _buildListPhase(isCompact);
+        return _buildListPhase(isCompact, lang);
       case 'delay':
-        return _buildDelayPhase();
+        return _buildDelayPhase(lang);
       case 'picking':
-        return _buildPickingPhase(isCompact);
+        return _buildPickingPhase(isCompact, lang);
       case 'done':
         return const Center(
           child: Icon(Icons.check_circle_rounded, size: 80, color: AppColors.leafGreen),
@@ -153,13 +156,13 @@ class _MarketBasketWidgetState extends State<MarketBasketWidget>
     }
   }
 
-  Widget _buildListPhase(bool isCompact) {
+  Widget _buildListPhase(bool isCompact, String lang) {
     return SingleChildScrollView(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Text(
-            'Remember these items:',
+            AppStrings.rememberTheseItems(lang),
             style: TextStyle(
               fontSize: isCompact ? 18 : 24,
               fontWeight: FontWeight.w600,
@@ -171,23 +174,23 @@ class _MarketBasketWidgetState extends State<MarketBasketWidget>
             spacing: isCompact ? 12 : 20,
             runSpacing: isCompact ? 12 : 20,
             alignment: WrapAlignment.center,
-            children: _targets.map((item) => _buildItemCard(item, large: !isCompact)).toList(),
+            children: _targets.map((item) => _buildItemCard(item, lang, large: !isCompact)).toList(),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildDelayPhase() {
-    return const Center(
+  Widget _buildDelayPhase(String lang) {
+    return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.hourglass_top_rounded, size: 64, color: AppColors.marigoldDark),
-          SizedBox(height: 16),
+          const Icon(Icons.hourglass_top_rounded, size: 64, color: AppColors.marigoldDark),
+          const SizedBox(height: 16),
           Text(
-            'Get ready...',
-            style: TextStyle(
+            AppStrings.getReady(lang),
+            style: const TextStyle(
               fontSize: 22,
               color: AppColors.secondaryText,
             ),
@@ -197,11 +200,11 @@ class _MarketBasketWidgetState extends State<MarketBasketWidget>
     );
   }
 
-  Widget _buildPickingPhase(bool isCompact) {
+  Widget _buildPickingPhase(bool isCompact, String lang) {
     return Column(
       children: [
         Text(
-          'Pick the items from your list:',
+          AppStrings.pickItemsFromList(lang),
           style: TextStyle(
             fontSize: isCompact ? 16 : 22,
             fontWeight: FontWeight.w600,
@@ -221,25 +224,32 @@ class _MarketBasketWidgetState extends State<MarketBasketWidget>
             itemBuilder: (context, index) {
               final item = _shelf[index];
               final isPicked = _picked.contains(item.id);
-              return _buildShelfItem(item, isPicked);
+              return _buildShelfItem(item, isPicked, lang);
             },
           ),
         ),
-        SizedBox(height: isCompact ? 8 : 16),
-        // Done button
-        ElevatedButton(
-          onPressed: _picked.isNotEmpty ? _submitResult : null,
-          style: ElevatedButton.styleFrom(
-            padding: EdgeInsets.symmetric(
-              horizontal: isCompact ? 28 : 44,
-              vertical: isCompact ? 12 : 18,
+        // Finish picking button
+        Padding(
+          padding: EdgeInsets.symmetric(vertical: isCompact ? 4 : 8),
+          child: ElevatedButton(
+            onPressed: _submitResult,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.marigold,
+              foregroundColor: AppColors.primaryText,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              padding: EdgeInsets.symmetric(
+                horizontal: isCompact ? 32 : 48,
+                vertical: isCompact ? 10 : 16,
+              ),
             ),
-          ),
-          child: Text(
-            'Done (${_picked.length} picked)',
-            style: TextStyle(
-              fontSize: isCompact ? 17 : 20,
-              fontWeight: FontWeight.w700,
+            child: Text(
+              AppStrings.done(lang),
+              style: TextStyle(
+                fontSize: isCompact ? 17 : 20,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
         ),
@@ -247,7 +257,7 @@ class _MarketBasketWidgetState extends State<MarketBasketWidget>
     );
   }
 
-  Widget _buildShelfItem(MarketItem item, bool isPicked) {
+  Widget _buildShelfItem(MarketItem item, bool isPicked, String lang) {
     final tint = _tints[_shelf.indexOf(item) % _tints.length];
     return BouncyTap(
       onTap: () => _onItemTap(item),
@@ -272,7 +282,7 @@ class _MarketBasketWidgetState extends State<MarketBasketWidget>
             ),
             const SizedBox(height: 8),
             Text(
-              item.labelKey.replaceFirst('item.', ''),
+              AppStrings.marketItemName(lang, item.id),
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
@@ -294,32 +304,32 @@ class _MarketBasketWidgetState extends State<MarketBasketWidget>
     );
   }
 
-  Widget _buildItemCard(MarketItem item, {bool large = false}) {
+  Widget _buildItemCard(MarketItem item, String lang, {bool large = false}) {
     return PopIn(
       child: Container(
-      width: large ? 130 : 100,
-      height: large ? 130 : 100,
-      decoration: BoxDecoration(
-        color: _tints[_targets.indexOf(item) % _tints.length],
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.marigold, width: 2.5),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(item.iconAsset, style: TextStyle(fontSize: large ? 40 : 30)),
-          const SizedBox(height: 4),
-          Text(
-            item.labelKey.replaceFirst('item.', ''),
-            style: TextStyle(
-              fontSize: large ? 17 : 15,
-              fontWeight: FontWeight.w700,
-              color: AppColors.primaryText,
+        width: large ? 130 : 100,
+        height: large ? 130 : 100,
+        decoration: BoxDecoration(
+          color: _tints[_targets.indexOf(item) % _tints.length],
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AppColors.marigold, width: 2.5),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(item.iconAsset, style: TextStyle(fontSize: large ? 40 : 30)),
+            const SizedBox(height: 4),
+            Text(
+              AppStrings.marketItemName(lang, item.id),
+              style: TextStyle(
+                fontSize: large ? 17 : 15,
+                fontWeight: FontWeight.w700,
+                color: AppColors.primaryText,
+              ),
+              textAlign: TextAlign.center,
             ),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
+          ],
+        ),
       ),
     );
   }

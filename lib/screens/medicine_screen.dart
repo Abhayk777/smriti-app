@@ -11,6 +11,8 @@ import '../app_colors.dart';
 import '../core/db/app_database.dart';
 import '../core/db/database.dart';
 import '../core/files/file_paths.dart';
+import '../core/i18n/app_strings.dart';
+import '../core/i18n/locale_controller.dart';
 import '../core/repo/content_repo.dart';
 import '../core/repo/event_repo.dart';
 import '../core/sync/sync_engine.dart';
@@ -22,7 +24,9 @@ import '../ui/smriti_ui.dart';
 /// High contrast, large pill icons/photos, voice reminder playback,
 /// and simple tap-to-confirm visual feedback.
 class MedicineScreen extends StatefulWidget {
-  const MedicineScreen({super.key});
+  const MedicineScreen({super.key, this.syncInBackground = true});
+
+  final bool syncInBackground;
 
   @override
   State<MedicineScreen> createState() => _MedicineScreenState();
@@ -45,9 +49,11 @@ class _MedicineScreenState extends State<MedicineScreen>
     WidgetsBinding.instance.addObserver(this);
     _load();
     // Auto-refresh medications from Supabase in the background
-    SyncEngine.defaultInstance.run(trigger: SyncTrigger.manual).then((_) {
-      if (mounted) _load();
-    });
+    if (widget.syncInBackground) {
+      SyncEngine.defaultInstance.run(trigger: SyncTrigger.manual).then((_) {
+        if (mounted) _load();
+      });
+    }
   }
 
   @override
@@ -109,6 +115,7 @@ class _MedicineScreenState extends State<MedicineScreen>
     });
 
     if (mounted) {
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Recorded dose: ${med.name}'),
@@ -119,7 +126,9 @@ class _MedicineScreenState extends State<MedicineScreen>
     }
 
     // Automatically push to Supabase in background
-    unawaited(SyncEngine.defaultInstance.run(trigger: SyncTrigger.manual));
+    if (widget.syncInBackground) {
+      unawaited(SyncEngine.defaultInstance.run(trigger: SyncTrigger.manual));
+    }
   }
 
   String _formatTime(int min) {
@@ -128,12 +137,6 @@ class _MedicineScreenState extends State<MedicineScreen>
     final period = h >= 12 ? 'PM' : 'AM';
     final dh = h == 0 ? 12 : (h > 12 ? h - 12 : h);
     return '$dh:${m.toString().padLeft(2, '0')} $period';
-  }
-
-  String _timeOfDayLabel(int min) {
-    if (min < 720) return 'Morning';
-    if (min < 1020) return 'Afternoon';
-    return 'Evening';
   }
 
   Future<File?> _resolveMedPhoto(String? rawPath, String medId) async {
@@ -187,47 +190,54 @@ class _MedicineScreenState extends State<MedicineScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.pageBackground,
-      body: SafeArea(
-        child: Column(
-          children: [
-            const ScreenHeader(
-              title: 'My Medicines',
-              subtitle: 'Tap Take once you have had it',
-              icon: Icons.medication_rounded,
-              color: AppColors.leafGreen,
+    return ListenableBuilder(
+      listenable: LocaleController.instance,
+      builder: (context, _) {
+        final lang = LocaleController.instance.currentLanguage;
+        return Scaffold(
+          backgroundColor: AppColors.pageBackground,
+          body: SafeArea(
+            child: Column(
+              children: [
+                ScreenHeader(
+                  title: AppStrings.myMedicines(lang),
+                  subtitle: AppStrings.tapTakeOnceHad(lang),
+                  icon: Icons.medication_rounded,
+                  color: AppColors.leafGreen,
+                ),
+                Expanded(
+                  child: _loading
+                      ? const Center(
+                          child: CircularProgressIndicator(color: AppColors.leafGreen),
+                        )
+                      : _medications.isEmpty
+                          ? _buildEmpty(lang)
+                          : _buildList(lang),
+                ),
+              ],
             ),
-            Expanded(
-              child: _loading
-                  ? const Center(
-                      child: CircularProgressIndicator(color: AppColors.leafGreen),
-                    )
-                  : _medications.isEmpty
-                      ? _buildEmpty()
-                      : _buildList(),
-            ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
-  Widget _buildEmpty() {
-    return const EmptyState(
+  Widget _buildEmpty(String lang) {
+    return EmptyState(
       icon: Icons.medication_rounded,
       color: AppColors.leafGreen,
-      title: 'No medicines scheduled.',
+      title: AppStrings.noMedicinesScheduled(lang),
     );
   }
 
-  void _onTakeTap(Medication med, bool isTaken) {
+  void _onTakeTap(Medication med, bool isTaken, String lang) {
     if (!isTaken) {
       _recordTaken(med);
     } else {
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('${med.name} is already marked as taken today.'),
+          content: Text(AppStrings.alreadyMarkedTaken(lang, med.name)),
           backgroundColor: AppColors.leafGreen,
           duration: const Duration(seconds: 2),
         ),
@@ -235,7 +245,7 @@ class _MedicineScreenState extends State<MedicineScreen>
     }
   }
 
-  Widget _buildList() {
+  Widget _buildList(String lang) {
     final gutter = Screen.gutter(context);
     return ListView.builder(
       padding: EdgeInsets.fromLTRB(gutter, 20, gutter, 24),
@@ -245,13 +255,13 @@ class _MedicineScreenState extends State<MedicineScreen>
         final isTaken = _visuallyTakenIds.contains(med.id);
         return MaxWidth(
           maxWidth: 900,
-          child: _buildMedicineCard(med, isTaken),
+          child: _buildMedicineCard(med, isTaken, lang),
         );
       },
     );
   }
 
-  Widget _buildMedicineCard(Medication med, bool isTaken) {
+  Widget _buildMedicineCard(Medication med, bool isTaken, String lang) {
     return LayoutBuilder(
       builder: (context, constraints) {
         final stacked = constraints.maxWidth < 600;
@@ -286,6 +296,10 @@ class _MedicineScreenState extends State<MedicineScreen>
           ),
         );
 
+        final dayPart = med.chosenTimeMin < 720
+            ? 'morning'
+            : (med.chosenTimeMin < 1020 ? 'afternoon' : 'evening');
+
         final details = Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -306,7 +320,7 @@ class _MedicineScreenState extends State<MedicineScreen>
                 const SizedBox(width: 6),
                 Flexible(
                   child: Text(
-                    '${_timeOfDayLabel(med.chosenTimeMin)}, ${_formatTime(med.chosenTimeMin)}',
+                    '${AppStrings.dayPartLabel(lang, dayPart)}, ${_formatTime(med.chosenTimeMin)}',
                     style: const TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.w700,
@@ -318,7 +332,7 @@ class _MedicineScreenState extends State<MedicineScreen>
             ),
             const SizedBox(height: 4),
             Text(
-              'Dose: ${med.dose}',
+              AppStrings.doseLabel(lang, med.dose),
               style: const TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w700,
@@ -338,9 +352,9 @@ class _MedicineScreenState extends State<MedicineScreen>
               padding: const EdgeInsets.symmetric(horizontal: 18),
             ),
             icon: const Icon(Icons.volume_up_rounded, size: 28),
-            label: const Text(
-              'Listen',
-              style: TextStyle(fontSize: 19, fontWeight: FontWeight.w700),
+            label: Text(
+              AppStrings.hearInstruction(lang),
+              style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w700),
             ),
           ),
         );
@@ -348,7 +362,7 @@ class _MedicineScreenState extends State<MedicineScreen>
         final take = SizedBox(
           height: 60,
           child: ElevatedButton.icon(
-            onPressed: () => _onTakeTap(med, isTaken),
+            onPressed: () => _onTakeTap(med, isTaken, lang),
             style: ElevatedButton.styleFrom(
               backgroundColor:
                   isTaken ? AppColors.leafGreenDark : AppColors.leafGreen,
@@ -360,7 +374,7 @@ class _MedicineScreenState extends State<MedicineScreen>
               size: 28,
             ),
             label: Text(
-              isTaken ? 'Taken' : 'Take',
+              isTaken ? AppStrings.taken(lang) : AppStrings.take(lang),
               style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
             ),
           ),
