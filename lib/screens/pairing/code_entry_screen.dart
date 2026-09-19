@@ -210,15 +210,15 @@ class _CodeEntryScreenState extends State<CodeEntryScreen> {
           filled: true,
           fillColor: AppColors.raisedSurface,
           contentPadding: const EdgeInsets.symmetric(vertical: 16),
-          border: OutlineInputBorder(
+          border: UnderlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: const BorderSide(color: AppColors.border, width: 1.5),
           ),
-          enabledBorder: OutlineInputBorder(
+          enabledBorder: UnderlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: const BorderSide(color: AppColors.border, width: 1.5),
           ),
-          focusedBorder: OutlineInputBorder(
+          focusedBorder: UnderlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: const BorderSide(color: AppColors.terracotta, width: 2),
           ),

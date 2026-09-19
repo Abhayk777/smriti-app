@@ -200,6 +200,7 @@ class _MedicineScreenState extends State<MedicineScreen>
             child: Column(
               children: [
                 ScreenHeader(
+      image: 'tile_medicine.jpg',
                   title: AppStrings.myMedicines(lang),
                   subtitle: AppStrings.tapTakeOnceHad(lang),
                   icon: Icons.medication_rounded,

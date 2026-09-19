@@ -9,16 +9,6 @@ import '../../ui/smriti_ui.dart';
 import '../cognitive_game.dart';
 import 'market_basket_game.dart';
 
-/// Soft tints that give each card its own colour.
-const _tints = [
-  Color(0xFFFBE3D6), // terracotta
-  Color(0xFFDDE6F2), // hill blue
-  Color(0xFFF7EACB), // mustard
-  Color(0xFFDDEBDF), // tea green
-  Color(0xFFEADFF0), // orchid
-  Color(0xFFD9ECEC), // river
-];
-
 /// Playable Market Basket widget.
 ///
 /// Flow: Show shopping list → brief delay → show shelf → elder picks items.
@@ -258,45 +248,55 @@ class _MarketBasketWidgetState extends State<MarketBasketWidget>
   }
 
   Widget _buildShelfItem(MarketItem item, bool isPicked, String lang) {
-    final tint = _tints[_shelf.indexOf(item) % _tints.length];
     return BouncyTap(
       onTap: () => _onItemTap(item),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
+        clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
-          color: isPicked
-              ? AppColors.leafGreen.withValues(alpha: 0.25)
-              : tint,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isPicked ? AppColors.leafGreen : AppColors.border,
-            width: isPicked ? 3 : 1.5,
-          ),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              item.iconAsset,
-              style: const TextStyle(fontSize: 40),
+          border: isPicked
+              ? Border.all(color: AppColors.leafGreen, width: 4)
+              : null,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.12),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
             ),
-            const SizedBox(height: 8),
-            Text(
-              AppStrings.marketItemName(lang, item.id),
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: isPicked
-                    ? AppColors.leafGreenDark
-                    : AppColors.primaryText,
+          ],
+        ),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            ItemPhoto(id: item.id, emoji: item.iconAsset),
+            const PhotoScrim(),
+            if (isPicked)
+              ColoredBox(color: AppColors.leafGreen.withValues(alpha: 0.32)),
+            Positioned(
+              left: 8,
+              right: 8,
+              bottom: 8,
+              child: Text(
+                AppStrings.marketItemName(lang, item.id),
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.white,
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
-              textAlign: TextAlign.center,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
             ),
             if (isPicked)
-              const PopIn(
-                child: Icon(Icons.check_circle_rounded, color: AppColors.leafGreen, size: 26),
+              const Positioned(
+                top: 6,
+                right: 6,
+                child: PopIn(
+                  child: Icon(Icons.check_circle_rounded,
+                      color: Colors.white, size: 30),
+                ),
               ),
           ],
         ),
@@ -305,28 +305,42 @@ class _MarketBasketWidgetState extends State<MarketBasketWidget>
   }
 
   Widget _buildItemCard(MarketItem item, String lang, {bool large = false}) {
+    final side = large ? 140.0 : 108.0;
     return PopIn(
       child: Container(
-        width: large ? 130 : 100,
-        height: large ? 130 : 100,
+        width: side,
+        height: side,
+        clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
-          color: _tints[_targets.indexOf(item) % _tints.length],
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: AppColors.marigold, width: 2.5),
+          borderRadius: BorderRadius.circular(22),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.18),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+        child: Stack(
+          fit: StackFit.expand,
           children: [
-            Text(item.iconAsset, style: TextStyle(fontSize: large ? 40 : 30)),
-            const SizedBox(height: 4),
-            Text(
-              AppStrings.marketItemName(lang, item.id),
-              style: TextStyle(
-                fontSize: large ? 17 : 15,
-                fontWeight: FontWeight.w700,
-                color: AppColors.primaryText,
+            ItemPhoto(id: item.id, emoji: item.iconAsset),
+            const PhotoScrim(),
+            Positioned(
+              left: 6,
+              right: 6,
+              bottom: 8,
+              child: Text(
+                AppStrings.marketItemName(lang, item.id),
+                style: TextStyle(
+                  fontSize: large ? 19 : 16,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.white,
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
-              textAlign: TextAlign.center,
             ),
           ],
         ),

@@ -556,19 +556,51 @@ class _SoundsHomeWidgetState extends State<SoundsHomeWidget>
             scale: Tween(begin: 0.85, end: 1.0).animate(
               CurvedAnimation(parent: _pulseController, curve: Curves.easeOutBack),
             ),
-            child: Container(
+            child: look.icon == null
+                ? Container(
+                    width: size,
+                    height: size,
+                    clipBehavior: Clip.antiAlias,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: look.color,
+                      boxShadow: [
+                        BoxShadow(
+                          color: look.color.withValues(alpha: 0.5),
+                          blurRadius: 18,
+                        ),
+                      ],
+                    ),
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        const ItemPhoto(id: 'game_sounds', emoji: '🐦'),
+                        const PhotoScrim(strength: 0.6),
+                        Positioned(
+                          left: 0,
+                          right: 0,
+                          bottom: size * 0.12,
+                          child: Text(
+                            AppStrings.soundLabel(lang, soundId),
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: (size * 0.14).clamp(14.0, 22.0),
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : Container(
               width: size,
               height: size,
               decoration: BoxDecoration(shape: BoxShape.circle, color: look.color),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  look.icon == null
-                      ? CustomPaint(
-                          size: Size.square(size * 0.46),
-                          painter: _BirdPainter(_ground),
-                        )
-                      : Icon(look.icon, size: size * 0.42, color: _ground),
+                  Icon(look.icon, size: size * 0.42, color: _ground),
                   Text(
                     AppStrings.soundLabel(lang, soundId),
                     style: TextStyle(
@@ -587,49 +619,3 @@ class _SoundsHomeWidgetState extends State<SoundsHomeWidget>
   }
 }
 
-/// Simple perched-bird silhouette facing right.
-class _BirdPainter extends CustomPainter {
-  _BirdPainter(this.color);
-
-  final Color color;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final w = size.width;
-    final h = size.height;
-    final paint = Paint()..color = color;
-
-    // Body and tail
-    final body = Path()
-      ..moveTo(w * 0.05, h * 0.78)
-      ..lineTo(w * 0.30, h * 0.58)
-      ..quadraticBezierTo(w * 0.30, h * 0.36, w * 0.55, h * 0.36)
-      ..quadraticBezierTo(w * 0.80, h * 0.40, w * 0.74, h * 0.66)
-      ..quadraticBezierTo(w * 0.62, h * 0.82, w * 0.36, h * 0.74)
-      ..close();
-    canvas.drawPath(body, paint);
-
-    // Head
-    canvas.drawCircle(Offset(w * 0.70, h * 0.30), w * 0.14, paint);
-
-    // Beak
-    final beak = Path()
-      ..moveTo(w * 0.82, h * 0.25)
-      ..lineTo(w * 0.98, h * 0.31)
-      ..lineTo(w * 0.82, h * 0.36)
-      ..close();
-    canvas.drawPath(beak, paint);
-
-    // Legs
-    final leg = Paint()
-      ..color = color
-      ..strokeWidth = w * 0.04
-      ..strokeCap = StrokeCap.round;
-    canvas.drawLine(Offset(w * 0.50, h * 0.76), Offset(w * 0.46, h * 0.94), leg);
-    canvas.drawLine(Offset(w * 0.60, h * 0.74), Offset(w * 0.60, h * 0.94), leg);
-  }
-
-  @override
-  bool shouldRepaint(covariant _BirdPainter oldDelegate) =>
-      oldDelegate.color != color;
-}

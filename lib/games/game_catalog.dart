@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../app_colors.dart';
+import '../ui/smriti_ui.dart';
 
 /// How a game is presented to the elder: its name, a one-line description,
 /// the ability it exercises, and its icon and colour.
@@ -11,6 +12,7 @@ class GameInfo {
     required this.description,
     required this.domain,
     required this.icon,
+    this.image,
     required this.color,
     required this.tier,
   });
@@ -20,6 +22,9 @@ class GameInfo {
   final String description;
   final String domain;
   final IconData icon;
+
+  /// Photo in assets/images/photos/, if one exists.
+  final String? image;
   final Color color;
   final int tier; // 1 = must ship, 2 = if schedule holds, 3 = if you can
 }
@@ -33,6 +38,7 @@ const gameCatalog = <GameInfo>[
     description: 'Recognise your family members',
     domain: 'Memory',
     icon: Icons.people_alt_rounded,
+    image: familyHomeGlyph,
     color: AppColors.terracotta,
     tier: 1,
   ),
@@ -42,6 +48,7 @@ const gameCatalog = <GameInfo>[
     description: 'Remember items from a shopping list',
     domain: 'Memory',
     icon: Icons.shopping_basket_rounded,
+    image: 'game_market.jpg',
     color: AppColors.marigoldDark,
     tier: 1,
   ),
@@ -51,6 +58,7 @@ const gameCatalog = <GameInfo>[
     description: 'Put each item in its basket',
     domain: 'Thinking',
     icon: Icons.category_rounded,
+    image: 'game_sort.jpg',
     color: AppColors.bamboo,
     tier: 1,
   ),
@@ -60,6 +68,7 @@ const gameCatalog = <GameInfo>[
     description: 'Tap the stones in order',
     domain: 'Seeing',
     icon: Icons.route_rounded,
+    image: 'game_trace.jpg',
     color: AppColors.indigo,
     tier: 1,
   ),
@@ -69,6 +78,7 @@ const gameCatalog = <GameInfo>[
     description: 'Put the day in order',
     domain: 'Orientation',
     icon: Icons.wb_sunny_rounded,
+    image: 'game_myday.jpg',
     color: AppColors.riverTeal,
     tier: 1,
   ),
@@ -79,6 +89,7 @@ const gameCatalog = <GameInfo>[
     description: 'Remember which lamps lit up',
     domain: 'Memory',
     icon: Icons.emoji_objects_rounded,
+    image: 'game_lamps.jpg',
     color: AppColors.teaBrown,
     tier: 2,
   ),
@@ -88,6 +99,7 @@ const gameCatalog = <GameInfo>[
     description: 'Name as many things as you can',
     domain: 'Words',
     icon: Icons.record_voice_over_rounded,
+    image: 'game_words.jpg',
     color: AppColors.orchid,
     tier: 2,
   ),
@@ -98,6 +110,7 @@ const gameCatalog = <GameInfo>[
     description: 'Find the matching pattern',
     domain: 'Seeing',
     icon: Icons.texture_rounded,
+    image: 'game_weaving.jpg',
     color: AppColors.gamosaRed,
     tier: 3,
   ),
@@ -107,6 +120,7 @@ const gameCatalog = <GameInfo>[
     description: 'Tap the drum when you hear the bird',
     domain: 'Listening',
     icon: Icons.hearing_rounded,
+    image: 'game_sounds.jpg',
     color: AppColors.leafGreen,
     tier: 3,
   ),

@@ -205,6 +205,13 @@ void main() {
           expect(item.payload['mats'], isNotNull);
           expect(item.payload['dimension'], isNotNull);
           expect(item.payload['correctMat'], isNotNull);
+
+          final mats = (item.payload['mats'] as List).cast<String>();
+          final correctMat = item.payload['correctMat'] as String;
+          expect(mats, contains(correctMat),
+              reason: 'Mats must always contain the correct answer');
+          expect(mats.toSet().length, mats.length,
+              reason: 'All mats must be distinct');
         },
       );
     }
@@ -292,6 +299,21 @@ void main() {
           expect(item.payload['sequence'], isNotNull);
           expect(item.payload['direction'], isNotNull);
           expect(item.payload['litMs'], isNotNull);
+
+          final lamps =
+              (item.payload['lamps'] as List).cast<Map<String, Object>>();
+          expect(lamps.length, params['lampCount']!.toInt());
+          for (var i = 0; i < lamps.length; i++) {
+            for (var j = i + 1; j < lamps.length; j++) {
+              final dx =
+                  (lamps[i]['x'] as double) - (lamps[j]['x'] as double);
+              final dy =
+                  (lamps[i]['y'] as double) - (lamps[j]['y'] as double);
+              final dist = sqrt(dx * dx + dy * dy);
+              expect(dist, greaterThanOrEqualTo(0.10),
+                  reason: 'Lamps $i and $j are overlapping (dist: $dist)');
+            }
+          }
         },
       );
     }

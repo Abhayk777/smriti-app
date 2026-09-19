@@ -6,6 +6,7 @@ import '../../core/i18n/locale_controller.dart';
 import '../../ui/smriti_ui.dart';
 import '../cognitive_game.dart';
 import 'weaving_game.dart';
+import 'woven_strip.dart';
 
 /// Playable Weaving Patterns widget.
 ///
@@ -91,7 +92,13 @@ class _WeavingWidgetState extends State<WeavingWidget> {
               decoration: BoxDecoration(
                 color: AppColors.raisedSurface,
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: AppColors.marigold, width: 3),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.marigold.withValues(alpha: 0.45),
+                    blurRadius: 16,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
               child: _buildPattern(_targetPattern, size: 36),
             ),
@@ -103,33 +110,39 @@ class _WeavingWidgetState extends State<WeavingWidget> {
             Expanded(
               child: LayoutBuilder(
                 builder: (context, constraints) => SingleChildScrollView(
-                  child: Wrap(
-                    alignment: WrapAlignment.center,
-                    spacing: 16,
-                    runSpacing: 16,
+                  child: Column(
                     children: _options.map((option) {
                       final optionPattern = (option['pattern'] as List<Object?>)
                           .cast<int>();
                       final optionId = option['id'] as String;
-                      return BouncyTap(
-                        onTap: () => _onOptionTap(optionId),
-                        child: ConstrainedBox(
-                          constraints: BoxConstraints(
-                            maxWidth: constraints.maxWidth,
-                          ),
-                          child: FittedBox(
-                            fit: BoxFit.scaleDown,
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 14),
+                        child: BouncyTap(
+                          onTap: () => _onOptionTap(optionId),
+                          child: ConstrainedBox(
+                            constraints: BoxConstraints(
+                              maxWidth: constraints.maxWidth.clamp(0, 460),
+                            ),
                             child: Container(
-                              padding: const EdgeInsets.all(12),
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 14),
                               decoration: BoxDecoration(
                                 color: AppColors.raisedSurface,
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(
-                                  color: AppColors.border,
-                                  width: 1.5,
-                                ),
+                                borderRadius: BorderRadius.circular(20),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: AppColors.terracottaDeep
+                                        .withValues(alpha: 0.10),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
                               ),
-                              child: _buildPattern(optionPattern, size: 28),
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: _buildPattern(optionPattern, size: 40),
+                              ),
                             ),
                           ),
                         ),
@@ -155,116 +168,6 @@ class _WeavingWidgetState extends State<WeavingWidget> {
   }
 
   Widget _buildPattern(List<int> pattern, {double size = 30}) {
-    // Render pattern as a row of colored blocks with textile-like styling
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: pattern.asMap().entries.map((entry) {
-        final colorIdx = entry.value;
-        final color = Color(_colors[colorIdx % _colors.length]);
-        final isEven = entry.key.isEven;
-
-        Widget block;
-        switch (_patternType) {
-          case 'diamonds':
-            block = Transform.rotate(
-              angle: 0.785, // 45 degrees
-              child: Container(
-                width: size * 0.7,
-                height: size * 0.7,
-                color: color,
-              ),
-            );
-          case 'zigzag':
-            block = CustomPaint(
-              size: Size(size, size),
-              painter: _ZigzagPainter(color: color, goUp: isEven),
-            );
-          case 'dots':
-            block = Container(
-              width: size,
-              height: size,
-              decoration: BoxDecoration(shape: BoxShape.circle, color: color),
-            );
-          case 'crosses':
-            block = SizedBox(
-              width: size,
-              height: size,
-              child: Icon(Icons.close, color: color, size: size * 0.8),
-            );
-          case 'chevron':
-            block = CustomPaint(
-              size: Size(size, size),
-              painter: _ChevronPainter(color: color),
-            );
-          default: // stripes
-            block = Container(width: size, height: size, color: color);
-        }
-
-        return Padding(
-          padding: const EdgeInsets.all(2),
-          child: SizedBox(
-            width: size,
-            height: size,
-            child: Center(child: block),
-          ),
-        );
-      }).toList(),
-    );
+    return WovenStrip(pattern: pattern, colors: _colors, type: _patternType, cell: size);
   }
-}
-
-class _ZigzagPainter extends CustomPainter {
-  _ZigzagPainter({required this.color, required this.goUp});
-  final Color color;
-  final bool goUp;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..strokeWidth = 3
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
-
-    final path = Path();
-    if (goUp) {
-      path.moveTo(0, size.height);
-      path.lineTo(size.width / 2, 0);
-      path.lineTo(size.width, size.height);
-    } else {
-      path.moveTo(0, 0);
-      path.lineTo(size.width / 2, size.height);
-      path.lineTo(size.width, 0);
-    }
-    canvas.drawPath(path, paint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-class _ChevronPainter extends CustomPainter {
-  _ChevronPainter({required this.color});
-  final Color color;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..style = PaintingStyle.fill;
-
-    final path = Path()
-      ..moveTo(0, 0)
-      ..lineTo(size.width / 2, size.height * 0.4)
-      ..lineTo(size.width, 0)
-      ..lineTo(size.width, size.height * 0.6)
-      ..lineTo(size.width / 2, size.height)
-      ..lineTo(0, size.height * 0.6)
-      ..close();
-
-    canvas.drawPath(path, paint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

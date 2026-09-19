@@ -10,9 +10,12 @@ import '../ui/smriti_ui.dart';
 /// Displays current language in native script (e.g. [ 🌐 অসমীয়া ▾ ]).
 /// Tapping opens a peaceful bottom sheet with large, clear cards in native scripts.
 class LanguageSwitcherButton extends StatelessWidget {
-  const LanguageSwitcherButton({super.key, this.controller});
+  const LanguageSwitcherButton({super.key, this.controller, this.compact = false});
 
   final LocaleController? controller;
+
+  /// Icon-only round button, for tight headers.
+  final bool compact;
 
   LocaleController get _controller => controller ?? LocaleController.instance;
 
@@ -22,6 +25,14 @@ class LanguageSwitcherButton extends StatelessWidget {
       listenable: _controller,
       builder: (context, _) {
         final meta = _controller.currentMeta;
+        if (compact) {
+          return IconButton(
+            tooltip: meta.nativeName,
+            onPressed: () => showLanguagePicker(context, controller: _controller),
+            iconSize: 28,
+            icon: const Icon(Icons.language_rounded, color: AppColors.leafGreen),
+          );
+        }
         return Material(
           color: Colors.transparent,
           child: InkWell(
@@ -32,7 +43,7 @@ class LanguageSwitcherButton extends StatelessWidget {
               decoration: BoxDecoration(
                 color: AppColors.raisedSurface.withValues(alpha: 0.92),
                 borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: AppColors.border, width: 1.5),
+                
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.05),

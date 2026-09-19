@@ -89,6 +89,7 @@ class _MyDayScreenState extends State<MyDayScreen> {
             child: Column(
               children: [
                 ScreenHeader(
+      image: 'game_myday.jpg',
                   title: AppStrings.myDay(lang),
                   subtitle: _dateString(lang),
                   icon: Icons.wb_sunny_rounded,
@@ -255,7 +256,7 @@ class _SummaryCard extends StatelessWidget {
                 alignment: Alignment.center,
                 child: next == null
                     ? Icon(Icons.bedtime_rounded, size: 36, color: part.deep)
-                    : Text(next!.iconAsset, style: const TextStyle(fontSize: 34)),
+                    : RoutinePhoto(id: next!.id, emoji: next!.iconAsset, label: next!.labelKey, size: 68),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -461,10 +462,7 @@ class _TimelineItem extends StatelessWidget {
                               alignment: Alignment.center,
                               child: Opacity(
                                 opacity: isPast ? 0.55 : 1,
-                                child: Text(
-                                  entry.iconAsset,
-                                  style: TextStyle(fontSize: isActive ? 31 : 27),
-                                ),
+                                child: RoutinePhoto(id: entry.id, emoji: entry.iconAsset, label: entry.labelKey, size: isActive ? 62 : 54),
                               ),
                             ),
                             const SizedBox(width: 14),

@@ -212,7 +212,7 @@ class _LoginScreenState extends State<LoginScreen> {
       decoration: BoxDecoration(
         color: AppColors.raisedSurface,
         borderRadius: BorderRadius.circular(32),
-        border: Border.all(color: AppColors.border, width: 1.5),
+        boxShadow: [BoxShadow(color: AppColors.terracottaDeep.withValues(alpha: 0.07), blurRadius: 10, offset: const Offset(0, 3))],
       ),
       child: Column(
         children: [
@@ -260,7 +260,7 @@ class _LoginScreenState extends State<LoginScreen> {
       decoration: BoxDecoration(
         color: AppColors.raisedSurface,
         borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: AppColors.border, width: 1.5),
+        boxShadow: [BoxShadow(color: AppColors.terracottaDeep.withValues(alpha: 0.07), blurRadius: 10, offset: const Offset(0, 3))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,

@@ -159,6 +159,13 @@ class GameLevelProfiles {
         limit: 0.6,
       ),
       DifficultyAxis(
+        name: 'jumbleSwaps',
+        start: 1,
+        perLevel: 0.4,
+        limit: 5,
+        rounding: AxisRounding.floor,
+      ),
+      DifficultyAxis(
         name: 'questionTier',
         start: 1,
         perLevel: 0.5,

@@ -306,6 +306,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         title: AppStrings.play(lang),
         subtitle: AppStrings.gamesForMind(lang),
         icon: Icons.extension_rounded,
+        image: 'tile_games.jpg',
         color: AppColors.terracotta,
         height: height,
         onTap: () => _onPlayTap(lang),
@@ -314,6 +315,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         title: AppStrings.myFamily(lang),
         subtitle: AppStrings.yourLovedOnes(lang),
         icon: Icons.people_alt_rounded,
+        image: familyHomeGlyph,
         color: AppColors.indigo,
         height: height,
         onTap: () => _open(const FamilyScreen()),
@@ -322,6 +324,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         title: AppStrings.myDay(lang),
         subtitle: AppStrings.yourDayAtGlance(lang),
         icon: Icons.wb_sunny_rounded,
+        image: 'game_myday.jpg',
         color: AppColors.marigold,
         foreground: AppColors.primaryText,
         iconColor: AppColors.marigoldDark,
@@ -439,7 +442,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       decoration: BoxDecoration(
         color: const Color(0xFF9CC5EC),
         borderRadius: BorderRadius.circular(32),
-        border: Border.all(color: AppColors.border, width: 1.5),
+        boxShadow: [BoxShadow(color: AppColors.terracottaDeep.withValues(alpha: 0.07), blurRadius: 10, offset: const Offset(0, 3))],
       ),
       child: Stack(
         children: [
@@ -477,7 +480,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       decoration: BoxDecoration(
         color: AppColors.raisedSurface,
         borderRadius: BorderRadius.circular(40),
-        border: Border.all(color: AppColors.border),
+        boxShadow: [BoxShadow(color: AppColors.terracottaDeep.withValues(alpha: 0.07), blurRadius: 10, offset: const Offset(0, 3))],
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -516,7 +519,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             Expanded(
               child: _FooterButton(
                 label: AppStrings.message(lang),
-                icon: Icons.mic_rounded,
+                icon: Icons.chat_bubble_rounded,
                 color: AppColors.riverTeal,
                 onTap: () => _open(const VoiceMemoScreen()),
               ),
@@ -526,6 +529,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               child: _FooterButton(
                 label: AppStrings.medications(lang),
                 icon: Icons.medication_rounded,
+                image: 'tile_medicine.jpg',
                 color: AppColors.leafGreen,
                 onTap: () => _open(const MedicineScreen()),
               ),
@@ -541,12 +545,14 @@ class _FooterButton extends StatelessWidget {
   const _FooterButton({
     required this.label,
     required this.icon,
+    this.image,
     required this.color,
     required this.onTap,
   });
 
   final String label;
   final IconData icon;
+  final String? image;
   final Color color;
   final VoidCallback onTap;
 
@@ -567,7 +573,7 @@ class _FooterButton extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              IconMedallion(icon: icon, color: color, size: 52),
+              IconMedallion(icon: icon, image: image, color: color, size: 52),
               const SizedBox(width: 10),
               Text(
                 label,

@@ -84,6 +84,7 @@ class _FamilyScreenState extends State<FamilyScreen> {
             child: Column(
               children: [
                 ScreenHeader(
+      image: familyHomeGlyph,
                   title: AppStrings.myFamily(lang),
                   subtitle: AppStrings.thePeopleWhoLoveYou(lang),
                   icon: Icons.people_alt_rounded,

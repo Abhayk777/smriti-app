@@ -121,8 +121,9 @@ class SmritiTheme {
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           foregroundColor: AppColors.terracottaDark,
+          backgroundColor: AppColors.wovenMat.withValues(alpha: 0.5),
           minimumSize: const Size(64, 52),
-          side: const BorderSide(color: AppColors.border, width: 1.5),
+          side: BorderSide.none,
           shape: rounded16,
           textStyle: buttonText,
         ),
@@ -138,17 +139,17 @@ class SmritiTheme {
         filled: true,
         fillColor: AppColors.raisedSurface,
         hintStyle: const TextStyle(color: AppColors.secondaryText),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: AppColors.border, width: 1.5),
+        border: const UnderlineInputBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+          borderSide: BorderSide(color: AppColors.wovenMat, width: 2),
         ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: AppColors.border, width: 1.5),
+        enabledBorder: const UnderlineInputBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+          borderSide: BorderSide(color: AppColors.wovenMat, width: 2),
         ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: AppColors.terracotta, width: 2),
+        focusedBorder: const UnderlineInputBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+          borderSide: BorderSide(color: AppColors.terracotta, width: 3),
         ),
       ),
       snackBarTheme: SnackBarThemeData(
@@ -196,6 +197,35 @@ class SmritiTheme {
 // Building blocks
 // ---------------------------------------------------------------------------
 
+/// Pass as `image` to draw a home with a heart instead of a photo.
+const familyHomeGlyph = 'family_home';
+
+/// A little house with a heart in its doorway: family and home.
+class FamilyHomeGlyph extends StatelessWidget {
+  const FamilyHomeGlyph({super.key, required this.size, required this.color});
+
+  final double size;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: size,
+      height: size,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Icon(Icons.home_rounded, color: color, size: size * 0.66),
+          Positioned(
+            top: size * 0.44,
+            child: Icon(Icons.favorite_rounded, color: AppColors.medallion, size: size * 0.24),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 /// Round ivory disc holding an icon, the signature element of every tile.
 class IconMedallion extends StatelessWidget {
   const IconMedallion({
@@ -204,6 +234,7 @@ class IconMedallion extends StatelessWidget {
     required this.color,
     this.size = 64,
     this.background = AppColors.medallion,
+    this.image,
   });
 
   final IconData icon;
@@ -211,13 +242,34 @@ class IconMedallion extends StatelessWidget {
   final double size;
   final Color background;
 
+  /// Photo inside `assets/images/photos/` (for example `game_lamps.jpg`).
+  /// When set, the illustration replaces [icon].
+  final String? image;
+
   @override
   Widget build(BuildContext context) {
     return Container(
       width: size,
       height: size,
       decoration: BoxDecoration(color: background, shape: BoxShape.circle),
-      child: Icon(icon, color: color, size: size * 0.5),
+      alignment: Alignment.center,
+      child: image == null
+          ? Icon(icon, color: color, size: size * 0.5)
+          : image == familyHomeGlyph
+              ? FamilyHomeGlyph(size: size, color: color)
+              : ClipOval(
+              child: Image.asset(
+                'assets/images/photos/$image',
+                width: size,
+                height: size,
+                fit: BoxFit.cover,
+                cacheWidth: (size * 3).round(),
+                filterQuality: FilterQuality.medium,
+                excludeFromSemantics: true,
+                errorBuilder: (_, _, _) =>
+                    Icon(icon, color: color, size: size * 0.5),
+              ),
+            ),
     );
   }
 }
@@ -234,10 +286,8 @@ class RoundBackButton extends StatelessWidget {
       button: true,
       label: 'Back',
       child: Material(
-        color: AppColors.raisedSurface,
-        shape: const CircleBorder(
-          side: BorderSide(color: AppColors.border, width: 1.5),
-        ),
+        color: AppColors.wovenMat.withValues(alpha: 0.55),
+        shape: const CircleBorder(),
         child: InkWell(
           customBorder: const CircleBorder(),
           onTap: onPressed ?? () => Navigator.of(context).maybePop(),
@@ -267,11 +317,13 @@ class ScreenHeader extends StatelessWidget {
     this.subtitle,
     this.onBack,
     this.actions = const [],
+    this.image,
   });
 
   final String title;
   final IconData icon;
   final Color color;
+  final String? image;
   final String? subtitle;
   final VoidCallback? onBack;
   final List<Widget> actions;
@@ -293,6 +345,7 @@ class ScreenHeader extends StatelessWidget {
                 IconMedallion(
                   icon: icon,
                   color: color,
+                  image: image,
                   size: 52,
                   background: color.withValues(alpha: 0.12),
                 ),
@@ -458,9 +511,16 @@ class _PressableCardState extends State<PressableCard> {
                   ? Color.lerp(widget.color, Colors.black, 0.06)
                   : widget.color,
               borderRadius: BorderRadius.circular(widget.radius),
-              border: widget.borderColor == null
+              // Outlines were replaced by soft fills and divider lines.
+              boxShadow: widget.borderColor == null
                   ? null
-                  : Border.all(color: widget.borderColor!, width: 1.5),
+                  : [
+                      BoxShadow(
+                        color: AppColors.terracottaDeep.withValues(alpha: 0.08),
+                        blurRadius: 10,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
             ),
             child: widget.child,
           ),
@@ -482,8 +542,10 @@ class ActionTile extends StatelessWidget {
     this.foreground = AppColors.onColor,
     this.iconColor,
     this.height,
+    this.image,
   });
 
+  final String? image;
   final String title;
   final String subtitle;
   final IconData icon;
@@ -517,6 +579,7 @@ class ActionTile extends StatelessWidget {
                 IconMedallion(
                   icon: icon,
                   color: iconColor ?? color,
+                  image: image,
                   size: medallion,
                 ),
                 SizedBox(width: h < 110 ? 14 : 20),
@@ -870,6 +933,173 @@ class PopIn extends StatelessWidget {
       builder: (context, v, child) => Opacity(
         opacity: ((v - 0.4) / 0.6).clamp(0.0, 1.0),
         child: Transform.scale(scale: v, child: child),
+      ),
+    );
+  }
+}
+
+/// A real photograph of an everyday item (a food, a meal), looked up by id in
+/// `assets/images/photos/`. Falls back to the item's emoji when no photo
+/// exists, so items the caregiver adds still show something friendly.
+class ItemPhoto extends StatelessWidget {
+  const ItemPhoto({
+    super.key,
+    required this.id,
+    required this.emoji,
+    this.emojiSize = 40,
+  });
+
+  final String id;
+  final String emoji;
+  final double emojiSize;
+
+  @override
+  Widget build(BuildContext context) {
+    return Image.asset(
+      'assets/images/photos/$id.jpg',
+      fit: BoxFit.cover,
+      width: double.infinity,
+      height: double.infinity,
+      cacheWidth: 480,
+      filterQuality: FilterQuality.medium,
+      excludeFromSemantics: true,
+      errorBuilder: (_, _, _) => ColoredBox(
+        color: AppColors.medallion,
+        child: Center(
+          child: Text(emoji, style: TextStyle(fontSize: emojiSize)),
+        ),
+      ),
+    );
+  }
+}
+
+/// Dark-to-clear fade laid over the bottom of a photo so white text on it
+/// stays readable.
+class PhotoScrim extends StatelessWidget {
+  const PhotoScrim({super.key, this.strength = 0.72});
+
+  final double strength;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          stops: const [0.45, 1.0],
+          colors: [
+            Colors.transparent,
+            const Color(0xFF1C1410).withValues(alpha: strength),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Round photo for a routine step (wake up, breakfast, lunch...). Tries the
+/// step's own id, then a photo matched from its icon or label words, then the
+/// step's emoji, then a friendly icon, so it never shows raw words.
+class RoutinePhoto extends StatelessWidget {
+  const RoutinePhoto({
+    super.key,
+    required this.id,
+    required this.emoji,
+    required this.size,
+    this.label = '',
+  });
+
+  final String id;
+  final String emoji;
+  final String label;
+  final double size;
+
+  static const _photoByWord = <String, String>{
+    'wake': 'wake_up',
+    'morning': 'wake_up',
+    'sunrise': 'wake_up',
+    'breakfast': 'breakfast',
+    'lunch': 'lunch',
+    'dinner': 'dinner',
+    'eat': 'dinner',
+    'meal': 'lunch',
+    'tea': 'evening_tea',
+    'chai': 'evening_tea',
+    'sleep': 'sleep',
+    'bed': 'sleep',
+    'medicine': 'tile_medicine',
+    'tablet': 'tile_medicine',
+    'pill': 'tile_medicine',
+    'music': 'tile_music',
+  };
+
+  static const _iconByWord = <String, IconData>{
+    'walk': Icons.directions_walk_rounded,
+    'exercise': Icons.self_improvement_rounded,
+    'pray': Icons.self_improvement_rounded,
+    'bath': Icons.bathtub_rounded,
+    'wash': Icons.bathtub_rounded,
+    'tv': Icons.tv_rounded,
+    'read': Icons.menu_book_rounded,
+    'call': Icons.call_rounded,
+    'rest': Icons.weekend_rounded,
+    'nap': Icons.weekend_rounded,
+  };
+
+  String? _match(Map<String, String> table) {
+    final text = '$emoji $label'.toLowerCase();
+    for (final e in table.entries) {
+      if (text.contains(e.key)) return e.value;
+    }
+    return null;
+  }
+
+  Widget _fallback() {
+    final hasEmoji = emoji.runes.any((r) => r > 0x2000);
+    if (hasEmoji) {
+      return ColoredBox(
+        color: AppColors.medallion,
+        child: Center(child: Text(emoji, style: TextStyle(fontSize: size * 0.5))),
+      );
+    }
+    final text = '$emoji $label'.toLowerCase();
+    IconData icon = Icons.event_available_rounded;
+    for (final e in _iconByWord.entries) {
+      if (text.contains(e.key)) {
+        icon = e.value;
+        break;
+      }
+    }
+    return ColoredBox(
+      color: AppColors.medallion,
+      child: Icon(icon, size: size * 0.52, color: AppColors.terracottaDark),
+    );
+  }
+
+  Widget _photo(String name, Widget Function() onError) {
+    return Image.asset(
+      'assets/images/photos/$name.jpg',
+      width: size,
+      height: size,
+      fit: BoxFit.cover,
+      cacheWidth: (size * 3).round(),
+      excludeFromSemantics: true,
+      errorBuilder: (_, _, _) => onError(),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final byWord = _match(_photoByWord);
+    return ClipOval(
+      child: SizedBox(
+        width: size,
+        height: size,
+        child: _photo(
+          id,
+          () => byWord == null ? _fallback() : _photo(byWord, _fallback),
+        ),
       ),
     );
   }

@@ -97,17 +97,22 @@ class SortHarvestGame implements CognitiveGame {
     final currentDimension =
         eligibleDimensions[_random.nextInt(eligibleDimensions.length)];
 
-    // Build mats (sorting targets)
+    // Correct mat is the one matching the card's value for current dimension
+    final correctMat = card[currentDimension]!;
+
+    // Build mats (sorting targets): ALWAYS include the correct mat, plus distractors
     final uniqueValues = <String>{};
     for (final item in _produce) {
       uniqueValues.add(item[currentDimension]!);
     }
-    final matValues = uniqueValues.toList()..shuffle(_random);
-    final actualMatCount = min(matCount, matValues.length);
-    final mats = matValues.take(actualMatCount).toList();
-
-    // Correct mat is the one matching the card's value for current dimension
-    final correctMat = card[currentDimension]!;
+    final otherValues = uniqueValues.where((v) => v != correctMat).toList()
+      ..shuffle(_random);
+    final actualMatCount = min(matCount, uniqueValues.length);
+    final distractorsNeeded = max(0, actualMatCount - 1);
+    final mats = [
+      correctMat,
+      ...otherValues.take(distractorsNeeded),
+    ]..shuffle(_random);
 
     return GameItem(
       id: 'sort_${card['id']}',

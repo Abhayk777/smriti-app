@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../app_colors.dart';
+import '../ui/smriti_ui.dart';
 import '../core/ability/estimator.dart';
 import '../core/db/app_database.dart';
 import '../core/db/database.dart';
@@ -837,6 +838,10 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
         ],
         const SizedBox(height: 18),
 
+        // Which game levels went up or down
+        _buildLevelChanges(),
+        const SizedBox(height: 18),
+
         // "By genre" mini table
         const Text(
           'By genre',
@@ -854,6 +859,147 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
         const SizedBox(height: 8),
         ...gameCatalog.map((info) => _buildGameRow(info)),
       ],
+    );
+  }
+
+  /// Which games moved up or down since the first review, with a short
+  /// timeline of the latest level changes across all games.
+  Widget _buildLevelChanges() {
+    final rows = <({GameInfo info, double start, double now, int ups, int downs})>[];
+    final events = <({GameInfo info, ReviewRecord record})>[];
+
+    for (final info in gameCatalog) {
+      final progress = _gameProgress[info.id];
+      if (progress == null) continue;
+      final history = progress.history;
+      final start = history.isNotEmpty ? history.first.levelBefore : progress.level;
+      var ups = 0;
+      var downs = 0;
+      for (final r in history) {
+        if (r.levelAfter > r.levelBefore) {
+          ups++;
+          events.add((info: info, record: r));
+        } else if (r.levelAfter < r.levelBefore) {
+          downs++;
+          events.add((info: info, record: r));
+        }
+      }
+      rows.add((info: info, start: start, now: progress.level, ups: ups, downs: downs));
+    }
+
+    final increased = rows.where((r) => r.now > r.start).toList()
+      ..sort((a, b) => (b.now - b.start).compareTo(a.now - a.start));
+    final eased = rows.where((r) => r.now < r.start).toList();
+    final steady = rows.where((r) => r.now == r.start).toList();
+    events.sort((a, b) => b.record.atMs.compareTo(a.record.atMs));
+
+    Widget line(GameInfo info, String change, IconData icon, Color color) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: Row(
+          children: [
+            IconMedallion(
+              icon: info.icon,
+              image: info.image,
+              color: info.color,
+              size: 36,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                '${info.name}: $change',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: color),
+              ),
+            ),
+            Icon(icon, size: 18, color: color),
+          ],
+        ),
+      );
+    }
+
+    String delta(({GameInfo info, double start, double now, int ups, int downs}) r) {
+      final d = r.now - r.start;
+      final sign = d > 0 ? '+' : '';
+      return '${r.start.toStringAsFixed(1)} → ${r.now.toStringAsFixed(1)} ($sign${d.toStringAsFixed(1)})';
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Level changes',
+            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.primaryText),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            increased.isEmpty
+                ? 'No game level has gone up yet.'
+                : '${increased.length} of ${rows.length} games have moved up.',
+            style: const TextStyle(fontSize: 13, color: AppColors.secondaryText),
+          ),
+          const SizedBox(height: 6),
+          for (final r in increased)
+            line(r.info, '${delta(r)}  ·  ${r.ups}x up', Icons.trending_up_rounded, AppColors.leafGreen),
+          for (final r in eased)
+            line(r.info, delta(r), Icons.trending_down_rounded, AppColors.indigo),
+          if (steady.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(
+              'Unchanged: ${steady.map((r) => r.info.name).join(', ')}',
+              style: const TextStyle(fontSize: 12, color: AppColors.secondaryText),
+            ),
+          ],
+          if (events.isNotEmpty) ...[
+            const Divider(height: 24),
+            const Text(
+              'Latest changes',
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 4),
+            for (final e in events.take(6))
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 3),
+                child: Row(
+                  children: [
+                    Icon(
+                      e.record.levelAfter > e.record.levelBefore
+                          ? Icons.arrow_upward_rounded
+                          : Icons.arrow_downward_rounded,
+                      size: 16,
+                      color: e.record.levelAfter > e.record.levelBefore
+                          ? AppColors.leafGreen
+                          : AppColors.indigo,
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        '${e.info.name}: ${e.record.levelBefore.toStringAsFixed(1)} → ${e.record.levelAfter.toStringAsFixed(1)}',
+                        style: const TextStyle(fontSize: 13),
+                      ),
+                    ),
+                    Text(
+                      _formatReviewDate(e.record.atMs),
+                      style: const TextStyle(fontSize: 12, color: AppColors.secondaryText),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ],
+      ),
     );
   }
 

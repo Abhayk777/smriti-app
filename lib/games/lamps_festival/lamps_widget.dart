@@ -6,6 +6,7 @@ import '../../core/i18n/app_strings.dart';
 import '../../core/i18n/locale_controller.dart';
 import '../../ui/smriti_ui.dart';
 import '../cognitive_game.dart';
+import 'diya_lamp.dart';
 import 'lamps_game.dart';
 
 /// Playable Lamps of the Festival widget.
@@ -141,9 +142,11 @@ class _LampsWidgetState extends State<LampsWidget> {
   @override
   Widget build(BuildContext context) {
     final lang = LocaleController.instance.currentLanguage;
-    return Container(
-      decoration: const BoxDecoration(color: Color(0xFF1C2638)),
-      child: Padding(
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+      const FestivalNightBackdrop(),
+      Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
@@ -201,8 +204,8 @@ class _LampsWidgetState extends State<LampsWidget> {
                       final isTapped = _tappedSequence.contains(idx);
 
                       return Positioned(
-                        left: x - 30,
-                        top: y - 30,
+                        left: x - 46,
+                        top: y - 46,
                         child: BouncyTap(
                           pressedScale: 0.85,
                           onTap: () => _onLampTap(idx),
@@ -217,54 +220,11 @@ class _LampsWidgetState extends State<LampsWidget> {
           ],
         ),
       ),
+      ],
     );
   }
 
   Widget _buildLamp(bool isLit, bool isTapped) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
-      width: 60,
-      height: 60,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: RadialGradient(
-          colors: isLit
-              ? [
-                  Colors.amber.shade300,
-                  Colors.orange.shade600,
-                  Colors.orange.shade900,
-                ]
-              : [
-                  Colors.amber.shade900.withValues(alpha: 0.4),
-                  Colors.brown.shade900.withValues(alpha: 0.3),
-                ],
-        ),
-        boxShadow: isLit
-            ? [
-                BoxShadow(
-                  color: Colors.amber.withValues(alpha: 0.6),
-                  blurRadius: 30,
-                  spreadRadius: 10,
-                ),
-                BoxShadow(
-                  color: Colors.orange.withValues(alpha: 0.4),
-                  blurRadius: 50,
-                  spreadRadius: 20,
-                ),
-              ]
-            : [],
-        border: Border.all(
-          color: isTapped
-              ? Colors.amber.shade300
-              : Colors.amber.shade800.withValues(alpha: 0.5),
-          width: isTapped ? 2.5 : 1.5,
-        ),
-      ),
-      child: isLit
-          ? const Icon(Icons.local_fire_department,
-              color: Colors.white, size: 28)
-          : Icon(Icons.circle,
-              color: Colors.amber.shade800.withValues(alpha: 0.3), size: 12),
-    );
+    return DiyaLamp(lit: isLit, tapped: isTapped, size: 92);
   }
 }

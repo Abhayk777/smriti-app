@@ -286,7 +286,7 @@ class _VoiceMemoScreenState extends State<VoiceMemoScreen> {
     return ScreenHeader(
       title: AppStrings.message(lang),
       subtitle: AppStrings.sendVoiceMessageToFamily(lang),
-      icon: Icons.mic_rounded,
+      icon: Icons.chat_bubble_rounded,
       color: AppColors.riverTeal,
       onBack: () async {
         if (_isRecording) {

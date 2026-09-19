@@ -51,6 +51,17 @@ class MyDayGame implements CognitiveGame {
     ]);
   }
 
+  /// Fallback routine when device has not yet synced caregiver routine from web.
+  static const List<RoutineEntry> defaultRoutine = [
+    RoutineEntry(id: 'wake_up', timeMin: 360, labelKey: 'Wake Up', iconAsset: '☀️'),
+    RoutineEntry(id: 'morning_tea', timeMin: 420, labelKey: 'Morning Tea', iconAsset: '🍵'),
+    RoutineEntry(id: 'breakfast', timeMin: 480, labelKey: 'Breakfast', iconAsset: '🍳'),
+    RoutineEntry(id: 'lunch', timeMin: 720, labelKey: 'Lunch', iconAsset: '🍛'),
+    RoutineEntry(id: 'evening_tea', timeMin: 1020, labelKey: 'Evening Tea', iconAsset: '🍵'),
+    RoutineEntry(id: 'dinner', timeMin: 1200, labelKey: 'Dinner', iconAsset: '🍽️'),
+    RoutineEntry(id: 'sleep', timeMin: 1320, labelKey: 'Sleep', iconAsset: '🌙'),
+  ];
+
   /// Fewest routine items worth putting in order.
   static const int minOrderingEvents = 3;
 
@@ -96,11 +107,8 @@ class MyDayGame implements CognitiveGame {
   /// Number of events to order based on difficulty (docs/PROGRESSION_PLAN.md §5.3).
   static int eventCountFor(double difficulty) => _paramsFor(difficulty)['eventCount']!.toInt();
 
-  /// The typical mode at this difficulty. Actual selection is a random roll
-  /// against `orientationChance`, so a single call is descriptive rather
-  /// than exactly what the next generated item will use.
-  static String modeFor(double difficulty) =>
-      _paramsFor(difficulty)['orientationChance']! >= 0.5 ? 'orientation' : 'ordering';
+  /// My Day is now routine-ordering first.
+  static String modeFor(double difficulty) => 'ordering';
 
   /// How many calendar-question tiers are unlocked (docs/PROGRESSION_PLAN.md §5.3).
   static int questionTierFor(double difficulty) => _paramsFor(difficulty)['questionTier']!.toInt();
@@ -158,21 +166,93 @@ class MyDayGame implements CognitiveGame {
     return (answer: answer, options: options);
   }
 
+  /// Jumbles [items] according to [level]:
+  /// - Level 1-2: Easy jumble ("one or two up down"): exactly 1 swap of adjacent items.
+  /// - Level 3-4: 2 swaps (mild jumble).
+  /// - Level 5-6: 3 swaps (moderate jumble).
+  /// - Level 7+: Full jumble / shuffle.
+  /// Always guarantees that the resulting jumbled list is not already in correct order.
+  static List<Map<String, Object>> jumbleEvents({
+    required List<Map<String, Object>> items,
+    required double level,
+    required Random random,
+  }) {
+    if (items.length <= 1) return [...items];
+
+    final jumbled = List<Map<String, Object>>.from(items);
+    final correctIds = items.map((e) => e['id'] as String).toList();
+
+    final int swaps;
+    if (level <= 2.5) {
+      swaps = 1; // "one or two up down": 1 adjacent swap
+    } else if (level <= 4.5) {
+      swaps = 2;
+    } else if (level <= 6.5) {
+      swaps = 3;
+    } else {
+      swaps = items.length;
+    }
+
+    if (level >= 7.0 && items.length >= 4) {
+      var attempts = 0;
+      do {
+        jumbled.shuffle(random);
+        attempts++;
+      } while (attempts < 10 && _isSameOrder(jumbled, correctIds));
+    } else {
+      for (var s = 0; s < swaps; s++) {
+        if (level <= 2.5) {
+          // Adjacent swap: pick index i and swap with i + 1
+          final i = random.nextInt(jumbled.length - 1);
+          final tmp = jumbled[i];
+          jumbled[i] = jumbled[i + 1];
+          jumbled[i + 1] = tmp;
+        } else {
+          final i = random.nextInt(jumbled.length);
+          var j = random.nextInt(jumbled.length);
+          while (j == i && jumbled.length > 1) {
+            j = random.nextInt(jumbled.length);
+          }
+          final tmp = jumbled[i];
+          jumbled[i] = jumbled[j];
+          jumbled[j] = tmp;
+        }
+      }
+    }
+
+    // Never present the list in the correct order:
+    if (_isSameOrder(jumbled, correctIds) && jumbled.length >= 2) {
+      final tmp = jumbled[0];
+      jumbled[0] = jumbled[1];
+      jumbled[1] = tmp;
+    }
+
+    return jumbled;
+  }
+
+  static bool _isSameOrder(List<Map<String, Object>> list, List<String> correct) {
+    if (list.length != correct.length) return false;
+    for (var i = 0; i < list.length; i++) {
+      if ((list[i]['id'] as String) != correct[i]) return false;
+    }
+    return true;
+  }
+
   @override
   GameItem generateItem(double difficulty, GameContent content) {
     final routine = _routineFrom(content);
     final params = _paramsFor(difficulty);
-    final wantsOrientation = _random.nextDouble() < params['orientationChance']!;
-    final mode = routine.length >= minOrderingEvents && !wantsOrientation
-        ? 'ordering'
-        : 'orientation';
+    final level = LevelScale.difficultyToLevel(difficulty);
+
+    // If routine items are available (≥ 3), always play the routine ordering game.
+    // Sparse routine (< 3 items) only triggers orientation mode as fallback.
+    final mode = routine.length >= minOrderingEvents ? 'ordering' : 'orientation';
 
     if (mode == 'ordering') {
-      // Pick routine items and shuffle them for the elder to reorder
       final routinePool = routine;
       final count = min(params['eventCount']!.toInt(), routinePool.length);
 
-      // Pick evenly spaced items so the ordering is clear
+      // Pick evenly spaced items across the day so the ordering is clear
       final step = routinePool.length / count;
       final selected = <Map<String, Object>>[];
       for (var i = 0; i < count; i++) {
@@ -180,7 +260,14 @@ class MyDayGame implements CognitiveGame {
       }
       final correctOrder =
           selected.map((e) => e['id'] as String).toList();
-      final shuffled = [...selected]..shuffle(_random);
+
+      final jumbled = jumbleEvents(
+        items: selected,
+        level: level,
+        random: _random,
+      );
+
+      final jumbleSwaps = params['jumbleSwaps']?.toInt() ?? (level <= 2.5 ? 1 : 2);
 
       return GameItem(
         id: 'myday_order_$count',
@@ -188,13 +275,15 @@ class MyDayGame implements CognitiveGame {
         context: {
           'mode': 'ordering',
           'eventCount': count,
+          'jumbleSwaps': jumbleSwaps,
           'correctOrder': correctOrder,
           'contentVersion': content.version,
         },
         payload: {
-          'events': shuffled,
+          'events': jumbled,
           'correctOrder': correctOrder,
           'mode': 'ordering',
+          'level': level,
         },
       );
     } else {

@@ -79,13 +79,20 @@ class LampsGame implements CognitiveGame {
         _random.nextDouble() < params['backwardChance']! ? 'backward' : 'forward';
     final litMs = params['litMs']!.round();
 
-    // Generate lamp positions in irregular pattern
+    // Generate lamp positions with collision prevention
+    final placed = <({double x, double y})>[];
+    final minDistance = lampCount <= 6
+        ? 0.20
+        : (lampCount <= 8 ? 0.17 : 0.14);
+
     final lamps = <Map<String, Object>>[];
     for (var i = 0; i < lampCount; i++) {
+      final pos = _samplePosition(placed, minDistance);
+      placed.add(pos);
       lamps.add({
         'index': i,
-        'x': 0.1 + _random.nextDouble() * 0.8,
-        'y': 0.15 + _random.nextDouble() * 0.7,
+        'x': pos.x,
+        'y': pos.y,
       });
     }
 
@@ -173,6 +180,44 @@ class LampsGame implements CognitiveGame {
       }
     }
     return count;
+  }
+
+  static const int _maxSampleAttempts = 50;
+
+  /// Samples a position at least [minDistance] from all [existing] lamps.
+  /// If after [_maxSampleAttempts] no position satisfies [minDistance], returns
+  /// the candidate with the greatest separation to prevent overlaps.
+  ({double x, double y}) _samplePosition(
+    List<({double x, double y})> existing,
+    double minDistance,
+  ) {
+    var bestX = 0.1 + _random.nextDouble() * 0.8;
+    var bestY = 0.15 + _random.nextDouble() * 0.7;
+    var bestDist = 0.0;
+
+    for (var attempt = 0; attempt < _maxSampleAttempts; attempt++) {
+      final x = 0.1 + _random.nextDouble() * 0.8;
+      final y = 0.15 + _random.nextDouble() * 0.7;
+      if (existing.isEmpty) return (x: x, y: y);
+
+      var closest = double.infinity;
+      for (final p in existing) {
+        final dx = p.x - x;
+        final dy = p.y - y;
+        final d = sqrt(dx * dx + dy * dy);
+        if (d < closest) closest = d;
+      }
+
+      if (closest >= minDistance) {
+        return (x: x, y: y);
+      }
+      if (closest > bestDist) {
+        bestDist = closest;
+        bestX = x;
+        bestY = y;
+      }
+    }
+    return (x: bestX, y: bestY);
   }
 
   Future<void> dispose() => _trials.close();

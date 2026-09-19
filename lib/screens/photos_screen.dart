@@ -153,7 +153,7 @@ class _PhotosScreenState extends State<PhotosScreen> {
             decoration: BoxDecoration(
               color: AppColors.raisedSurface,
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: AppColors.border, width: 1.5),
+              
               boxShadow: [
                 BoxShadow(
                   color: AppColors.indigo.withValues(alpha: 0.08),

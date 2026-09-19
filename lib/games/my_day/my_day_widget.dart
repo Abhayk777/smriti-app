@@ -121,6 +121,24 @@ class _MyDayWidgetState extends State<MyDayWidget> {
     return months[month];
   }
 
+  void _moveUp(int index) {
+    if (index <= 0 || _submitted) return;
+    _firstTapAt ??= DateTime.now();
+    setState(() {
+      final item = _events.removeAt(index);
+      _events.insert(index - 1, item);
+    });
+  }
+
+  void _moveDown(int index) {
+    if (index >= _events.length - 1 || _submitted) return;
+    _firstTapAt ??= DateTime.now();
+    setState(() {
+      final item = _events.removeAt(index);
+      _events.insert(index + 1, item);
+    });
+  }
+
   void _onReorderComplete() {
     if (_submitted) return;
     _firstTapAt ??= DateTime.now();
@@ -170,19 +188,47 @@ class _MyDayWidgetState extends State<MyDayWidget> {
     final lang = LocaleController.instance.currentLanguage;
     return Column(
       children: [
-        Text(
-          AppStrings.putInOrderMorningToNight(lang),
-          style: TextStyle(
-            fontSize: isCompact ? 17 : 22,
-            fontWeight: FontWeight.w600,
-            color: AppColors.primaryText,
+        Container(
+          padding: EdgeInsets.symmetric(
+            horizontal: isCompact ? 12 : 20,
+            vertical: isCompact ? 8 : 12,
+          ),
+          decoration: BoxDecoration(
+            color: AppColors.marigold.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: AppColors.marigold.withValues(alpha: 0.4),
+              width: 1.5,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('🌅', style: TextStyle(fontSize: 22)),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  AppStrings.putInOrderMorningToNight(lang),
+                  style: TextStyle(
+                    fontSize: isCompact ? 16 : 20,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.primaryText,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Text('🌙', style: TextStyle(fontSize: 22)),
+            ],
           ),
         ),
-        SizedBox(height: isCompact ? 8 : 20),
+        SizedBox(height: isCompact ? 8 : 16),
         Expanded(
           child: ReorderableListView(
+            buildDefaultDragHandles: false,
             // ignore: deprecated_member_use
             onReorder: (oldIndex, newIndex) {
+              if (_submitted) return;
               _firstTapAt ??= DateTime.now();
               setState(() {
                 if (newIndex > oldIndex) newIndex--;
@@ -191,56 +237,124 @@ class _MyDayWidgetState extends State<MyDayWidget> {
               });
             },
             children: _events.asMap().entries.map((entry) {
+              final index = entry.key;
               final event = entry.value;
-              return _buildEventTile(event, isCompact: isCompact, key: ValueKey(event['id']));
+              return _buildEventTile(
+                event,
+                index: index,
+                totalCount: _events.length,
+                isCompact: isCompact,
+                key: ValueKey(event['id']),
+              );
             }).toList(),
           ),
         ),
         SizedBox(height: isCompact ? 8 : 16),
         if (!_submitted)
-          ElevatedButton(
+          ElevatedButton.icon(
             onPressed: _onReorderComplete,
-            style: ElevatedButton.styleFrom(
-              padding: EdgeInsets.symmetric(
-                horizontal: isCompact ? 32 : 48,
-                vertical: isCompact ? 12 : 18,
-              ),
-            ),
-            child: Text(
+            icon: const Icon(Icons.check_circle_outline_rounded, size: 24),
+            label: Text(
               AppStrings.done(lang),
               style: TextStyle(
                 fontSize: isCompact ? 17 : 20,
                 fontWeight: FontWeight.w700,
               ),
             ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.leafGreen,
+              foregroundColor: Colors.white,
+              padding: EdgeInsets.symmetric(
+                horizontal: isCompact ? 36 : 56,
+                vertical: isCompact ? 12 : 18,
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              elevation: 3,
+            ),
+          )
+        else
+          PopIn(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.check_circle_rounded, size: 36, color: AppColors.leafGreen),
+                const SizedBox(width: 10),
+                Text(
+                  AppStrings.wellDone(lang),
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.leafGreenDark,
+                  ),
+                ),
+              ],
+            ),
           ),
       ],
     );
   }
 
-  Widget _buildEventTile(Map<String, Object> event, {bool isCompact = false, Key? key}) {
+  Widget _buildEventTile(
+    Map<String, Object> event, {
+    required int index,
+    required int totalCount,
+    bool isCompact = false,
+    Key? key,
+  }) {
+    final lang = LocaleController.instance.currentLanguage;
+    final rawLabel = (event['label'] as String?) ?? '';
+    final localizedLabel = AppStrings.routineLabel(lang, rawLabel);
+
     return Container(
       key: key,
       margin: EdgeInsets.symmetric(vertical: isCompact ? 3 : 6),
       padding: EdgeInsets.symmetric(
-        horizontal: isCompact ? 14 : 20,
-        vertical: isCompact ? 8 : 16,
+        horizontal: isCompact ? 12 : 18,
+        vertical: isCompact ? 8 : 12,
       ),
       decoration: BoxDecoration(
         color: AppColors.raisedSurface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border, width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Row(
         children: [
-          Text(
-            (event['icon'] as String?) ?? '📌',
-            style: TextStyle(fontSize: isCompact ? 22 : 30),
+          Container(
+            width: isCompact ? 28 : 34,
+            height: isCompact ? 28 : 34,
+            decoration: BoxDecoration(
+              color: AppColors.marigold.withValues(alpha: 0.3),
+              shape: BoxShape.circle,
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              '${index + 1}',
+              style: TextStyle(
+                fontSize: isCompact ? 14 : 17,
+                fontWeight: FontWeight.w800,
+                color: AppColors.primaryText,
+              ),
+            ),
           ),
-          const SizedBox(width: 16),
+          SizedBox(width: isCompact ? 10 : 14),
+          RoutinePhoto(
+            id: (event['id'] as String?) ?? '',
+            emoji: (event['icon'] as String?) ?? '📌',
+            label: rawLabel,
+            size: isCompact ? 40 : 48,
+          ),
+          SizedBox(width: isCompact ? 12 : 16),
           Expanded(
             child: Text(
-              (event['label'] as String?) ?? '',
+              localizedLabel,
               style: TextStyle(
                 fontSize: isCompact ? 17 : 20,
                 fontWeight: FontWeight.w600,
@@ -248,8 +362,35 @@ class _MyDayWidgetState extends State<MyDayWidget> {
               ),
             ),
           ),
-          const SizedBox(width: 8),
-          Icon(Icons.drag_handle_rounded, color: AppColors.ghostHand, size: isCompact ? 24 : 30),
+          if (!_submitted) ...[
+            IconButton(
+              tooltip: 'Move Up',
+              onPressed: index > 0 ? () => _moveUp(index) : null,
+              icon: const Icon(Icons.arrow_upward_rounded),
+              iconSize: isCompact ? 22 : 28,
+              color: AppColors.marigoldDark,
+              disabledColor: AppColors.secondaryText.withValues(alpha: 0.2),
+            ),
+            IconButton(
+              tooltip: 'Move Down',
+              onPressed: index < totalCount - 1 ? () => _moveDown(index) : null,
+              icon: const Icon(Icons.arrow_downward_rounded),
+              iconSize: isCompact ? 22 : 28,
+              color: AppColors.marigoldDark,
+              disabledColor: AppColors.secondaryText.withValues(alpha: 0.2),
+            ),
+          ],
+          ReorderableDragStartListener(
+            index: index,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+              child: Icon(
+                Icons.drag_handle_rounded,
+                color: AppColors.ghostHand,
+                size: isCompact ? 26 : 32,
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -306,7 +447,7 @@ class _MyDayWidgetState extends State<MyDayWidget> {
                     decoration: BoxDecoration(
                       color: tint,
                       borderRadius: BorderRadius.circular(18),
-                      border: Border.all(color: AppColors.border, width: 1.5),
+                      boxShadow: [BoxShadow(color: AppColors.terracottaDeep.withValues(alpha: 0.07), blurRadius: 10, offset: const Offset(0, 3))],
                     ),
                     child: Text(
                       AppStrings.displayOrientationOption(lang, questionId, option),

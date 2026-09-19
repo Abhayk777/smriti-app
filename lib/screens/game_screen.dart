@@ -242,6 +242,12 @@ class _GameScreenState extends State<GameScreen> {
       debugPrint('Could not load routine for games: $e');
     }
 
+    if (routine.length < MyDayGame.minOrderingEvents) {
+      routine = base.routineItems.isNotEmpty
+          ? base.routineItems
+          : MyDayGame.defaultRoutine;
+    }
+
     return GameContent(
       version: base.version,
       marketItems: base.marketItems,
@@ -556,6 +562,7 @@ class _GameScreenState extends State<GameScreen> {
             children: [
               IconMedallion(
                 icon: _info?.icon ?? Icons.extension_rounded,
+                image: _info?.image,
                 color: _color,
                 size: 96,
                 background: _color.withValues(alpha: 0.12),
@@ -595,6 +602,7 @@ class _GameScreenState extends State<GameScreen> {
               ScreenHeader(
                 title: _gameName(widget.gameId, lang),
                 icon: _info?.icon ?? Icons.people_alt_rounded,
+                image: _info?.image,
                 color: _color,
               ),
               Expanded(
@@ -632,6 +640,22 @@ class _GameScreenState extends State<GameScreen> {
       body: SafeArea(
         child: Stack(
           children: [
+            // A soft, faded photo of the game's theme behind everything.
+            if (_info?.image != null && _info!.image != familyHomeGlyph)
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: Opacity(
+                    opacity: 0.12,
+                    child: Image.asset(
+                      'assets/images/photos/${_info!.image}',
+                      fit: BoxFit.cover,
+                      cacheWidth: 800,
+                      excludeFromSemantics: true,
+                      errorBuilder: (_, _, _) => const SizedBox.shrink(),
+                    ),
+                  ),
+                ),
+              ),
             Column(
               children: [
                 // Top bar with timer and exit
@@ -680,6 +704,7 @@ class _GameScreenState extends State<GameScreen> {
               children: [
                 IconMedallion(
                   icon: _info?.icon ?? Icons.extension_rounded,
+                image: _info?.image,
                   color: _color,
                   size: 48,
                 ),
@@ -843,6 +868,7 @@ class _GameScreenState extends State<GameScreen> {
                 children: [
                   IconMedallion(
                     icon: isPraise ? Icons.star_rounded : Icons.thumb_up_alt_rounded,
+                    
                     color: isPraise ? AppColors.marigoldDark : AppColors.indigo,
                     size: 48,
                   ),
@@ -903,6 +929,7 @@ class RestCardDialog extends StatelessWidget {
               children: [
                 IconMedallion(
                   icon: Icons.local_cafe_rounded,
+                  image: 'rest.jpg',
                   color: AppColors.leafGreen,
                   size: isCompact ? 48 : 56,
                 ),
@@ -995,6 +1022,7 @@ class BreakLockDialog extends StatelessWidget {
               children: [
                 IconMedallion(
                   icon: Icons.local_cafe_rounded,
+                  image: 'rest.jpg',
                   color: AppColors.leafGreen,
                   size: isCompact ? 48 : 56,
                 ),

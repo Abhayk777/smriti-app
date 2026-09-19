@@ -220,6 +220,7 @@ class _MusicScreenState extends State<MusicScreen>
 
   Widget _buildHeader(BuildContext context) {
     return ScreenHeader(
+      image: 'tile_music.jpg',
       title: 'Music & Peace',
       icon: Icons.music_note_rounded,
       color: AppColors.marigoldDark,

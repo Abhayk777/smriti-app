@@ -5,6 +5,7 @@ import '../../core/i18n/app_strings.dart';
 import '../../core/i18n/locale_controller.dart';
 import '../../ui/smriti_ui.dart';
 import '../cognitive_game.dart';
+import '../hint/game_hint.dart';
 import 'sort_harvest_game.dart';
 
 /// Playable Sort the Harvest widget.
@@ -125,31 +126,51 @@ class _SortHarvestWidgetState extends State<SortHarvestWidget> {
     );
   }
 
+  static const _matPhoto = {
+    'fruit': 'banana',
+    'grain': 'rice',
+    'vegetable': 'tomato',
+    'pulse': 'dal',
+    'dairy': 'milk',
+    'pantry': 'tea',
+  };
+
   Widget _buildCard(bool isCompact, String lang) {
-    final size = isCompact ? 84.0 : 140.0;
+    final size = isCompact ? 96.0 : 160.0;
     final rawId = _card['id']?.split('_').first ?? '';
     return Container(
       width: size,
       height: size,
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        color: AppColors.raisedSurface,
-        borderRadius: BorderRadius.circular(isCompact ? 14 : 20),
-        border: Border.all(color: AppColors.marigold, width: isCompact ? 2 : 3),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            _card['emoji'] ?? '🧺',
-            style: TextStyle(fontSize: isCompact ? 34 : 60),
+        borderRadius: BorderRadius.circular(isCompact ? 16 : 24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.2),
+            blurRadius: 12,
+            offset: const Offset(0, 5),
           ),
-          SizedBox(height: isCompact ? 2 : 4),
-          Text(
-            AppStrings.marketItemName(lang, rawId),
-            style: TextStyle(
-              fontSize: isCompact ? 13 : 16,
-              fontWeight: FontWeight.w600,
-              color: AppColors.primaryText,
+        ],
+      ),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          ItemPhoto(id: rawId, emoji: _card['emoji'] ?? '🧺', emojiSize: isCompact ? 34 : 60),
+          const PhotoScrim(),
+          Positioned(
+            left: 6,
+            right: 6,
+            bottom: 8,
+            child: Text(
+              AppStrings.marketItemName(lang, rawId),
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: isCompact ? 15 : 20,
+                fontWeight: FontWeight.w800,
+                color: Colors.white,
+              ),
             ),
           ),
         ],
@@ -158,38 +179,57 @@ class _SortHarvestWidgetState extends State<SortHarvestWidget> {
   }
 
   Widget _buildMat(String mat, bool isCompact, String lang) {
+    return HintGlow(
+      isAnswer: !_answered && mat == widget.item.context['correctMat'],
+      radius: isCompact ? 16 : 24,
+      child: _buildMatCore(mat, isCompact, lang),
+    );
+  }
+
+  Widget _buildMatCore(String mat, bool isCompact, String lang) {
     final color = _colorForMat(mat);
+    final photo = _matPhoto[mat];
+    final w = isCompact ? 104.0 : 144.0;
+    final h = isCompact ? 112.0 : 164.0;
     return BouncyTap(
       onTap: () => _onMatTap(mat),
       child: Container(
-        width: isCompact ? 96 : 130,
-        height: isCompact ? 104 : 150,
+        width: w,
+        height: h,
+        clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.15),
-          borderRadius: BorderRadius.circular(isCompact ? 14 : 20),
-          border: Border.all(color: color, width: isCompact ? 2 : 2.5),
+          color: color,
+          borderRadius: BorderRadius.circular(isCompact ? 16 : 24),
+          boxShadow: [
+            BoxShadow(
+              color: color.withValues(alpha: 0.35),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Container(
-              width: isCompact ? 36 : 50,
-              height: isCompact ? 36 : 50,
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.3),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(Icons.place_rounded, color: color, size: isCompact ? 20 : 30),
+            Expanded(
+              child: photo == null
+                  ? const SizedBox.expand()
+                  : SizedBox.expand(child: ItemPhoto(id: photo, emoji: '🧺')),
             ),
-            SizedBox(height: isCompact ? 6 : 12),
-            Text(
-              AppStrings.harvestMatLabel(lang, mat),
-              style: TextStyle(
-                fontSize: isCompact ? 13 : 16,
-                fontWeight: FontWeight.w700,
-                color: color,
+            Container(
+              width: double.infinity,
+              color: color,
+              padding: EdgeInsets.symmetric(vertical: isCompact ? 8 : 12, horizontal: 4),
+              child: Text(
+                AppStrings.harvestMatLabel(lang, mat),
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: isCompact ? 15 : 19,
+                  fontWeight: FontWeight.w800,
+                  color: mat == 'white' || mat == 'yellow' || mat == 'grain' ? AppColors.primaryText : Colors.white,
+                ),
               ),
-              textAlign: TextAlign.center,
             ),
           ],
         ),

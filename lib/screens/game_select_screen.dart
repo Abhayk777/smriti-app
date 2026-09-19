@@ -90,6 +90,7 @@ class _GameSelectScreenState extends State<GameSelectScreen> {
           children: [
             IconMedallion(
               icon: Icons.local_cafe_rounded,
+              image: 'rest.jpg',
               color: AppColors.leafGreen,
               size: compact ? 42 : 50,
             ),
@@ -130,9 +131,10 @@ class _GameSelectScreenState extends State<GameSelectScreen> {
                   title: AppStrings.games(lang),
                   subtitle: compact ? null : AppStrings.gamesForMind(lang),
                   icon: Icons.extension_rounded,
+                  image: 'tile_games.jpg',
                   color: AppColors.terracotta,
                   actions: [
-                    const LanguageSwitcherButton(),
+                    LanguageSwitcherButton(compact: compact),
                     const SizedBox(width: 4),
                     IconButton(
                       tooltip: 'Sync & Diagnostics',
@@ -322,7 +324,8 @@ class RestAdviceCardState extends State<RestAdviceCard> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Row(children: [
-              const IconMedallion(icon: Icons.local_cafe_rounded, color: AppColors.leafGreen, size: 52),
+              const IconMedallion(icon: Icons.local_cafe_rounded,
+              image: 'rest.jpg', color: AppColors.leafGreen, size: 52),
               const SizedBox(width: 12),
               Expanded(child: Text(AppStrings.timeToRestYourEyes(l), style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w800, color: AppColors.primaryText))),
             ]),
@@ -367,7 +370,7 @@ class _GameTile extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(14, 14, 10, 14),
       child: Row(
         children: [
-          IconMedallion(icon: info.icon, color: info.color, size: 72),
+          IconMedallion(icon: info.icon, image: info.image, color: info.color, size: 72),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
@@ -459,7 +462,7 @@ class _GameCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              IconMedallion(icon: info.icon, color: info.color, size: 52),
+              IconMedallion(icon: info.icon, image: info.image, color: info.color, size: 52),
               const Spacer(),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
@@ -654,7 +657,7 @@ class _PlayHistoryDialogState extends State<_PlayHistoryDialog> {
                         decoration: BoxDecoration(
                           color: AppColors.pageBackground,
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: AppColors.border),
+                          boxShadow: [BoxShadow(color: AppColors.terracottaDeep.withValues(alpha: 0.07), blurRadius: 10, offset: const Offset(0, 3))],
                         ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceAround,
