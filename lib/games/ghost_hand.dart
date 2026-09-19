@@ -1,109 +1,434 @@
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
 
-/// Stub for the ghost-hand demo: a translucent hand that traces the correct
-/// gesture so the elder learns by watching rather than by reading instructions.
+import '../app_colors.dart';
+
+/// Controller for demonstrating game gestures with a realistic animated hand.
 ///
-/// The actual animation is a design-layer concern (see A13). This holds only
-/// the state the session runner needs — whether a demo is running, and the
-/// steps it would trace — so that `playDemo` has something real to await and
-/// `demoReplays` has something real to count.
+/// Holds whether a demo is running, the normalized path it traces, and
+/// broadcasts live animation updates to [GhostHandOverlay].
 class GhostHandController extends ChangeNotifier {
-  GhostHandController({this.stepDuration = const Duration(milliseconds: 600)});
+  GhostHandController({
+    this.stepDuration = const Duration(milliseconds: 900),
+  });
 
   final Duration stepDuration;
 
   bool _isPlaying = false;
   bool get isPlaying => _isPlaying;
 
-  /// Normalised (0–1) points the hand moves between, in order.
   List<Offset> _path = const [];
   List<Offset> get path => _path;
 
   int _completedRuns = 0;
   int get completedRuns => _completedRuns;
 
+  // Live animation state
+  Offset _currentPoint = const Offset(0.5, 0.5);
+  Offset get currentPoint => _currentPoint;
+
+  bool _isPressing = false;
+  bool get isPressing => _isPressing;
+
+  double _tapRipple = 0.0;
+  double get tapRipple => _tapRipple;
+
+  bool _disposed = false;
+
+  void updateState({
+    required Offset point,
+    required bool isPressing,
+    required double tapRipple,
+  }) {
+    if (_disposed) return;
+    _currentPoint = point;
+    _isPressing = isPressing;
+    _tapRipple = tapRipple;
+    notifyListeners();
+  }
+
   Future<void> play(List<Offset> path) async {
+    if (_disposed || path.isEmpty) return;
     _path = path;
     _isPlaying = true;
+    _currentPoint = path.first;
     notifyListeners();
 
-    // Animate through each step
+    // Step through the points with realistic movement and tapping
     for (var i = 0; i < path.length; i++) {
-      await Future<void>.delayed(stepDuration);
+      if (!_isPlaying || _disposed) break;
+
+      // Move to target
+      final target = path[i];
+      _currentPoint = target;
+      _isPressing = false;
+      _tapRipple = 0.0;
+      notifyListeners();
+
+      await Future<void>.delayed(const Duration(milliseconds: 250));
+      if (!_isPlaying || _disposed) break;
+
+      // Tap down
+      _isPressing = true;
+      _tapRipple = 1.0;
+      notifyListeners();
+
+      await Future<void>.delayed(const Duration(milliseconds: 400));
+      if (!_isPlaying || _disposed) break;
+
+      // Release tap
+      _isPressing = false;
+      _tapRipple = 0.0;
+      notifyListeners();
+
+      await Future<void>.delayed(const Duration(milliseconds: 250));
     }
 
     _isPlaying = false;
     _completedRuns++;
-    notifyListeners();
+    if (!_disposed) notifyListeners();
+  }
+
+  void stop() {
+    _isPlaying = false;
+    _isPressing = false;
+    _tapRipple = 0.0;
+    if (!_disposed) notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
   }
 }
 
-/// Ghost hand overlay: shows a translucent finger tracing the demo path.
-class GhostHandOverlay extends StatelessWidget {
-  const GhostHandOverlay({super.key, required this.controller});
+/// Overlay that renders the realistic animated ghost hand tracing the demo path.
+class GhostHandOverlay extends StatefulWidget {
+  const GhostHandOverlay({
+    super.key,
+    required this.controller,
+    this.onTapAnywhereToDismiss,
+  });
 
   final GhostHandController controller;
+  final VoidCallback? onTapAnywhereToDismiss;
+
+  @override
+  State<GhostHandOverlay> createState() => _GhostHandOverlayState();
+}
+
+class _GhostHandOverlayState extends State<GhostHandOverlay>
+    with TickerProviderStateMixin {
+  late AnimationController _moveController;
+  late AnimationController _rippleController;
+
+  Offset _startOffset = const Offset(0.5, 0.5);
+  Offset _endOffset = const Offset(0.5, 0.5);
+  bool _isTapping = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _moveController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+
+    _rippleController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 700),
+    );
+
+    widget.controller.addListener(_onControllerUpdate);
+  }
+
+  void _onControllerUpdate() {
+    if (!mounted) return;
+    final current = widget.controller.currentPoint;
+    if (current != _endOffset) {
+      _startOffset = _endOffset;
+      _endOffset = current;
+      _moveController.forward(from: 0.0);
+    }
+
+    if (widget.controller.isPressing && !_isTapping) {
+      _isTapping = true;
+      _rippleController.forward(from: 0.0);
+    } else if (!widget.controller.isPressing) {
+      _isTapping = false;
+    }
+
+    setState(() {});
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_onControllerUpdate);
+    _moveController.dispose();
+    _rippleController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    return ListenableBuilder(
-      listenable: controller,
-      builder: (context, _) {
-        if (!controller.isPlaying || controller.path.isEmpty) {
-          return const SizedBox.expand();
-        }
+    if (!widget.controller.isPlaying || widget.controller.path.isEmpty) {
+      return const SizedBox.shrink();
+    }
 
-        return IgnorePointer(
-          child: SizedBox.expand(
-            child: CustomPaint(
-              painter: _GhostHandPainter(
-                path: controller.path,
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onTap: widget.onTapAnywhereToDismiss,
+      child: SizedBox.expand(
+        child: AnimatedBuilder(
+          animation: Listenable.merge([_moveController, _rippleController]),
+          builder: (context, _) {
+            final t = Curves.easeInOutCubic.transform(_moveController.value);
+            final currentPos = Offset.lerp(_startOffset, _endOffset, t) ?? _endOffset;
+
+            return CustomPaint(
+              painter: RealisticHandPainter(
+                position: currentPos,
+                isPressing: _isTapping,
+                rippleProgress: _rippleController.value,
+                pathPoints: widget.controller.path,
               ),
-            ),
-          ),
-        );
-      },
+            );
+          },
+        ),
+      ),
     );
   }
 }
 
-/// Paints the ghost-hand trail: a translucent path between demonstration points.
-class _GhostHandPainter extends CustomPainter {
-  _GhostHandPainter({required this.path});
+/// Custom painter for a realistic illustrated pointing finger with 3D shading,
+/// contact shadow, and expanding tap ripples.
+class RealisticHandPainter extends CustomPainter {
+  RealisticHandPainter({
+    required this.position,
+    required this.isPressing,
+    required this.rippleProgress,
+    required this.pathPoints,
+  });
 
-  final List<Offset> path;
+  final Offset position;
+  final bool isPressing;
+  final double rippleProgress;
+  final List<Offset> pathPoints;
 
   @override
   void paint(Canvas canvas, Size size) {
-    if (path.length < 2) return;
+    final px = position.dx * size.width;
+    final py = position.dy * size.height;
 
-    final paint = Paint()
-      ..color = const Color(0x408C8078) // ghostHand with alpha
-      ..strokeWidth = 4
+    // 1. Draw connecting guide dots/path if multi-point
+    if (pathPoints.length > 1) {
+      _drawGuidePath(canvas, size);
+    }
+
+    // 2. Draw expanding tap ripple rings if touching
+    if (rippleProgress > 0 && rippleProgress < 1.0) {
+      _drawTapRipples(canvas, Offset(px, py));
+    }
+
+    // 3. Draw realistic contact shadow underneath fingertip
+    _drawContactShadow(canvas, Offset(px, py));
+
+    // 4. Draw realistic 3D finger
+    _drawRealisticFinger(canvas, Offset(px, py));
+  }
+
+  void _drawGuidePath(Canvas canvas, Size size) {
+    final pathPaint = Paint()
+      ..color = AppColors.marigold.withValues(alpha: 0.5)
+      ..strokeWidth = 3
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round;
 
-    final drawPath = Path();
-    drawPath.moveTo(path.first.dx * size.width, path.first.dy * size.height);
-    for (var i = 1; i < path.length; i++) {
-      drawPath.lineTo(path[i].dx * size.width, path[i].dy * size.height);
+    final dashPath = Path();
+    for (var i = 0; i < pathPoints.length; i++) {
+      final p = Offset(pathPoints[i].dx * size.width, pathPoints[i].dy * size.height);
+      if (i == 0) {
+        dashPath.moveTo(p.dx, p.dy);
+      } else {
+        dashPath.lineTo(p.dx, p.dy);
+      }
+
+      // Indicator ring at each waypoint
+      final dotPaint = Paint()
+        ..color = AppColors.terracotta.withValues(alpha: 0.7)
+        ..style = PaintingStyle.fill;
+      canvas.drawCircle(p, 6, dotPaint);
+
+      final outerDot = Paint()
+        ..color = Colors.white.withValues(alpha: 0.9)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2;
+      canvas.drawCircle(p, 6, outerDot);
     }
-    canvas.drawPath(drawPath, paint);
 
-    // Draw hand at last point
-    final lastPoint = path.last;
-    final handPaint = Paint()
-      ..color = const Color(0x508C8078)
+    canvas.drawPath(dashPath, pathPaint);
+  }
+
+  void _drawTapRipples(Canvas canvas, Offset center) {
+    final p = rippleProgress;
+
+    // Inner primary ripple
+    final radius1 = 12.0 + p * 38.0;
+    final alpha1 = (1.0 - p).clamp(0.0, 1.0);
+    final ringPaint1 = Paint()
+      ..color = Colors.white.withValues(alpha: alpha1 * 0.85)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3.5 * (1.0 - p * 0.5);
+    canvas.drawCircle(center, radius1, ringPaint1);
+
+    // Inner soft glow disk
+    final glowDisk = Paint()
+      ..color = AppColors.marigold.withValues(alpha: alpha1 * 0.35)
       ..style = PaintingStyle.fill;
+    canvas.drawCircle(center, radius1 * 0.7, glowDisk);
 
-    canvas.drawCircle(
-      Offset(lastPoint.dx * size.width, lastPoint.dy * size.height),
-      20,
-      handPaint,
+    // Outer delayed gold ripple
+    if (p > 0.15) {
+      final p2 = (p - 0.15) / 0.85;
+      final radius2 = 8.0 + p2 * 54.0;
+      final alpha2 = (1.0 - p2).clamp(0.0, 1.0);
+      final ringPaint2 = Paint()
+        ..color = AppColors.marigold.withValues(alpha: alpha2 * 0.6)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.5 * (1.0 - p2 * 0.5);
+      canvas.drawCircle(center, radius2, ringPaint2);
+    }
+  }
+
+  void _drawContactShadow(Canvas canvas, Offset touchPoint) {
+    final shadowScale = isPressing ? 0.9 : 1.15;
+    final shadowAlpha = isPressing ? 0.32 : 0.18;
+    final shadowOffset = isPressing ? const Offset(2, 4) : const Offset(6, 12);
+
+    final shadowPaint = Paint()
+      ..color = Colors.black.withValues(alpha: shadowAlpha)
+      ..maskFilter = MaskFilter.blur(BlurStyle.normal, isPressing ? 5 : 10);
+
+    canvas.drawOval(
+      Rect.fromCenter(
+        center: touchPoint + shadowOffset,
+        width: 32 * shadowScale,
+        height: 18 * shadowScale,
+      ),
+      shadowPaint,
     );
   }
 
+  void _drawRealisticFinger(Canvas canvas, Offset touchPoint) {
+    canvas.save();
+
+    // Subtle press-down translation & scale
+    final pressOffset = isPressing ? const Offset(0, 3) : Offset.zero;
+    final target = touchPoint + pressOffset;
+
+    // Angle of finger: coming in from top/top-right at ~25 degrees
+    const angle = -0.38; // radians
+    canvas.translate(target.dx, target.dy);
+    canvas.rotate(angle);
+
+    final fingerWidth = 34.0;
+    final fingerLength = 110.0;
+
+    // Skin tones
+    const fleshLight = Color(0xFFF1C8AC);
+    const fleshBase = Color(0xFFE4AC8C);
+    const fleshDark = Color(0xFFC78462);
+    const fleshShadow = Color(0xFF9E5C3B);
+    const nailBase = Color(0xFFFCE6DA);
+    const nailShine = Color(0xFFFFFFFF);
+
+    // 1. Draw Finger Body (Path with rounded tip)
+    final fingerPath = Path();
+    fingerPath.moveTo(-fingerWidth * 0.45, 0); // left side of tip
+    // Rounded fingertip pad
+    fingerPath.quadraticBezierTo(
+      0, -12, // tip apex
+      fingerWidth * 0.45, 0, // right side of tip
+    );
+    // Shaft widening upward
+    fingerPath.lineTo(fingerWidth * 0.65, fingerLength);
+    fingerPath.lineTo(-fingerWidth * 0.65, fingerLength);
+    fingerPath.close();
+
+    // Shaded skin gradient
+    final skinGradient = LinearGradient(
+      begin: Alignment.centerLeft,
+      end: Alignment.centerRight,
+      colors: const [fleshDark, fleshLight, fleshBase, fleshShadow],
+      stops: const [0.0, 0.35, 0.75, 1.0],
+    ).createShader(Rect.fromLTWH(-fingerWidth, -15, fingerWidth * 2, fingerLength + 20));
+
+    final skinPaint = Paint()
+      ..shader = skinGradient
+      ..style = PaintingStyle.fill;
+    canvas.drawPath(fingerPath, skinPaint);
+
+    // Finger outline for cartoon-realism definition
+    final outlinePaint = Paint()
+      ..color = fleshShadow.withValues(alpha: 0.6)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.8;
+    canvas.drawPath(fingerPath, outlinePaint);
+
+    // 2. Fingernail
+    final nailRect = Rect.fromCenter(
+      center: const Offset(0, 14),
+      width: fingerWidth * 0.58,
+      height: 24,
+    );
+    final nailRRect = RRect.fromRectAndRadius(nailRect, const Radius.circular(10));
+
+    final nailGradient = LinearGradient(
+      begin: Alignment.topCenter,
+      end: Alignment.bottomCenter,
+      colors: [nailShine, nailBase, fleshDark.withValues(alpha: 0.5)],
+      stops: const [0.0, 0.6, 1.0],
+    ).createShader(nailRect);
+
+    final nailPaint = Paint()
+      ..shader = nailGradient
+      ..style = PaintingStyle.fill;
+    canvas.drawRRect(nailRRect, nailPaint);
+
+    // Nail outline & cuticle curve
+    final nailBorderPaint = Paint()
+      ..color = fleshDark.withValues(alpha: 0.75)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.2;
+    canvas.drawRRect(nailRRect, nailBorderPaint);
+
+    // 3. Knuckle crease lines for realism
+    final creasePaint = Paint()
+      ..color = fleshDark.withValues(alpha: 0.55)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5
+      ..strokeCap = StrokeCap.round;
+
+    // First joint crease
+    final crease1 = Path();
+    crease1.moveTo(-fingerWidth * 0.35, 42);
+    crease1.quadraticBezierTo(0, 46, fingerWidth * 0.35, 42);
+    canvas.drawPath(crease1, creasePaint);
+
+    // Second joint crease
+    final crease2 = Path();
+    crease2.moveTo(-fingerWidth * 0.45, 78);
+    crease2.quadraticBezierTo(0, 83, fingerWidth * 0.45, 78);
+    canvas.drawPath(crease2, creasePaint);
+
+    canvas.restore();
+  }
+
   @override
-  bool shouldRepaint(covariant _GhostHandPainter oldDelegate) =>
-      oldDelegate.path != path;
+  bool shouldRepaint(covariant RealisticHandPainter oldDelegate) {
+    return oldDelegate.position != position ||
+        oldDelegate.isPressing != isPressing ||
+        oldDelegate.rippleProgress != rippleProgress ||
+        oldDelegate.pathPoints != pathPoints;
+  }
 }

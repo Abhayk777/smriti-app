@@ -17,6 +17,7 @@ import '../core/sync/sync_engine.dart';
 import '../games/cognitive_game.dart';
 import '../games/game_catalog.dart';
 import '../games/session_runner.dart';
+import '../games/tutorial/game_tutorial_dialog.dart';
 import '../ui/smriti_ui.dart';
 
 // Game imports
@@ -162,6 +163,13 @@ class _GameScreenState extends State<GameScreen> {
       _game = game;
       _runner = runner;
       _loading = false;
+    });
+
+    // Auto-show how-to-play tutorial with realistic ghost hand animation
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        GameTutorialDialog.show(context, widget.gameId);
+      }
     });
 
     // Get first item
@@ -747,6 +755,18 @@ class _GameScreenState extends State<GameScreen> {
                       ),
                     ],
                   ),
+                ),
+                // Help / How to play button
+                IconButton(
+                  tooltip: 'How to play',
+                  onPressed: () => GameTutorialDialog.show(context, widget.gameId),
+                  iconSize: 28,
+                  style: IconButton.styleFrom(
+                    minimumSize: const Size(48, 48),
+                    backgroundColor: deep,
+                  ),
+                  icon: const Icon(Icons.help_outline_rounded),
+                  color: AppColors.onColor,
                 ),
                 const SizedBox(width: 8),
 

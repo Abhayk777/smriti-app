@@ -10,6 +10,7 @@ import '../../core/i18n/app_strings.dart';
 import '../../core/i18n/locale_controller.dart';
 import '../../ui/smriti_ui.dart';
 import '../cognitive_game.dart';
+import '../hint/game_hint.dart';
 import 'sounds_home_game.dart';
 
 /// Playable Sounds of Home widget.
@@ -359,22 +360,26 @@ class _SoundsHomeWidgetState extends State<SoundsHomeWidget>
                 ),
               ),
               const SizedBox(height: 14),
-              SizedBox(
-                width: double.infinity,
-                height: 76,
-                child: ElevatedButton.icon(
-                  onPressed: _start,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.marigold,
-                    foregroundColor: AppColors.primaryText,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(22),
+              HintGlow(
+                isAnswer: true,
+                radius: 22,
+                child: SizedBox(
+                  width: double.infinity,
+                  height: 76,
+                  child: ElevatedButton.icon(
+                    onPressed: _start,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.marigold,
+                      foregroundColor: AppColors.primaryText,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(22),
+                      ),
                     ),
-                  ),
-                  icon: const Icon(Icons.play_arrow_rounded, size: 40),
-                  label: Text(
-                    AppStrings.start(lang),
-                    style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w800),
+                    icon: const Icon(Icons.play_arrow_rounded, size: 40),
+                    label: Text(
+                      AppStrings.start(lang),
+                      style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w800),
+                    ),
                   ),
                 ),
               ),
@@ -458,20 +463,24 @@ class _SoundsHomeWidgetState extends State<SoundsHomeWidget>
 
           // Drum button
           if (!_taskComplete)
-            Semantics(
-              button: true,
-              label: 'Drum',
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTapDown: (_) => _onDrumTap(),
-                child: AnimatedBuilder(
-                  animation: _drumController,
-                  builder: (context, child) {
-                    final t = _drumController.value;
-                    final scale = 1.0 - sin(t * pi) * 0.08;
-                    return Transform.scale(scale: scale, child: child);
-                  },
-                  child: _buildDrum(drumSize, lang),
+            HintGlow(
+              isAnswer: _isTarget && !_respondedToCurrentStimulus,
+              radius: drumSize / 2,
+              child: Semantics(
+                button: true,
+                label: 'Drum',
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTapDown: (_) => _onDrumTap(),
+                  child: AnimatedBuilder(
+                    animation: _drumController,
+                    builder: (context, child) {
+                      final t = _drumController.value;
+                      final scale = 1.0 - sin(t * pi) * 0.08;
+                      return Transform.scale(scale: scale, child: child);
+                    },
+                    child: _buildDrum(drumSize, lang),
+                  ),
                 ),
               ),
             )

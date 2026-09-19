@@ -5,6 +5,7 @@ import '../../core/i18n/app_strings.dart';
 import '../../core/i18n/locale_controller.dart';
 import '../../ui/smriti_ui.dart';
 import '../cognitive_game.dart';
+import '../hint/game_hint.dart';
 import 'weaving_game.dart';
 import 'woven_strip.dart';
 
@@ -115,33 +116,39 @@ class _WeavingWidgetState extends State<WeavingWidget> {
                       final optionPattern = (option['pattern'] as List<Object?>)
                           .cast<int>();
                       final optionId = option['id'] as String;
+                      final correctId = widget.item.payload['correctId'] as String?;
+                      final isCorrect = optionId == correctId;
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 14),
-                        child: BouncyTap(
-                          onTap: () => _onOptionTap(optionId),
-                          child: ConstrainedBox(
-                            constraints: BoxConstraints(
-                              maxWidth: constraints.maxWidth.clamp(0, 460),
-                            ),
-                            child: Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 14),
-                              decoration: BoxDecoration(
-                                color: AppColors.raisedSurface,
-                                borderRadius: BorderRadius.circular(20),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: AppColors.terracottaDeep
-                                        .withValues(alpha: 0.10),
-                                    blurRadius: 10,
-                                    offset: const Offset(0, 4),
-                                  ),
-                                ],
+                        child: HintGlow(
+                          isAnswer: !_answered && isCorrect,
+                          radius: 20,
+                          child: BouncyTap(
+                            onTap: () => _onOptionTap(optionId),
+                            child: ConstrainedBox(
+                              constraints: BoxConstraints(
+                                maxWidth: constraints.maxWidth.clamp(0, 460),
                               ),
-                              child: FittedBox(
-                                fit: BoxFit.scaleDown,
-                                child: _buildPattern(optionPattern, size: 40),
+                              child: Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 14),
+                                decoration: BoxDecoration(
+                                  color: AppColors.raisedSurface,
+                                  borderRadius: BorderRadius.circular(20),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: AppColors.terracottaDeep
+                                          .withValues(alpha: 0.10),
+                                      blurRadius: 10,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: _buildPattern(optionPattern, size: 40),
+                                ),
                               ),
                             ),
                           ),

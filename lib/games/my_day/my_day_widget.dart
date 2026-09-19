@@ -5,6 +5,7 @@ import '../../core/i18n/app_strings.dart';
 import '../../core/i18n/locale_controller.dart';
 import '../../ui/smriti_ui.dart';
 import '../cognitive_game.dart';
+import '../hint/game_hint.dart';
 import 'my_day_game.dart';
 
 /// Soft tints that give each card its own colour.
@@ -433,30 +434,35 @@ class _MyDayWidgetState extends State<MyDayWidget> {
               alignment: WrapAlignment.center,
               children: _orientationOptions.map((option) {
                 final tint = _tints[_orientationOptions.indexOf(option) % _tints.length];
-                return BouncyTap(
-                  onTap: () => _onOrientationAnswer(option),
-                  child: Container(
-                    constraints: BoxConstraints(
-                      minWidth: isCompact ? 96 : 120,
-                      minHeight: isCompact ? 52 : 64,
-                    ),
-                    padding: EdgeInsets.symmetric(
-                      horizontal: isCompact ? 16 : 22,
-                      vertical: isCompact ? 12 : 16,
-                    ),
-                    decoration: BoxDecoration(
-                      color: tint,
-                      borderRadius: BorderRadius.circular(18),
-                      boxShadow: [BoxShadow(color: AppColors.terracottaDeep.withValues(alpha: 0.07), blurRadius: 10, offset: const Offset(0, 3))],
-                    ),
-                    child: Text(
-                      AppStrings.displayOrientationOption(lang, questionId, option),
-                      style: TextStyle(
-                        fontSize: isCompact ? 18 : 21,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.primaryText,
+                final isCorrect = option == _orientationAnswer;
+                return HintGlow(
+                  isAnswer: !_submitted && isCorrect,
+                  radius: 18,
+                  child: BouncyTap(
+                    onTap: () => _onOrientationAnswer(option),
+                    child: Container(
+                      constraints: BoxConstraints(
+                        minWidth: isCompact ? 96 : 120,
+                        minHeight: isCompact ? 52 : 64,
                       ),
-                      textAlign: TextAlign.center,
+                      padding: EdgeInsets.symmetric(
+                        horizontal: isCompact ? 16 : 22,
+                        vertical: isCompact ? 12 : 16,
+                      ),
+                      decoration: BoxDecoration(
+                        color: tint,
+                        borderRadius: BorderRadius.circular(18),
+                        boxShadow: [BoxShadow(color: AppColors.terracottaDeep.withValues(alpha: 0.07), blurRadius: 10, offset: const Offset(0, 3))],
+                      ),
+                      child: Text(
+                        AppStrings.displayOrientationOption(lang, questionId, option),
+                        style: TextStyle(
+                          fontSize: isCompact ? 18 : 21,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.primaryText,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
                     ),
                   ),
                 );

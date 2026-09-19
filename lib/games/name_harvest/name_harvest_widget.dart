@@ -6,6 +6,7 @@ import '../../app_colors.dart';
 import '../../core/i18n/app_strings.dart';
 import '../../core/i18n/locale_controller.dart';
 import '../cognitive_game.dart';
+import '../hint/game_hint.dart';
 import 'name_harvest_game.dart';
 
 /// Playable Name the Harvest widget.
@@ -214,25 +215,29 @@ class _NameHarvestWidgetState extends State<NameHarvestWidget>
             Row(
               children: [
                 Expanded(
-                  child: TextField(
-                    controller: _textController,
-                    style: TextStyle(
-                        fontSize: isCompact ? 16 : 20, color: AppColors.primaryText),
-                    decoration: InputDecoration(
-                      hintText: AppStrings.typeAnItem(lang),
-                      hintStyle: TextStyle(
-                          fontSize: isCompact ? 14 : 18, color: AppColors.secondaryText),
-                      filled: true,
-                      fillColor: AppColors.raisedSurface,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
-                        borderSide: const BorderSide(
-                            color: AppColors.border, width: 1.5),
+                  child: HintGlow(
+                    isAnswer: !_taskComplete && _namedItems.isEmpty,
+                    radius: 14,
+                    child: TextField(
+                      controller: _textController,
+                      style: TextStyle(
+                          fontSize: isCompact ? 16 : 20, color: AppColors.primaryText),
+                      decoration: InputDecoration(
+                        hintText: AppStrings.typeAnItem(lang),
+                        hintStyle: TextStyle(
+                            fontSize: isCompact ? 14 : 18, color: AppColors.secondaryText),
+                        filled: true,
+                        fillColor: AppColors.raisedSurface,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: const BorderSide(
+                              color: AppColors.border, width: 1.5),
+                        ),
+                        contentPadding: EdgeInsets.symmetric(
+                            horizontal: 14, vertical: isCompact ? 10 : 16),
                       ),
-                      contentPadding: EdgeInsets.symmetric(
-                          horizontal: 14, vertical: isCompact ? 10 : 16),
+                      onSubmitted: (_) => _addItem(),
                     ),
-                    onSubmitted: (_) => _addItem(),
                   ),
                 ),
                 const SizedBox(width: 10),

@@ -7,6 +7,7 @@ import '../../core/i18n/app_strings.dart';
 import '../../core/i18n/locale_controller.dart';
 import '../../ui/smriti_ui.dart';
 import '../cognitive_game.dart';
+import '../hint/game_hint.dart';
 import 'market_basket_game.dart';
 
 /// Playable Market Basket widget.
@@ -248,57 +249,62 @@ class _MarketBasketWidgetState extends State<MarketBasketWidget>
   }
 
   Widget _buildShelfItem(MarketItem item, bool isPicked, String lang) {
-    return BouncyTap(
-      onTap: () => _onItemTap(item),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        clipBehavior: Clip.antiAlias,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
-          border: isPicked
-              ? Border.all(color: AppColors.leafGreen, width: 4)
-              : null,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.12),
-              blurRadius: 8,
-              offset: const Offset(0, 3),
-            ),
-          ],
-        ),
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            ItemPhoto(id: item.id, emoji: item.iconAsset),
-            const PhotoScrim(),
-            if (isPicked)
-              ColoredBox(color: AppColors.leafGreen.withValues(alpha: 0.32)),
-            Positioned(
-              left: 8,
-              right: 8,
-              bottom: 8,
-              child: Text(
-                AppStrings.marketItemName(lang, item.id),
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                  color: Colors.white,
-                ),
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+    final isUnpickedTarget = !isPicked && _targetIds.contains(item.id);
+    return HintGlow(
+      isAnswer: isUnpickedTarget,
+      radius: 20,
+      child: BouncyTap(
+        onTap: () => _onItemTap(item),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            border: isPicked
+                ? Border.all(color: AppColors.leafGreen, width: 4)
+                : null,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.12),
+                blurRadius: 8,
+                offset: const Offset(0, 3),
               ),
-            ),
-            if (isPicked)
-              const Positioned(
-                top: 6,
-                right: 6,
-                child: PopIn(
-                  child: Icon(Icons.check_circle_rounded,
-                      color: Colors.white, size: 30),
+            ],
+          ),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              ItemPhoto(id: item.id, emoji: item.iconAsset),
+              const PhotoScrim(),
+              if (isPicked)
+                ColoredBox(color: AppColors.leafGreen.withValues(alpha: 0.32)),
+              Positioned(
+                left: 8,
+                right: 8,
+                bottom: 8,
+                child: Text(
+                  AppStrings.marketItemName(lang, item.id),
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                  ),
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
-          ],
+              if (isPicked)
+                const Positioned(
+                  top: 6,
+                  right: 6,
+                  child: PopIn(
+                    child: Icon(Icons.check_circle_rounded,
+                        color: Colors.white, size: 30),
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );

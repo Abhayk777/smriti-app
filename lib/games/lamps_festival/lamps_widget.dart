@@ -6,6 +6,7 @@ import '../../core/i18n/app_strings.dart';
 import '../../core/i18n/locale_controller.dart';
 import '../../ui/smriti_ui.dart';
 import '../cognitive_game.dart';
+import '../hint/game_hint.dart';
 import 'diya_lamp.dart';
 import 'lamps_game.dart';
 
@@ -202,6 +203,11 @@ class _LampsWidgetState extends State<LampsWidget> {
                           (lamp['y'] as double) * constraints.maxHeight;
                       final isLit = _currentLit == idx;
                       final isTapped = _tappedSequence.contains(idx);
+                      final isTarget = _phase == 'tapping' &&
+                          _tappedSequence.length < _sequence.length &&
+                          (_direction == 'backward'
+                              ? _sequence[_sequence.length - 1 - _tappedSequence.length] == idx
+                              : _sequence[_tappedSequence.length] == idx);
 
                       return Positioned(
                         left: x - 46,
@@ -209,7 +215,7 @@ class _LampsWidgetState extends State<LampsWidget> {
                         child: BouncyTap(
                           pressedScale: 0.85,
                           onTap: () => _onLampTap(idx),
-                          child: _buildLamp(isLit, isTapped),
+                          child: _buildLamp(isLit, isTapped, isTarget),
                         ),
                       );
                     }).toList(),
@@ -224,7 +230,11 @@ class _LampsWidgetState extends State<LampsWidget> {
     );
   }
 
-  Widget _buildLamp(bool isLit, bool isTapped) {
-    return DiyaLamp(lit: isLit, tapped: isTapped, size: 92);
+  Widget _buildLamp(bool isLit, bool isTapped, bool isTarget) {
+    return HintGlow(
+      isAnswer: isTarget,
+      radius: 46,
+      child: DiyaLamp(lit: isLit, tapped: isTapped, size: 92),
+    );
   }
 }

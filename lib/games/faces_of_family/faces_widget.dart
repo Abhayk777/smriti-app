@@ -9,6 +9,7 @@ import '../../core/i18n/app_strings.dart';
 import '../../core/i18n/locale_controller.dart';
 import '../../ui/smriti_ui.dart';
 import '../cognitive_game.dart';
+import '../hint/game_hint.dart';
 import 'faces_game.dart';
 
 /// Playable Faces of My Family widget.
@@ -261,48 +262,53 @@ class _FacesWidgetState extends State<FacesWidget> {
   Widget _buildOption(PersonItem person, Color color, bool isCompact) {
     final chosen = _chosenId == person.id;
     final dimmed = _answered && !chosen;
+    final isCorrect = person.id == _target.id;
 
-    return AnimatedOpacity(
-      duration: const Duration(milliseconds: 250),
-      opacity: dimmed ? 0.35 : 1,
-      child: BouncyTap(
-        onTap: _answered ? null : () => _onOptionTap(person),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          constraints: BoxConstraints(
-            minWidth: isCompact ? 130 : 160,
-            minHeight: isCompact ? 56 : 72,
-          ),
-          padding: EdgeInsets.symmetric(
-            horizontal: isCompact ? 18 : 26,
-            vertical: isCompact ? 10 : 16,
-          ),
-          decoration: BoxDecoration(
-            color: chosen ? color : Color.lerp(color, Colors.white, 0.84),
-            borderRadius: BorderRadius.circular(22),
-            border: Border.all(color: color, width: 2.5),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                _mode == 'relationship' ? _capitalize(person.relationship) : person.name,
-                style: TextStyle(
-                  fontSize: isCompact ? 19 : 24,
-                  fontWeight: FontWeight.w800,
-                  color: chosen ? AppColors.onColor : AppColors.primaryText,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              if (_mode == 'relationship')
+    return HintGlow(
+      isAnswer: !_answered && isCorrect,
+      radius: 22,
+      child: AnimatedOpacity(
+        duration: const Duration(milliseconds: 250),
+        opacity: dimmed ? 0.35 : 1,
+        child: BouncyTap(
+          onTap: _answered ? null : () => _onOptionTap(person),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            constraints: BoxConstraints(
+              minWidth: isCompact ? 130 : 160,
+              minHeight: isCompact ? 56 : 72,
+            ),
+            padding: EdgeInsets.symmetric(
+              horizontal: isCompact ? 18 : 26,
+              vertical: isCompact ? 10 : 16,
+            ),
+            decoration: BoxDecoration(
+              color: chosen ? color : Color.lerp(color, Colors.white, 0.84),
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(color: color, width: 2.5),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
                 Text(
-                  person.name,
+                  _mode == 'relationship' ? _capitalize(person.relationship) : person.name,
                   style: TextStyle(
-                    fontSize: isCompact ? 14 : 16,
-                    color: chosen ? AppColors.onColor : AppColors.secondaryText,
+                    fontSize: isCompact ? 19 : 24,
+                    fontWeight: FontWeight.w800,
+                    color: chosen ? AppColors.onColor : AppColors.primaryText,
                   ),
+                  textAlign: TextAlign.center,
                 ),
-            ],
+                if (_mode == 'relationship')
+                  Text(
+                    person.name,
+                    style: TextStyle(
+                      fontSize: isCompact ? 14 : 16,
+                      color: chosen ? AppColors.onColor : AppColors.secondaryText,
+                    ),
+                  ),
+              ],
+            ),
           ),
         ),
       ),

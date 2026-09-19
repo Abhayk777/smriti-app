@@ -7,6 +7,7 @@ import '../../core/i18n/app_strings.dart';
 import '../../core/i18n/locale_controller.dart';
 import '../../ui/smriti_ui.dart';
 import '../cognitive_game.dart';
+import '../hint/game_hint.dart';
 import 'trace_path_game.dart';
 
 /// Playable Trace the Path widget.
@@ -191,22 +192,26 @@ class _TracePathWidgetState extends State<TracePathWidget> {
     final tone = isTapped
         ? _StoneTone.done
         : (isNext ? _StoneTone.next : _StoneTone.plain);
-    return SizedBox(
-      width: 76,
-      height: 76,
-      child: CustomPaint(
-        painter: _StonePainter(seed: label.hashCode, tone: tone),
-        child: Center(
-          child: isTapped
-              ? const Icon(Icons.check_rounded, color: Colors.white, size: 34)
-              : Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.w800,
-                    color: isNext ? AppColors.primaryText : const Color(0xFF3B3128),
+    return HintGlow(
+      isAnswer: isNext,
+      radius: 38,
+      child: SizedBox(
+        width: 76,
+        height: 76,
+        child: CustomPaint(
+          painter: _StonePainter(seed: label.hashCode, tone: tone),
+          child: Center(
+            child: isTapped
+                ? const Icon(Icons.check_rounded, color: Colors.white, size: 34)
+                : Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w800,
+                      color: isNext ? AppColors.primaryText : const Color(0xFF3B3128),
+                    ),
                   ),
-                ),
+          ),
         ),
       ),
     );

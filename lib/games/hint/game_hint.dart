@@ -7,15 +7,15 @@ import '../../app_colors.dart';
 /// A gentle hint glow widget for dementia-friendly games.
 ///
 /// Wraps interactive game items (cards, mats, options). If [isAnswer] is true,
-/// after a gentle inactivity delay (default 10 seconds), it subtly pulses a warm
-/// glow to help the elder if they feel stuck, without penalizing or frustrating them.
+/// after a 30-second inactivity delay, it subtly pulses a warm glowing border
+/// and soft halo to assist the elder without penalizing or frustrating them.
 class HintGlow extends StatefulWidget {
   const HintGlow({
     super.key,
     required this.child,
     this.isAnswer = false,
     this.radius = 16,
-    this.delay = const Duration(seconds: 10),
+    this.delay = const Duration(seconds: 30),
   });
 
   final Widget child;
@@ -51,7 +51,7 @@ class _HintGlowState extends State<HintGlow>
         duration: const Duration(milliseconds: 1400),
       )..repeat(reverse: true);
 
-      _glowAnimation = Tween<double>(begin: 2.0, end: 12.0).animate(
+      _glowAnimation = Tween<double>(begin: 4.0, end: 16.0).animate(
         CurvedAnimation(parent: _animController!, curve: Curves.easeInOut),
       );
 
@@ -93,14 +93,24 @@ class _HintGlowState extends State<HintGlow>
     return AnimatedBuilder(
       animation: _glowAnimation!,
       builder: (context, child) {
+        final glow = _glowAnimation!.value;
         return Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(widget.radius),
+            border: Border.all(
+              color: AppColors.marigold,
+              width: 3.5,
+            ),
             boxShadow: [
               BoxShadow(
-                color: AppColors.marigold.withValues(alpha: 0.65),
-                blurRadius: _glowAnimation!.value,
-                spreadRadius: _glowAnimation!.value / 3,
+                color: AppColors.marigold.withValues(alpha: 0.7),
+                blurRadius: glow,
+                spreadRadius: glow * 0.25,
+              ),
+              BoxShadow(
+                color: Colors.white.withValues(alpha: 0.45),
+                blurRadius: glow * 0.5,
+                spreadRadius: 1,
               ),
             ],
           ),
