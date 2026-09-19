@@ -4,8 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:smriti/app_colors.dart';
 import 'package:smriti/core/db/database.dart';
 import 'package:smriti/core/progression/progression_service.dart';
-import 'package:smriti/screens/game_screen.dart';
 import 'package:smriti/screens/game_select_screen.dart';
+import 'package:smriti/screens/game_tutorial_screen.dart';
 import 'package:smriti/ui/smriti_ui.dart';
 import 'package:uuid/uuid.dart';
 
@@ -217,7 +217,7 @@ void main() {
     // Rest card is present
     expect(find.text('Time for a little rest'), findsOneWidget);
 
-    // Tapping Market Basket game tile still pushes GameScreen
+    // Tapping Market Basket game tile pushes GameTutorialScreen before GameScreen
     final marketBasketTile = find.text('Market Basket');
     expect(marketBasketTile, findsOneWidget);
 
@@ -225,6 +225,6 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
 
-    expect(find.byType(GameScreen), findsOneWidget);
+    expect(find.byType(GameTutorialScreen), findsOneWidget);
   });
 }

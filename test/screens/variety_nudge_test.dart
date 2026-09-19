@@ -4,8 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:smriti/app_colors.dart';
 import 'package:smriti/core/db/database.dart';
 import 'package:smriti/core/progression/progression_service.dart';
-import 'package:smriti/screens/game_screen.dart';
 import 'package:smriti/screens/game_select_screen.dart';
+import 'package:smriti/screens/game_tutorial_screen.dart';
 import 'package:smriti/ui/smriti_ui.dart';
 import 'package:uuid/uuid.dart';
 
@@ -240,7 +240,7 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
 
-      expect(find.byType(GameScreen), findsOneWidget);
+      expect(find.byType(GameTutorialScreen), findsOneWidget);
     });
 
     testWidgets('rest card wins over variety suggestion when both are due', (tester) async {

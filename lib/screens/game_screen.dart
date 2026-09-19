@@ -17,8 +17,8 @@ import '../core/sync/sync_engine.dart';
 import '../games/cognitive_game.dart';
 import '../games/game_catalog.dart';
 import '../games/session_runner.dart';
-import '../games/tutorial/game_tutorial_dialog.dart';
 import '../ui/smriti_ui.dart';
+import 'game_tutorial_screen.dart';
 
 // Game imports
 import '../games/market_basket/market_basket_game.dart';
@@ -163,13 +163,6 @@ class _GameScreenState extends State<GameScreen> {
       _game = game;
       _runner = runner;
       _loading = false;
-    });
-
-    // Auto-show how-to-play tutorial with realistic ghost hand animation
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        GameTutorialDialog.show(context, widget.gameId);
-      }
     });
 
     // Get first item
@@ -551,7 +544,7 @@ class _GameScreenState extends State<GameScreen> {
         Navigator.of(context).popUntil((route) => route.isFirst);
       } else if (nextGameId != null) {
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => GameScreen(gameId: nextGameId!)),
+          MaterialPageRoute(builder: (_) => GameTutorialScreen(gameId: nextGameId!)),
         );
       } else {
         Navigator.of(context).pop();
@@ -759,7 +752,16 @@ class _GameScreenState extends State<GameScreen> {
                 // Help / How to play button
                 IconButton(
                   tooltip: 'How to play',
-                  onPressed: () => GameTutorialDialog.show(context, widget.gameId),
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => GameTutorialScreen(
+                          gameId: widget.gameId,
+                          isFromGame: true,
+                        ),
+                      ),
+                    );
+                  },
                   iconSize: 28,
                   style: IconButton.styleFrom(
                     minimumSize: const Size(48, 48),

@@ -219,70 +219,79 @@ class _GameTutorialDialogState extends State<GameTutorialDialog> {
     );
   }
 
-  String _howToPlayLabel(String code) {
-    switch (code) {
-      case 'as': return 'কেনে খেলিব শিকক';
-      case 'bn': return 'কিভাবে খেলবেন দেখুন';
-      case 'hi': return 'खेलने का तरीका देखें';
-      case 'ne': return 'कसरी खेल्ने हेर्नुहोस्';
-      case 'mni': return 'কেনে শানবগে য়েংবিউ';
-      case 'kha': return 'Kumno ban ialehkai';
-      case 'lus': return 'Khelh dan zir rawh';
-      case 'grt': return 'Kalaniko mesokbo';
-      case 'brx': return 'माबोरै गेलेनो नाय';
-      case 'trp': return 'Bwkhwkhe kwlano nidi';
-      case 'nag': return 'Kineke khelibo sabo';
-      case 'en':
-      default: return 'How to Play';
-    }
-  }
+  String _howToPlayLabel(String code) => gameTutorialHowToPlayLabel(code);
+  String _letsPlayLabel(String code) => gameTutorialLetsPlayLabel(code);
+  String _gameDescription(String id, String code, String fallback) =>
+      gameTutorialDescription(id, code, fallback);
+}
 
-  String _letsPlayLabel(String code) {
-    switch (code) {
-      case 'as': return 'খেলা আৰম্ভ কৰক';
-      case 'bn': return 'খেলা শুরু করুন';
-      case 'hi': return 'खेल शुरू करें';
-      case 'ne': return 'खेल सुरु गर्नुहोस्';
-      case 'mni': return 'শানবা হৌসি';
-      case 'kha': return 'Ialehkai noh';
-      case 'lus': return 'Khel ṭan rawh';
-      case 'grt': return 'Kalna a·bachengbo';
-      case 'brx': return 'गेलेनो जागाय';
-      case 'trp': return 'Kwlano cheng di';
-      case 'nag': return 'Khel suru koribo';
-      case 'en':
-      default: return 'Let\'s Play!';
-    }
+/// Localized "How to Play" header string across all 11 North-East regional languages.
+String gameTutorialHowToPlayLabel(String code) {
+  switch (code) {
+    case 'as': return 'কেনে খেলিব শিকক';
+    case 'bn': return 'কিভাবে খেলবেন দেখুন';
+    case 'hi': return 'खेलने का तरीका देखें';
+    case 'ne': return 'कसरी खेल्ने हेर्नुहोस्';
+    case 'mni': return 'কেনে শানবগে য়েংবিউ';
+    case 'kha': return 'Kumno ban ialehkai';
+    case 'lus': return 'Khelh dan zir rawh';
+    case 'grt': return 'Kalaniko mesokbo';
+    case 'brx': return 'माबोरै गेलेनो नाय';
+    case 'trp': return 'Bwkhwkhe kwlano nidi';
+    case 'nag': return 'Kineke khelibo sabo';
+    case 'en':
+    default: return 'How to Play';
   }
+}
 
-  String _gameDescription(String id, String code, String fallback) {
-    switch (id) {
-      case 'faces_of_family':
-        switch (code) {
-          case 'as': return 'পৰিয়ালৰ সদস্যৰ লগত মিলা ফটোখনত টিপক';
-          case 'bn': return 'পরিবারের সদস্যের সাথে মেলা ছবিতে স্পর্শ করুন';
-          case 'hi': return 'परिवार के सदस्य से मेल खाती तस्वीर पर टैप करें';
-          default: return 'Tap the photo that matches the family member';
-        }
-      case 'market_basket':
-        switch (code) {
-          case 'as': return 'বস্তুবোৰ মনত ৰাখক আৰু সঠিক বস্তু বাছি লওক';
-          case 'bn': return 'জিনিসগুলো মনে রাখুন এবং সঠিক জিনিস বেছে নিন';
-          case 'hi': return 'सामान याद रखें और दुकान से वही चुनें';
-          default: return 'Remember the items and pick them from the shelf';
-        }
-      case 'sort_harvest':
-        switch (code) {
-          case 'as': return 'প্ৰতিটো বস্তু তাৰ সঠিক ডলাত থওক';
-          case 'bn': return 'প্রতিটি জিনিস তার সঠিক ঝুড়িতে রাখুন';
-          case 'hi': return 'हर चीज़ को उसकी सही टोकरी में रखें';
-          default: return 'Drag each item to its matching basket';
-        }
-      case 'trace_path':
-        switch (code) {
-          case 'as': return 'ক্ৰম অনুসৰি শিলবোৰত এটাকৈ টিপক';
-          case 'bn': return 'ক্রম অনুযায়ী পাথরগুলোতে একটি করে স্পর্শ করুন';
-          case 'hi': return 'संख्या के क्रम में एक-एक पत्थर पर टैप करें';
+/// Localized "Let's Play!" action button label.
+String gameTutorialLetsPlayLabel(String code) {
+  switch (code) {
+    case 'as': return 'খেলা আৰম্ভ কৰক';
+    case 'bn': return 'খেলা শুরু করুন';
+    case 'hi': return 'खेल शुरू करें';
+    case 'ne': return 'खेल सुरु गर्नुहोस्';
+    case 'mni': return 'শানবা হৌসি';
+    case 'kha': return 'Ialehkai noh';
+    case 'lus': return 'Khel ṭan rawh';
+    case 'grt': return 'Kalna a·bachengbo';
+    case 'brx': return 'गेलेनो जागाय';
+    case 'trp': return 'Kwlano cheng di';
+    case 'nag': return 'Khel suru koribo';
+    case 'en':
+    default: return 'Let\'s Play!';
+  }
+}
+
+/// Localized simple gameplay instruction for the tutorial stage.
+String gameTutorialDescription(String id, String code, String fallback) {
+  switch (id) {
+    case 'faces_of_family':
+      switch (code) {
+        case 'as': return 'পৰিয়ালৰ সদস্যৰ লগত মিলা ফটোখনত টিপক';
+        case 'bn': return 'পরিবারের সদস্যের সাথে মেলা ছবিতে স্পর্শ করুন';
+        case 'hi': return 'परिवार के सदस्य से मेल खाती तस्वीर पर टैप करें';
+        default: return 'Tap the photo that matches the family member';
+      }
+    case 'market_basket':
+      switch (code) {
+        case 'as': return 'বস্তুবোৰ মনত ৰাখক আৰু সঠিক বস্তু বাছি লওক';
+        case 'bn': return 'জিনিসগুলো মনে রাখুন এবং সঠিক জিনিস বেছে নিন';
+        case 'hi': return 'सामान याद रखें और दुकान से वही चुनें';
+        default: return 'Remember the items and pick them from the shelf';
+      }
+    case 'sort_harvest':
+      switch (code) {
+        case 'as': return 'বস্তু চাই তলৰ সঠিক ডলাত টিপক';
+        case 'bn': return 'জিনিস দেখে নিচের সঠিক ঝুড়িতে স্পর্শ করুন';
+        case 'hi': return 'वस्तु देखकर नीचे सही टोकरी या मैट पर टैप करें';
+        default: return 'Tap the basket or mat that matches the item';
+      }
+    case 'trace_path':
+      switch (code) {
+        case 'as': return 'ক্ৰম অনুসৰি শিলবোৰত এটাকৈ টিপক';
+        case 'bn': return 'ক্রম অনুযায়ী পাথরগুলোতে একটি করে স্পর্শ করুন';
+        case 'hi': return 'संख्या के क्रम में एक-एक पत्थर पर टैप करें';
           default: return 'Tap the stones in order of their numbers';
         }
       case 'my_day':
@@ -324,7 +333,6 @@ class _GameTutorialDialogState extends State<GameTutorialDialog> {
         return fallback;
     }
   }
-}
 
 /// Stage that plays an interactive demonstration tailored to each specific game.
 class InteractiveGameDemoStage extends StatefulWidget {
@@ -403,20 +411,28 @@ class _InteractiveGameDemoStageState extends State<InteractiveGameDemoStage>
   _HandData _getHandData(String gameId, double t) {
     switch (gameId) {
       case 'sort_harvest':
-        // Move to tomato (0.50, 0.22), press, drag down to (0.28, 0.65), release
-        if (t < 0.22) {
-          final p = Curves.easeOutCubic.transform(t / 0.22);
-          return _HandData(Offset.lerp(const Offset(0.70, 0.55), const Offset(0.50, 0.22), p)!);
-        } else if (t < 0.32) {
-          final rip = (t - 0.22) / 0.10;
-          return _HandData(const Offset(0.50, 0.22), isPressing: true, rippleProgress: rip);
-        } else if (t < 0.70) {
-          final p = Curves.easeInOutCubic.transform((t - 0.32) / 0.38);
-          return _HandData(Offset.lerp(const Offset(0.50, 0.22), const Offset(0.28, 0.65), p)!, isPressing: true);
-        } else if (t < 0.92) {
-          final p = Curves.easeOut.transform((t - 0.70) / 0.22);
-          return _HandData(Offset.lerp(const Offset(0.28, 0.65), const Offset(0.38, 0.75), p)!);
-        } else {
+        // 1. Move to tomato card at top (0.50, 0.28) to focus attention
+        if (t < 0.25) {
+          final p = Curves.easeOutCubic.transform(t / 0.25);
+          return _HandData(Offset.lerp(const Offset(0.70, 0.55), const Offset(0.50, 0.28), p)!);
+        }
+        // 2. Move down toward the matching "Vegetables" mat (0.28, 0.70)
+        else if (t < 0.50) {
+          final p = Curves.easeInOutCubic.transform((t - 0.25) / 0.25);
+          return _HandData(Offset.lerp(const Offset(0.50, 0.28), const Offset(0.28, 0.70), p)!);
+        }
+        // 3. Click / Tap the Vegetables mat with touch ripple (NO dragging!)
+        else if (t < 0.65) {
+          final rip = (t - 0.50) / 0.15;
+          return _HandData(const Offset(0.28, 0.70), isPressing: true, rippleProgress: rip);
+        }
+        // 4. Lift up after tap confirmation
+        else if (t < 0.85) {
+          final p = Curves.easeOut.transform((t - 0.65) / 0.20);
+          return _HandData(Offset.lerp(const Offset(0.28, 0.70), const Offset(0.35, 0.75), p)!);
+        }
+        // 5. Rest position
+        else {
           return const _HandData(Offset(0.70, 0.55));
         }
 
@@ -586,108 +602,141 @@ class _InteractiveGameDemoStageState extends State<InteractiveGameDemoStage>
     }
   }
 
-  // 1. Sort the Harvest: Actual item drag & drop into matching basket
+  // 1. Sort the Harvest: Fixed item at top, click/tap matching mat below (NO DRAG)
   Widget _buildSortHarvestPlay(double t, BoxConstraints constraints) {
-    Offset itemPos = const Offset(0.50, 0.22);
-    bool inBasket = false;
-    if (t >= 0.32 && t < 0.70) {
-      final p = Curves.easeInOutCubic.transform((t - 0.32) / 0.38);
-      itemPos = Offset.lerp(const Offset(0.50, 0.22), const Offset(0.28, 0.65), p)!;
-    } else if (t >= 0.70) {
-      itemPos = const Offset(0.28, 0.65);
-      inBasket = true;
-    }
-
-    final itemPxX = itemPos.dx * constraints.maxWidth - 44;
-    final itemPxY = itemPos.dy * constraints.maxHeight - 22;
+    final tapped = t >= 0.50 && t < 0.90;
 
     return Stack(
       children: [
-        // Baskets at bottom
+        // 1. Fixed Produce Card to sort at top center (NO DRAGGING)
         Positioned(
-          left: constraints.maxWidth * 0.08,
-          bottom: 12,
-          child: Container(
-            width: constraints.maxWidth * 0.38,
-            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-            decoration: BoxDecoration(
-              color: inBasket ? AppColors.leafGreen.withValues(alpha: 0.25) : AppColors.raisedSurface,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: inBasket ? AppColors.leafGreen : AppColors.bamboo,
-                width: inBasket ? 3 : 2,
-              ),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(inBasket ? '🥬 Vegetables ✓' : '🥬 Vegetables',
-                    style: TextStyle(
-                      color: inBasket ? AppColors.leafGreen : AppColors.primaryText,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 13,
-                    )),
-                const SizedBox(height: 2),
-                Text(inBasket ? '+1 Sorted!' : 'Drag here',
-                    style: TextStyle(
-                      color: inBasket ? AppColors.leafGreen : AppColors.secondaryText,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 11,
-                    )),
-              ],
-            ),
-          ),
-        ),
-        Positioned(
-          right: constraints.maxWidth * 0.08,
-          bottom: 12,
-          child: Container(
-            width: constraints.maxWidth * 0.38,
-            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-            decoration: BoxDecoration(
-              color: AppColors.raisedSurface,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.border, width: 2),
-            ),
-            child: const Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text('🍎 Fruits', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                SizedBox(height: 2),
-                Text('Other basket', style: TextStyle(color: AppColors.secondaryText, fontSize: 11)),
-              ],
-            ),
-          ),
-        ),
-
-        // Dragging Tomato card
-        Positioned(
-          left: itemPxX,
-          top: itemPxY,
-          child: Transform.scale(
-            scale: (t >= 0.25 && t < 0.70) ? 1.12 : 1.0,
+          top: 14,
+          left: 0,
+          right: 0,
+          child: Center(
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
               decoration: BoxDecoration(
                 color: AppColors.raisedSurface,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: AppColors.marigold, width: 2.5),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: (t < 0.25) ? AppColors.marigold : AppColors.border,
+                  width: (t < 0.25) ? 2.5 : 1.5,
+                ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.12),
+                    color: Colors.black.withValues(alpha: 0.1),
                     blurRadius: 8,
-                    offset: const Offset(0, 4),
+                    offset: const Offset(0, 3),
                   ),
                 ],
               ),
               child: const Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text('🍅', style: TextStyle(fontSize: 18)),
-                  SizedBox(width: 6),
-                  Text('Tomato', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
+                  Text('🍅', style: TextStyle(fontSize: 26)),
+                  SizedBox(width: 8),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text('Tomato', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+                      Text(
+                        'Item to sort',
+                        style: TextStyle(
+                          color: AppColors.secondaryText,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
               ),
+            ),
+          ),
+        ),
+
+        // 2. Sorting mats at bottom
+        // Left mat: Vegetables (Target match)
+        Positioned(
+          left: constraints.maxWidth * 0.08,
+          bottom: 16,
+          child: Transform.scale(
+            scale: (t >= 0.50 && t < 0.65) ? 0.95 : 1.0,
+            child: Container(
+              width: constraints.maxWidth * 0.38,
+              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+              decoration: BoxDecoration(
+                color: tapped
+                    ? AppColors.leafGreen.withValues(alpha: 0.22)
+                    : AppColors.raisedSurface,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(
+                  color: tapped ? AppColors.leafGreen : AppColors.bamboo,
+                  width: tapped ? 3 : 2,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: tapped
+                        ? AppColors.leafGreen.withValues(alpha: 0.2)
+                        : Colors.black.withValues(alpha: 0.06),
+                    blurRadius: 8,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    tapped ? '🥬 Vegetables ✓' : '🥬 Vegetables',
+                    style: TextStyle(
+                      color: tapped ? AppColors.leafGreen : AppColors.primaryText,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 14,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    tapped ? '✓ Clicked!' : 'Click here',
+                    style: TextStyle(
+                      color: tapped ? AppColors.leafGreen : AppColors.secondaryText,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+
+        // Right mat: Fruits (Other category)
+        Positioned(
+          right: constraints.maxWidth * 0.08,
+          bottom: 16,
+          child: Container(
+            width: constraints.maxWidth * 0.38,
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+            decoration: BoxDecoration(
+              color: AppColors.raisedSurface,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: AppColors.border, width: 2),
+            ),
+            child: const Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  '🍎 Fruits',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                ),
+                SizedBox(height: 3),
+                Text(
+                  'Other mat',
+                  style: TextStyle(color: AppColors.secondaryText, fontSize: 11),
+                ),
+              ],
             ),
           ),
         ),

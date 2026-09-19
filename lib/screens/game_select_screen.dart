@@ -13,7 +13,7 @@ import '../games/game_catalog.dart';
 import '../ui/smriti_ui.dart';
 import '../widgets/language_switcher_button.dart';
 import 'diagnostics_screen.dart';
-import 'game_screen.dart';
+import 'game_tutorial_screen.dart';
 
 /// Game selection screen with all 9 cognitive games.
 ///
@@ -254,7 +254,7 @@ class _GameSelectScreenState extends State<GameSelectScreen> {
 
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => GameScreen(gameId: info.id),
+        builder: (_) => GameTutorialScreen(gameId: info.id),
       ),
     );
     if (mounted) {
