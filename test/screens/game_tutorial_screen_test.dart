@@ -73,5 +73,28 @@ void main() {
 
       expect(find.text('Resume Game'), findsOneWidget);
     });
+
+    testWidgets('renders My Day routine ordering demo with Put in order banner and cards', (tester) async {
+      tester.view.physicalSize = const Size(1280, 800);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: GameTutorialScreen(gameId: 'my_day'),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(find.byType(InteractiveGameDemoStage), findsOneWidget);
+      expect(find.text('Put in order: Morning to Night'), findsOneWidget);
+      expect(find.text('Lunch'), findsOneWidget);
+      expect(find.text('Morning Tea'), findsOneWidget);
+      expect(find.text('Sleep'), findsOneWidget);
+    });
   });
 }

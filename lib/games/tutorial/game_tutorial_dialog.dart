@@ -429,10 +429,8 @@ class _InteractiveGameDemoStageState extends State<InteractiveGameDemoStage>
   static const Offset faceCard1Pos = Offset(0.30, 0.68);
   static const Offset faceCard2Pos = Offset(0.70, 0.68);
 
-  static const Offset myDayActivityPos = Offset(0.50, 0.24);
-  static const Offset myDaySlot1Pos = Offset(0.20, 0.72);
-  static const Offset myDaySlot2Pos = Offset(0.50, 0.72);
-  static const Offset myDaySlot3Pos = Offset(0.80, 0.72);
+  static const Offset myDayUpBtnPos = Offset(0.76, 0.48);
+  static const Offset myDayDoneBtnPos = Offset(0.50, 0.88);
 
   static const Offset weaveMasterPos = Offset(0.50, 0.26);
   static const Offset weaveOpt1Pos = Offset(0.22, 0.72);
@@ -541,20 +539,21 @@ class _InteractiveGameDemoStageState extends State<InteractiveGameDemoStage>
         }
 
       case 'my_day':
-        if (t < 0.25) {
-          final p = Curves.easeOutCubic.transform(t / 0.25);
-          return _HandData(Offset.lerp(const Offset(0.70, 0.55), myDayActivityPos, p)!);
-        } else if (t < 0.50) {
-          final p = Curves.easeInOutCubic.transform((t - 0.25) / 0.25);
-          return _HandData(Offset.lerp(myDayActivityPos, myDaySlot2Pos, p)!);
-        } else if (t < 0.65) {
-          final rip = (t - 0.50) / 0.15;
-          return _HandData(myDaySlot2Pos, isPressing: true, rippleProgress: rip);
-        } else if (t < 0.85) {
-          final p = Curves.easeOut.transform((t - 0.65) / 0.20);
-          return _HandData(Offset.lerp(myDaySlot2Pos, const Offset(0.50, 0.64), p)!);
+        if (t < 0.24) {
+          final p = Curves.easeOutCubic.transform(t / 0.24);
+          return _HandData(Offset.lerp(const Offset(0.85, 0.70), myDayUpBtnPos, p)!);
+        } else if (t < 0.40) {
+          final rip = (t - 0.24) / 0.16;
+          return _HandData(myDayUpBtnPos, isPressing: true, rippleProgress: rip);
+        } else if (t < 0.68) {
+          final p = Curves.easeInOutCubic.transform((t - 0.40) / 0.28);
+          return _HandData(Offset.lerp(myDayUpBtnPos, myDayDoneBtnPos, p)!);
+        } else if (t < 0.84) {
+          final rip = (t - 0.68) / 0.16;
+          return _HandData(myDayDoneBtnPos, isPressing: true, rippleProgress: rip);
         } else {
-          return const _HandData(Offset(0.70, 0.55));
+          final p = Curves.easeOut.transform((t - 0.84) / 0.16);
+          return _HandData(Offset.lerp(myDayDoneBtnPos, const Offset(0.70, 0.75), p)!);
         }
 
       case 'weaving_patterns':
@@ -1205,98 +1204,275 @@ class _InteractiveGameDemoStageState extends State<InteractiveGameDemoStage>
     );
   }
 
-  // 6. My Day: Routine matching into chronological slots
+  // 6. My Day: Arrange jumbled daily routine into chronological order
   Widget _buildMyDayPlay(double t, BoxConstraints constraints) {
-    final matched = t >= 0.50;
     final w = constraints.maxWidth;
     final h = constraints.maxHeight;
 
-    final cardW = w * 0.56;
-    final cardH = h * 0.26;
-    final slotW = w * 0.28;
-    final slotH = h * 0.28;
+    final cardW = (w * 0.90).clamp(240.0, 520.0);
+    final cardH = (h * 0.18).clamp(34.0, 50.0);
+
+    // Swap animation between Lunch and Morning Tea
+    final swapP = t < 0.32 ? 0.0 : ((t - 0.32) / 0.18).clamp(0.0, 1.0);
+    final swapCurve = Curves.easeInOutCubic.transform(swapP);
+    final isSwapped = swapP >= 0.5;
+    final isDone = t >= 0.74;
+    final isUpPressed = t >= 0.24 && t < 0.38;
+    final isDonePressed = t >= 0.68 && t < 0.82;
+
+    // Slot Y positions
+    final slot1Y = h * 0.26;
+    final slot2Y = h * 0.48;
+    final slot3Y = h * 0.69;
+
+    // Lunch starts at Slot 1 and moves down to Slot 2
+    final lunchY = slot1Y + (slot2Y - slot1Y) * swapCurve;
+    // Morning Tea starts at Slot 2 and moves up to Slot 1
+    final teaY = slot2Y - (slot2Y - slot1Y) * swapCurve;
+    // Sleep stays at Slot 3
+    final sleepY = slot3Y;
 
     return Stack(
       children: [
-        // Activity card
+        // Top Banner: Morning to Night
         Positioned(
-          left: w * myDayActivityPos.dx - cardW / 2,
-          top: h * myDayActivityPos.dy - cardH / 2,
-          child: Container(
-            width: cardW,
-            height: cardH,
-            decoration: BoxDecoration(
-              color: AppColors.raisedSurface,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.marigold, width: 2),
-              boxShadow: [
-                BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 6, offset: const Offset(0, 3)),
-              ],
-            ),
-            child: const Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text('🍛', style: TextStyle(fontSize: 26)),
-                SizedBox(width: 8),
-                Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Eat Lunch', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
-                    Text('Choose correct time', style: TextStyle(color: AppColors.secondaryText, fontSize: 10)),
-                  ],
+          top: h * 0.04,
+          left: 16,
+          right: 16,
+          child: Center(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+              decoration: BoxDecoration(
+                color: AppColors.marigold.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: AppColors.marigold.withValues(alpha: 0.4),
+                  width: 1.5,
                 ),
-              ],
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text('🌅', style: TextStyle(fontSize: 14)),
+                  SizedBox(width: 6),
+                  Text(
+                    'Put in order: Morning to Night',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.primaryText,
+                    ),
+                  ),
+                  SizedBox(width: 6),
+                  Text('🌙', style: TextStyle(fontSize: 14)),
+                ],
+              ),
             ),
           ),
         ),
 
-        // Morning slot
-        Positioned(
-          left: w * myDaySlot1Pos.dx - slotW / 2,
-          top: h * myDaySlot1Pos.dy - slotH / 2,
-          child: _buildTimeSlot('🌅 Morning', false, slotW, slotH),
+        // Lunch Card (starts at #1, moves to #2)
+        _buildRoutineCard(
+          badge: isSwapped ? '2' : '1',
+          emoji: '🍛',
+          label: 'Lunch',
+          y: lunchY,
+          cardW: cardW,
+          cardH: cardH,
+          isDone: isDone,
+          isHighlighted: !isSwapped,
+          constraints: constraints,
         ),
 
-        // Afternoon slot (Target)
-        Positioned(
-          left: w * myDaySlot2Pos.dx - slotW / 2,
-          top: h * myDaySlot2Pos.dy - slotH / 2,
-          child: _buildTimeSlot(matched ? '☀️ Afternoon ✓' : '☀️ Afternoon', matched, slotW, slotH),
+        // Morning Tea Card (starts at #2, moves to #1 on Up tap)
+        _buildRoutineCard(
+          badge: isSwapped ? '1' : '2',
+          emoji: '🍵',
+          label: 'Morning Tea',
+          y: teaY,
+          cardW: cardW,
+          cardH: cardH,
+          isDone: isDone,
+          isHighlighted: isSwapped,
+          showUpPressed: isUpPressed && !isSwapped,
+          constraints: constraints,
         ),
 
-        // Night slot
+        // Sleep Card (stays at #3)
+        _buildRoutineCard(
+          badge: '3',
+          emoji: '🌙',
+          label: 'Sleep',
+          y: sleepY,
+          cardW: cardW,
+          cardH: cardH,
+          isDone: isDone,
+          isHighlighted: false,
+          isLast: true,
+          constraints: constraints,
+        ),
+
+        // Done button at bottom
         Positioned(
-          left: w * myDaySlot3Pos.dx - slotW / 2,
-          top: h * myDaySlot3Pos.dy - slotH / 2,
-          child: _buildTimeSlot('🌙 Night', false, slotW, slotH),
+          left: w * myDayDoneBtnPos.dx - 65,
+          top: h * myDayDoneBtnPos.dy - 16,
+          child: Transform.scale(
+            scale: isDonePressed ? 0.92 : 1.0,
+            child: Container(
+              width: 130,
+              height: 32,
+              decoration: BoxDecoration(
+                color: AppColors.leafGreen,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.leafGreen.withValues(alpha: 0.35),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    isDone ? Icons.check_circle_rounded : Icons.check_circle_outline_rounded,
+                    color: Colors.white,
+                    size: 18,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    isDone ? 'Well Done! ✓' : 'Done',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ),
       ],
     );
   }
 
-  Widget _buildTimeSlot(String label, bool active, double w, double h) {
-    return Container(
-      width: w,
-      height: h,
-      padding: const EdgeInsets.symmetric(horizontal: 4),
-      decoration: BoxDecoration(
-        color: active ? AppColors.leafGreen.withValues(alpha: 0.22) : AppColors.raisedSurface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: active ? AppColors.leafGreen : AppColors.border,
-          width: active ? 3 : 1.5,
-        ),
-      ),
-      child: Center(
-        child: Text(
-          label,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontWeight: FontWeight.w800,
-            fontSize: 12,
-            color: active ? AppColors.leafGreen : AppColors.primaryText,
+  Widget _buildRoutineCard({
+    required String badge,
+    required String emoji,
+    required String label,
+    required double y,
+    required double cardW,
+    required double cardH,
+    required bool isDone,
+    required bool isHighlighted,
+    required BoxConstraints constraints,
+    bool showUpPressed = false,
+    bool isLast = false,
+  }) {
+    final w = constraints.maxWidth;
+    return Positioned(
+      left: (w - cardW) / 2,
+      top: y - cardH / 2,
+      child: Container(
+        width: cardW,
+        height: cardH,
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+        decoration: BoxDecoration(
+          color: isDone
+              ? AppColors.leafGreen.withValues(alpha: 0.12)
+              : AppColors.raisedSurface,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: isDone
+                ? AppColors.leafGreen
+                : (isHighlighted ? AppColors.marigold : AppColors.border),
+            width: (isDone || isHighlighted) ? 2.0 : 1.2,
           ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            // Circular number badge
+            Container(
+              width: 22,
+              height: 22,
+              decoration: BoxDecoration(
+                color: isDone
+                    ? AppColors.leafGreen
+                    : AppColors.marigold.withValues(alpha: 0.3),
+                shape: BoxShape.circle,
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                isDone ? '✓' : badge,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  color: isDone ? Colors.white : AppColors.primaryText,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            // Emoji
+            Text(emoji, style: const TextStyle(fontSize: 18)),
+            const SizedBox(width: 8),
+            // Label
+            Expanded(
+              child: Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.primaryText,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            // Up Arrow button
+            Transform.scale(
+              scale: showUpPressed ? 0.85 : 1.0,
+              child: Container(
+                width: 26,
+                height: 26,
+                decoration: BoxDecoration(
+                  color: showUpPressed
+                      ? AppColors.marigold.withValues(alpha: 0.3)
+                      : Colors.transparent,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.arrow_upward_rounded,
+                  size: 20,
+                  color: AppColors.marigold,
+                ),
+              ),
+            ),
+            const SizedBox(width: 2),
+            // Down Arrow button
+            Icon(
+              Icons.arrow_downward_rounded,
+              size: 20,
+              color: isLast
+                  ? AppColors.marigold.withValues(alpha: 0.3)
+                  : AppColors.marigold,
+            ),
+            const SizedBox(width: 4),
+            // Drag handle
+            Icon(
+              Icons.drag_handle_rounded,
+              size: 20,
+              color: AppColors.secondaryText.withValues(alpha: 0.4),
+            ),
+          ],
         ),
       ),
     );
