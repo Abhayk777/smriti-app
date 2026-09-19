@@ -104,6 +104,7 @@ class ProgressionPolicy {
         decision: ReviewDecision.notEnoughData,
         concern: false,
         plateau: _isAtPlateau(levelBefore, plateauLevel),
+        hintsTaken: report.hintsTaken,
       );
       // Not due for a full cycle; check again tomorrow rather than waiting
       // out the rest of the 4-day window (docs/PROGRESSION_PLAN.md §6.5 rule 2).
@@ -116,6 +117,9 @@ class ProgressionPolicy {
 
     final score = report.score!;
     final accuracy = report.accuracy ?? 0;
+    final hintRate = report.hintRate;
+    final hintsLowEnoughForRaise =
+        hintRate <= ProgressionConfig.maxHintRateForRaise;
 
     final recentlyEased = _lastTwoDecisions(progress).any(
       (d) => d == ReviewDecision.ease || d == ReviewDecision.easeMore,
@@ -124,14 +128,16 @@ class ProgressionPolicy {
     ReviewDecision decision;
     double step;
     if (score >= ProgressionConfig.raiseScore &&
-        accuracy >= ProgressionConfig.raiseAccuracy) {
+        accuracy >= ProgressionConfig.raiseAccuracy &&
+        hintsLowEnoughForRaise) {
       decision = ReviewDecision.raise;
       step = recentlyEased
           ? ProgressionConfig.raiseStepAfterRecentEase
           : ProgressionConfig.raiseStep;
     } else if (score >= ProgressionConfig.nudgeUpScore &&
         (progress.lastDecision == ReviewDecision.hold ||
-            progress.lastDecision == ReviewDecision.nudgeUp)) {
+            progress.lastDecision == ReviewDecision.nudgeUp) &&
+        hintsLowEnoughForRaise) {
       decision = ReviewDecision.nudgeUp;
       step = ProgressionConfig.nudgeUpStep;
     } else if (score >= ProgressionConfig.holdLowScore) {
@@ -183,6 +189,7 @@ class ProgressionPolicy {
       decision: decision,
       concern: concern,
       plateau: _isAtPlateau(levelAfter, plateauLevel),
+      hintsTaken: report.hintsTaken,
     );
 
     return progress

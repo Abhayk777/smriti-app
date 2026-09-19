@@ -36,6 +36,7 @@ class ReviewRecord {
     required this.decision,
     required this.concern,
     required this.plateau,
+    this.hintsTaken = 0,
   });
 
   final int atMs;
@@ -64,6 +65,9 @@ class ReviewRecord {
   /// (docs/PROGRESSION_PLAN.md §5.4).
   final bool plateau;
 
+  /// Total trials in the review window where hints were displayed or taken.
+  final int hintsTaken;
+
   Map<String, Object?> toJson() => {
         'atMs': atMs,
         'windowFromMs': windowFromMs,
@@ -78,6 +82,7 @@ class ReviewRecord {
         'decision': decision.name,
         'concern': concern,
         'plateau': plateau,
+        'hintsTaken': hintsTaken,
       };
 
   /// Returns null when [json] cannot be parsed as a valid [ReviewRecord]; the
@@ -101,6 +106,7 @@ class ReviewRecord {
         decision: decision,
         concern: json['concern'] as bool? ?? false,
         plateau: json['plateau'] as bool? ?? false,
+        hintsTaken: (json['hintsTaken'] as num?)?.toInt() ?? 0,
       );
     } catch (_) {
       return null;

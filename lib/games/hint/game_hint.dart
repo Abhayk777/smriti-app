@@ -4,10 +4,32 @@ import 'package:flutter/material.dart';
 
 import '../../app_colors.dart';
 
+/// Tracks whether hints have been displayed or taken during the current trial/item.
+class HintTracker {
+  static final instance = HintTracker._();
+  HintTracker._();
+
+  int _hintsThisItem = 0;
+  bool _hintActive = false;
+
+  int get hintsThisItem => _hintsThisItem;
+  bool get hasHintActive => _hintActive;
+
+  void reset() {
+    _hintsThisItem = 0;
+    _hintActive = false;
+  }
+
+  void recordHint() {
+    _hintsThisItem++;
+    _hintActive = true;
+  }
+}
+
 /// A gentle hint glow widget for dementia-friendly games.
 ///
 /// Wraps interactive game items (cards, mats, options). If [isAnswer] is true,
-/// after a 30-second inactivity delay, it subtly pulses a warm glowing border
+/// after a 20-second inactivity delay, it subtly pulses a warm glowing border
 /// and soft halo to assist the elder without penalizing or frustrating them.
 class HintGlow extends StatefulWidget {
   const HintGlow({
@@ -15,13 +37,15 @@ class HintGlow extends StatefulWidget {
     required this.child,
     this.isAnswer = false,
     this.radius = 16,
-    this.delay = const Duration(seconds: 30),
+    this.delay = const Duration(seconds: 20),
+    this.onHintTriggered,
   });
 
   final Widget child;
   final bool isAnswer;
   final double radius;
   final Duration delay;
+  final VoidCallback? onHintTriggered;
 
   @override
   State<HintGlow> createState() => _HintGlowState();
@@ -46,6 +70,9 @@ class _HintGlowState extends State<HintGlow>
 
     _idleTimer = Timer(widget.delay, () {
       if (!mounted) return;
+      HintTracker.instance.recordHint();
+      widget.onHintTriggered?.call();
+
       _animController = AnimationController(
         vsync: this,
         duration: const Duration(milliseconds: 1400),

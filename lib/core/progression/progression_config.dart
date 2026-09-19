@@ -16,6 +16,7 @@ class ProgressionConfig {
   static const int minDistinctDaysPerReview = 2;
   static const double raiseScore = 0.85;
   static const double raiseAccuracy = 0.80;
+  static const double maxHintRateForRaise = 0.20;
   static const double nudgeUpScore = 0.78;
   static const double holdLowScore = 0.60;
   static const double easeMoreScore = 0.45;

@@ -20,6 +20,7 @@ class GameReport {
     required this.accuracy,
     required this.partialCredit,
     required this.hintRate,
+    this.hintsTaken = 0,
     required this.speedScore,
     required this.abandonRate,
     required this.meanLevel,
@@ -49,6 +50,9 @@ class GameReport {
 
   /// Share of trials with `hintLevel > 0`. 0 when [trials] is 0.
   final double hintRate;
+
+  /// Total trials where hints were taken in this window.
+  final int hintsTaken;
 
   /// 0..1; 0.5 when there is no previous window to compare against.
   final double speedScore;
@@ -153,6 +157,7 @@ class GameReport {
       accuracy: accuracy,
       partialCredit: partialCredit,
       hintRate: hintRate,
+      hintsTaken: hintedCount,
       speedScore: speedScore,
       abandonRate: abandonRate,
       meanLevel: meanLevel,

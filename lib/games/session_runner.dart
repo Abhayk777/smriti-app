@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/widgets.dart';
@@ -10,6 +11,7 @@ import '../core/progression/difficulty_source.dart';
 import '../core/repo/ability_repo.dart';
 import '../core/repo/event_repo.dart';
 import 'cognitive_game.dart';
+import 'hint/game_hint.dart';
 
 /// Tone of the cue shown or played after a trial.
 ///
@@ -132,6 +134,7 @@ class SessionRunner {
     final record = await abilityRepo.getOrSeed(game.primaryDomain);
     _thetaBefore = record.theta;
     _hintLevel = 0;
+    HintTracker.instance.reset();
 
     final difficulty = await difficultySource.difficultyFor(game);
     final item = game.generateItem(difficulty, content);
@@ -171,6 +174,12 @@ class SessionRunner {
 
     final ts = _now();
     final responseTimeMs = result.initiationMs + result.movementMs;
+    final hintsTaken = HintTracker.instance.hintsThisItem;
+    final effectiveHintLevel = max(_hintLevel, hintsTaken > 0 ? 1 : 0);
+    final recordedMetrics = <String, Object?>{
+      ...result.metrics,
+      if (hintsTaken > 0) 'hints_taken': hintsTaken,
+    };
 
     await eventRepo.insertTrial(
       TrialEventsCompanion.insert(
@@ -192,8 +201,8 @@ class SessionRunner {
           ...item.context,
           ...difficultySource.contextFor(game),
         })),
-        hintLevel: Value(_hintLevel),
-        metrics: Value(jsonEncode(result.metrics)),
+        hintLevel: Value(effectiveHintLevel),
+        metrics: Value(jsonEncode(recordedMetrics)),
         ts: ts.millisecondsSinceEpoch,
         hourOfDay: ts.hour,
         tzOffsetMin: ts.timeZoneOffset.inMinutes,

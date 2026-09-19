@@ -74,6 +74,19 @@ void main() {
       expect(result.history.last.decision, isNot(ReviewDecision.raise));
     });
 
+    test('a raise requires low hintRate (<= 0.20); high hints hold level', () {
+      final progress = GameProgress.fresh('market_basket').copyWith(level: 5.0);
+      final result = ProgressionPolicy.review(
+        progress: progress,
+        report: _report(score: 0.9, accuracy: 0.9, hintRate: 0.35),
+        plateauLevel: 100,
+        nowMs: 10 * _day,
+      );
+      // High score and accuracy, but too many hints taken -> holds instead of raise
+      expect(result.history.last.decision, ReviewDecision.hold);
+      expect(result.level, 5.0);
+    });
+
     test('nudgeUp requires the previous decision to be hold or nudgeUp', () {
       final withHold = GameProgress.fresh('market_basket')
           .copyWith(level: 5.0, lastDecision: ReviewDecision.hold);
