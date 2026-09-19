@@ -408,172 +408,204 @@ class _InteractiveGameDemoStageState extends State<InteractiveGameDemoStage>
     );
   }
 
+  // Constant exact target coordinates for each game
+  static const Offset sortCardPos = Offset(0.50, 0.24);
+  static const Offset sortVegMatPos = Offset(0.30, 0.74);
+  static const Offset sortFruitMatPos = Offset(0.70, 0.74);
+
+  static const Offset marketApplePos = Offset(0.28, 0.35);
+  static const Offset marketMilkPos = Offset(0.72, 0.35);
+  static const Offset marketBasketPos = Offset(0.50, 0.78);
+
+  static const Offset traceP1 = Offset(0.22, 0.48);
+  static const Offset traceP2 = Offset(0.50, 0.30);
+  static const Offset traceP3 = Offset(0.78, 0.54);
+
+  static const Offset lamp1Pos = Offset(0.25, 0.56);
+  static const Offset lamp2Pos = Offset(0.50, 0.38);
+  static const Offset lamp3Pos = Offset(0.75, 0.56);
+
+  static const Offset facePromptPos = Offset(0.50, 0.22);
+  static const Offset faceCard1Pos = Offset(0.30, 0.68);
+  static const Offset faceCard2Pos = Offset(0.70, 0.68);
+
+  static const Offset myDayActivityPos = Offset(0.50, 0.24);
+  static const Offset myDaySlot1Pos = Offset(0.20, 0.72);
+  static const Offset myDaySlot2Pos = Offset(0.50, 0.72);
+  static const Offset myDaySlot3Pos = Offset(0.80, 0.72);
+
+  static const Offset weaveMasterPos = Offset(0.50, 0.26);
+  static const Offset weaveOpt1Pos = Offset(0.22, 0.72);
+  static const Offset weaveOpt2Pos = Offset(0.50, 0.72);
+  static const Offset weaveOpt3Pos = Offset(0.78, 0.72);
+
+  static const Offset soundsDrumPos = Offset(0.50, 0.62);
+
+  static const Offset nameInputPos = Offset(0.42, 0.46);
+  static const Offset nameAddBtnPos = Offset(0.78, 0.46);
+
   _HandData _getHandData(String gameId, double t) {
     switch (gameId) {
       case 'sort_harvest':
-        // 1. Move to tomato card at top (0.50, 0.28) to focus attention
-        if (t < 0.25) {
-          final p = Curves.easeOutCubic.transform(t / 0.25);
-          return _HandData(Offset.lerp(const Offset(0.70, 0.55), const Offset(0.50, 0.28), p)!);
-        }
-        // 2. Move down toward the matching "Vegetables" mat (0.28, 0.70)
-        else if (t < 0.50) {
-          final p = Curves.easeInOutCubic.transform((t - 0.25) / 0.25);
-          return _HandData(Offset.lerp(const Offset(0.50, 0.28), const Offset(0.28, 0.70), p)!);
-        }
-        // 3. Click / Tap the Vegetables mat with touch ripple (NO dragging!)
-        else if (t < 0.65) {
-          final rip = (t - 0.50) / 0.15;
-          return _HandData(const Offset(0.28, 0.70), isPressing: true, rippleProgress: rip);
-        }
-        // 4. Lift up after tap confirmation
-        else if (t < 0.85) {
+        if (t < 0.22) {
+          final p = Curves.easeOutCubic.transform(t / 0.22);
+          return _HandData(Offset.lerp(const Offset(0.70, 0.60), sortCardPos, p)!);
+        } else if (t < 0.48) {
+          final p = Curves.easeInOutCubic.transform((t - 0.22) / 0.26);
+          return _HandData(Offset.lerp(sortCardPos, sortVegMatPos, p)!);
+        } else if (t < 0.65) {
+          final rip = (t - 0.48) / 0.17;
+          return _HandData(sortVegMatPos, isPressing: true, rippleProgress: rip);
+        } else if (t < 0.85) {
           final p = Curves.easeOut.transform((t - 0.65) / 0.20);
-          return _HandData(Offset.lerp(const Offset(0.28, 0.70), const Offset(0.35, 0.75), p)!);
-        }
-        // 5. Rest position
-        else {
-          return const _HandData(Offset(0.70, 0.55));
+          return _HandData(Offset.lerp(sortVegMatPos, const Offset(0.32, 0.66), p)!);
+        } else {
+          return const _HandData(Offset(0.70, 0.60));
         }
 
       case 'market_basket':
-        // Tap Apple (0.30, 0.38), then tap Milk (0.70, 0.38)
-        if (t < 0.25) {
-          final p = Curves.easeInOut.transform(t / 0.25);
-          return _HandData(Offset.lerp(const Offset(0.50, 0.75), const Offset(0.30, 0.38), p)!);
-        } else if (t < 0.35) {
-          final rip = (t - 0.25) / 0.10;
-          return _HandData(const Offset(0.30, 0.38), isPressing: true, rippleProgress: rip);
-        } else if (t < 0.60) {
-          final p = Curves.easeInOut.transform((t - 0.35) / 0.25);
-          return _HandData(Offset.lerp(const Offset(0.30, 0.38), const Offset(0.70, 0.38), p)!);
-        } else if (t < 0.70) {
-          final rip = (t - 0.60) / 0.10;
-          return _HandData(const Offset(0.70, 0.38), isPressing: true, rippleProgress: rip);
+        if (t < 0.22) {
+          final p = Curves.easeInOutCubic.transform(t / 0.22);
+          return _HandData(Offset.lerp(const Offset(0.50, 0.75), marketApplePos, p)!);
+        } else if (t < 0.34) {
+          final rip = (t - 0.22) / 0.12;
+          return _HandData(marketApplePos, isPressing: true, rippleProgress: rip);
+        } else if (t < 0.56) {
+          final p = Curves.easeInOutCubic.transform((t - 0.34) / 0.22);
+          return _HandData(Offset.lerp(marketApplePos, marketMilkPos, p)!);
+        } else if (t < 0.68) {
+          final rip = (t - 0.56) / 0.12;
+          return _HandData(marketMilkPos, isPressing: true, rippleProgress: rip);
         } else {
-          final p = Curves.easeOut.transform((t - 0.70) / 0.30);
-          return _HandData(Offset.lerp(const Offset(0.70, 0.38), const Offset(0.50, 0.75), p)!);
+          final p = Curves.easeOut.transform((t - 0.68) / 0.32);
+          return _HandData(Offset.lerp(marketMilkPos, const Offset(0.60, 0.65), p)!);
         }
 
       case 'trace_path':
-        // Tap 1 (0.22, 0.50) -> tap 2 (0.50, 0.40) -> tap 3 (0.78, 0.55)
-        if (t < 0.24) {
-          final p = Curves.easeOut.transform(t / 0.24);
-          return _HandData(Offset.lerp(const Offset(0.10, 0.70), const Offset(0.22, 0.50), p)!);
+        if (t < 0.22) {
+          final p = Curves.easeOutCubic.transform(t / 0.22);
+          return _HandData(Offset.lerp(const Offset(0.12, 0.68), traceP1, p)!);
         } else if (t < 0.32) {
-          final rip = (t - 0.24) / 0.08;
-          return _HandData(const Offset(0.22, 0.50), isPressing: true, rippleProgress: rip);
-        } else if (t < 0.54) {
-          final p = Curves.easeInOut.transform((t - 0.32) / 0.22);
-          return _HandData(Offset.lerp(const Offset(0.22, 0.50), const Offset(0.50, 0.40), p)!);
+          final rip = (t - 0.22) / 0.10;
+          return _HandData(traceP1, isPressing: true, rippleProgress: rip);
+        } else if (t < 0.52) {
+          final p = Curves.easeInOutCubic.transform((t - 0.32) / 0.20);
+          return _HandData(Offset.lerp(traceP1, traceP2, p)!);
         } else if (t < 0.62) {
-          final rip = (t - 0.54) / 0.08;
-          return _HandData(const Offset(0.50, 0.40), isPressing: true, rippleProgress: rip);
+          final rip = (t - 0.52) / 0.10;
+          return _HandData(traceP2, isPressing: true, rippleProgress: rip);
         } else if (t < 0.82) {
-          final p = Curves.easeInOut.transform((t - 0.62) / 0.20);
-          return _HandData(Offset.lerp(const Offset(0.50, 0.40), const Offset(0.78, 0.55), p)!);
-        } else if (t < 0.90) {
-          final rip = (t - 0.82) / 0.08;
-          return _HandData(const Offset(0.78, 0.55), isPressing: true, rippleProgress: rip);
+          final p = Curves.easeInOutCubic.transform((t - 0.62) / 0.20);
+          return _HandData(Offset.lerp(traceP2, traceP3, p)!);
+        } else if (t < 0.92) {
+          final rip = (t - 0.82) / 0.10;
+          return _HandData(traceP3, isPressing: true, rippleProgress: rip);
         } else {
-          return const _HandData(Offset(0.78, 0.55));
-        }
-
-      case 'faces_of_family':
-        // Point from prompt down to Daughter (0.70, 0.65) and tap
-        if (t < 0.42) {
-          final p = Curves.easeInOut.transform(t / 0.42);
-          return _HandData(Offset.lerp(const Offset(0.40, 0.20), const Offset(0.70, 0.65), p)!);
-        } else if (t < 0.56) {
-          final rip = (t - 0.42) / 0.14;
-          return _HandData(const Offset(0.70, 0.65), isPressing: true, rippleProgress: rip);
-        } else {
-          final p = Curves.easeOut.transform((t - 0.56) / 0.44);
-          return _HandData(Offset.lerp(const Offset(0.70, 0.65), const Offset(0.75, 0.75), p)!);
+          return const _HandData(traceP3);
         }
 
       case 'lamps_festival':
-        // Watch phase 0..0.45 (hand waiting off-screen), then tap lamp 1 (0.24, 0.62) and lamp 2 (0.76, 0.62)
         if (t < 0.45) {
-          return const _HandData(Offset(0.12, 0.88));
-        } else if (t < 0.60) {
-          final p = Curves.easeInOut.transform((t - 0.45) / 0.15);
-          return _HandData(Offset.lerp(const Offset(0.12, 0.88), const Offset(0.24, 0.62), p)!);
+          return const _HandData(Offset(0.85, 0.85));
+        } else if (t < 0.58) {
+          final p = Curves.easeInOutCubic.transform((t - 0.45) / 0.13);
+          return _HandData(Offset.lerp(const Offset(0.85, 0.85), lamp1Pos, p)!);
         } else if (t < 0.68) {
-          final rip = (t - 0.60) / 0.08;
-          return _HandData(const Offset(0.24, 0.62), isPressing: true, rippleProgress: rip);
+          final rip = (t - 0.58) / 0.10;
+          return _HandData(lamp1Pos, isPressing: true, rippleProgress: rip);
         } else if (t < 0.82) {
-          final p = Curves.easeInOut.transform((t - 0.68) / 0.14);
-          return _HandData(Offset.lerp(const Offset(0.24, 0.62), const Offset(0.76, 0.62), p)!);
-        } else if (t < 0.90) {
-          final rip = (t - 0.82) / 0.08;
-          return _HandData(const Offset(0.76, 0.62), isPressing: true, rippleProgress: rip);
+          final p = Curves.easeInOutCubic.transform((t - 0.68) / 0.14);
+          return _HandData(Offset.lerp(lamp1Pos, lamp2Pos, p)!);
+        } else if (t < 0.92) {
+          final rip = (t - 0.82) / 0.10;
+          return _HandData(lamp2Pos, isPressing: true, rippleProgress: rip);
         } else {
-          return const _HandData(Offset(0.76, 0.62));
+          return const _HandData(lamp2Pos);
+        }
+
+      case 'faces_of_family':
+        if (t < 0.25) {
+          final p = Curves.easeOutCubic.transform(t / 0.25);
+          return _HandData(Offset.lerp(const Offset(0.70, 0.55), facePromptPos, p)!);
+        } else if (t < 0.50) {
+          final p = Curves.easeInOutCubic.transform((t - 0.25) / 0.25);
+          return _HandData(Offset.lerp(facePromptPos, faceCard1Pos, p)!);
+        } else if (t < 0.65) {
+          final rip = (t - 0.50) / 0.15;
+          return _HandData(faceCard1Pos, isPressing: true, rippleProgress: rip);
+        } else if (t < 0.85) {
+          final p = Curves.easeOut.transform((t - 0.65) / 0.20);
+          return _HandData(Offset.lerp(faceCard1Pos, const Offset(0.35, 0.60), p)!);
+        } else {
+          return const _HandData(Offset(0.70, 0.55));
         }
 
       case 'my_day':
-        // Grab Walk card at bottom (0.50, 0.76) and drag up to slot 2 (0.50, 0.48)
-        if (t < 0.28) {
-          final p = Curves.easeOut.transform(t / 0.28);
-          return _HandData(Offset.lerp(const Offset(0.70, 0.85), const Offset(0.50, 0.76), p)!);
-        } else if (t < 0.36) {
-          final rip = (t - 0.28) / 0.08;
-          return _HandData(const Offset(0.50, 0.76), isPressing: true, rippleProgress: rip);
-        } else if (t < 0.72) {
-          final p = Curves.easeInOut.transform((t - 0.36) / 0.36);
-          return _HandData(Offset.lerp(const Offset(0.50, 0.76), const Offset(0.50, 0.48), p)!, isPressing: true);
+        if (t < 0.25) {
+          final p = Curves.easeOutCubic.transform(t / 0.25);
+          return _HandData(Offset.lerp(const Offset(0.70, 0.55), myDayActivityPos, p)!);
+        } else if (t < 0.50) {
+          final p = Curves.easeInOutCubic.transform((t - 0.25) / 0.25);
+          return _HandData(Offset.lerp(myDayActivityPos, myDaySlot2Pos, p)!);
+        } else if (t < 0.65) {
+          final rip = (t - 0.50) / 0.15;
+          return _HandData(myDaySlot2Pos, isPressing: true, rippleProgress: rip);
+        } else if (t < 0.85) {
+          final p = Curves.easeOut.transform((t - 0.65) / 0.20);
+          return _HandData(Offset.lerp(myDaySlot2Pos, const Offset(0.50, 0.64), p)!);
         } else {
-          final p = Curves.easeOut.transform((t - 0.72) / 0.28);
-          return _HandData(Offset.lerp(const Offset(0.50, 0.48), const Offset(0.65, 0.58), p)!);
+          return const _HandData(Offset(0.70, 0.55));
         }
 
       case 'weaving_patterns':
-        // Inspect top pattern (0.50, 0.28), move down and tap matching option A (0.30, 0.68)
-        if (t < 0.35) {
-          final p = Curves.easeInOut.transform(t / 0.35);
-          return _HandData(Offset.lerp(const Offset(0.35, 0.35), const Offset(0.50, 0.28), p)!);
-        } else if (t < 0.62) {
-          final p = Curves.easeInOut.transform((t - 0.35) / 0.27);
-          return _HandData(Offset.lerp(const Offset(0.50, 0.28), const Offset(0.30, 0.68), p)!);
-        } else if (t < 0.72) {
-          final rip = (t - 0.62) / 0.10;
-          return _HandData(const Offset(0.30, 0.68), isPressing: true, rippleProgress: rip);
+        if (t < 0.25) {
+          final p = Curves.easeOutCubic.transform(t / 0.25);
+          return _HandData(Offset.lerp(const Offset(0.35, 0.55), weaveMasterPos, p)!);
+        } else if (t < 0.52) {
+          final p = Curves.easeInOutCubic.transform((t - 0.25) / 0.27);
+          return _HandData(Offset.lerp(weaveMasterPos, weaveOpt2Pos, p)!);
+        } else if (t < 0.66) {
+          final rip = (t - 0.52) / 0.14;
+          return _HandData(weaveOpt2Pos, isPressing: true, rippleProgress: rip);
+        } else if (t < 0.85) {
+          final p = Curves.easeOut.transform((t - 0.66) / 0.19);
+          return _HandData(Offset.lerp(weaveOpt2Pos, const Offset(0.50, 0.64), p)!);
         } else {
-          return const _HandData(Offset(0.30, 0.68));
+          return const _HandData(Offset(0.70, 0.55));
         }
 
       case 'sounds_home':
-        // Bird sings, hand moves down to drum (0.50, 0.72) and taps on the sound!
         if (t < 0.38) {
-          return const _HandData(Offset(0.50, 0.42));
+          return const _HandData(Offset(0.50, 0.30));
         } else if (t < 0.56) {
-          final p = Curves.easeInOut.transform((t - 0.38) / 0.18);
-          return _HandData(Offset.lerp(const Offset(0.50, 0.42), const Offset(0.50, 0.72), p)!);
+          final p = Curves.easeInOutCubic.transform((t - 0.38) / 0.18);
+          return _HandData(Offset.lerp(const Offset(0.50, 0.30), soundsDrumPos, p)!);
         } else if (t < 0.68) {
           final rip = (t - 0.56) / 0.12;
-          return _HandData(const Offset(0.50, 0.72), isPressing: true, rippleProgress: rip);
+          return _HandData(soundsDrumPos, isPressing: true, rippleProgress: rip);
+        } else if (t < 0.86) {
+          final p = Curves.easeOut.transform((t - 0.68) / 0.18);
+          return _HandData(Offset.lerp(soundsDrumPos, const Offset(0.50, 0.50), p)!);
         } else {
-          return const _HandData(Offset(0.50, 0.72));
+          return const _HandData(Offset(0.70, 0.55));
         }
 
       case 'name_harvest':
       default:
-        // Tap input field (0.40, 0.42) -> move to + button (0.78, 0.42) and tap
-        if (t < 0.28) {
-          final p = Curves.easeInOut.transform(t / 0.28);
-          return _HandData(Offset.lerp(const Offset(0.50, 0.75), const Offset(0.40, 0.42), p)!);
-        } else if (t < 0.38) {
-          final rip = (t - 0.28) / 0.10;
-          return _HandData(const Offset(0.40, 0.42), isPressing: true, rippleProgress: rip);
+        if (t < 0.26) {
+          final p = Curves.easeOutCubic.transform(t / 0.26);
+          return _HandData(Offset.lerp(const Offset(0.50, 0.75), nameInputPos, p)!);
+        } else if (t < 0.48) {
+          final p = Curves.easeInOutCubic.transform((t - 0.26) / 0.22);
+          return _HandData(Offset.lerp(nameInputPos, nameAddBtnPos, p)!);
         } else if (t < 0.62) {
-          final p = Curves.easeInOut.transform((t - 0.38) / 0.24);
-          return _HandData(Offset.lerp(const Offset(0.40, 0.42), const Offset(0.78, 0.42), p)!);
-        } else if (t < 0.72) {
-          final rip = (t - 0.62) / 0.10;
-          return _HandData(const Offset(0.78, 0.42), isPressing: true, rippleProgress: rip);
+          final rip = (t - 0.48) / 0.14;
+          return _HandData(nameAddBtnPos, isPressing: true, rippleProgress: rip);
+        } else if (t < 0.85) {
+          final p = Curves.easeOut.transform((t - 0.62) / 0.23);
+          return _HandData(Offset.lerp(nameAddBtnPos, const Offset(0.78, 0.38), p)!);
         } else {
-          return const _HandData(Offset(0.78, 0.42));
+          return const _HandData(Offset(0.70, 0.55));
         }
     }
   }
@@ -602,104 +634,93 @@ class _InteractiveGameDemoStageState extends State<InteractiveGameDemoStage>
     }
   }
 
-  // 1. Sort the Harvest: Fixed item at top, click/tap matching mat below (NO DRAG)
+  // 1. Sort the Harvest: Authentic produce card & sorting mats
   Widget _buildSortHarvestPlay(double t, BoxConstraints constraints) {
-    final tapped = t >= 0.50 && t < 0.90;
+    final tapped = t >= 0.48 && t < 0.88;
+    final w = constraints.maxWidth;
+    final h = constraints.maxHeight;
+
+    final cardW = w * 0.42;
+    final cardH = h * 0.30;
+    final matW = w * 0.40;
+    final matH = h * 0.32;
 
     return Stack(
       children: [
-        // 1. Fixed Produce Card to sort at top center (NO DRAGGING)
+        // Produce Card at top center
         Positioned(
-          top: 14,
-          left: 0,
-          right: 0,
-          child: Center(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-              decoration: BoxDecoration(
-                color: AppColors.raisedSurface,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: (t < 0.25) ? AppColors.marigold : AppColors.border,
-                  width: (t < 0.25) ? 2.5 : 1.5,
+          left: w * sortCardPos.dx - cardW / 2,
+          top: h * sortCardPos.dy - cardH / 2,
+          child: Container(
+            width: cardW,
+            height: cardH,
+            decoration: BoxDecoration(
+              color: AppColors.raisedSurface,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(
+                color: (t < 0.25) ? AppColors.marigold : AppColors.border,
+                width: (t < 0.25) ? 3 : 1.5,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.12),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
                 ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.1),
-                    blurRadius: 8,
-                    offset: const Offset(0, 3),
-                  ),
-                ],
-              ),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text('🍅', style: TextStyle(fontSize: 26)),
-                  SizedBox(width: 8),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text('Tomato', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
-                      Text(
-                        'Item to sort',
-                        style: TextStyle(
-                          color: AppColors.secondaryText,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+              ],
+            ),
+            child: const Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text('🍅', style: TextStyle(fontSize: 32)),
+                SizedBox(height: 4),
+                Text('Tomato', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+                Text('Item to sort', style: TextStyle(color: AppColors.secondaryText, fontSize: 11)),
+              ],
             ),
           ),
         ),
 
-        // 2. Sorting mats at bottom
-        // Left mat: Vegetables (Target match)
+        // Left Mat: Vegetables
         Positioned(
-          left: constraints.maxWidth * 0.08,
-          bottom: 16,
+          left: w * sortVegMatPos.dx - matW / 2,
+          top: h * sortVegMatPos.dy - matH / 2,
           child: Transform.scale(
-            scale: (t >= 0.50 && t < 0.65) ? 0.95 : 1.0,
+            scale: (t >= 0.48 && t < 0.65) ? 0.94 : 1.0,
             child: Container(
-              width: constraints.maxWidth * 0.38,
-              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+              width: matW,
+              height: matH,
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
               decoration: BoxDecoration(
-                color: tapped
-                    ? AppColors.leafGreen.withValues(alpha: 0.22)
-                    : AppColors.raisedSurface,
-                borderRadius: BorderRadius.circular(18),
+                color: tapped ? AppColors.leafGreen.withValues(alpha: 0.25) : AppColors.raisedSurface,
+                borderRadius: BorderRadius.circular(20),
                 border: Border.all(
                   color: tapped ? AppColors.leafGreen : AppColors.bamboo,
-                  width: tapped ? 3 : 2,
+                  width: tapped ? 3.5 : 2,
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: tapped
-                        ? AppColors.leafGreen.withValues(alpha: 0.2)
-                        : Colors.black.withValues(alpha: 0.06),
-                    blurRadius: 8,
-                    offset: const Offset(0, 3),
+                    color: tapped ? AppColors.leafGreen.withValues(alpha: 0.3) : Colors.black.withValues(alpha: 0.06),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
                   ),
                 ],
               ),
               child: Column(
-                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
+                  const Text('🥬', style: TextStyle(fontSize: 26)),
+                  const SizedBox(height: 2),
                   Text(
-                    tapped ? '🥬 Vegetables ✓' : '🥬 Vegetables',
+                    tapped ? 'Vegetables ✓' : 'Vegetables',
                     style: TextStyle(
                       color: tapped ? AppColors.leafGreen : AppColors.primaryText,
                       fontWeight: FontWeight.w800,
                       fontSize: 14,
                     ),
                   ),
-                  const SizedBox(height: 3),
                   Text(
-                    tapped ? '✓ Clicked!' : 'Click here',
+                    tapped ? '✓ Clicked!' : 'Tap here',
                     style: TextStyle(
                       color: tapped ? AppColors.leafGreen : AppColors.secondaryText,
                       fontWeight: FontWeight.w700,
@@ -712,30 +733,26 @@ class _InteractiveGameDemoStageState extends State<InteractiveGameDemoStage>
           ),
         ),
 
-        // Right mat: Fruits (Other category)
+        // Right Mat: Fruits
         Positioned(
-          right: constraints.maxWidth * 0.08,
-          bottom: 16,
+          left: w * sortFruitMatPos.dx - matW / 2,
+          top: h * sortFruitMatPos.dy - matH / 2,
           child: Container(
-            width: constraints.maxWidth * 0.38,
-            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+            width: matW,
+            height: matH,
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
             decoration: BoxDecoration(
               color: AppColors.raisedSurface,
-              borderRadius: BorderRadius.circular(18),
+              borderRadius: BorderRadius.circular(20),
               border: Border.all(color: AppColors.border, width: 2),
             ),
             child: const Column(
-              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(
-                  '🍎 Fruits',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                ),
-                SizedBox(height: 3),
-                Text(
-                  'Other mat',
-                  style: TextStyle(color: AppColors.secondaryText, fontSize: 11),
-                ),
+                Text('🍎', style: TextStyle(fontSize: 26)),
+                SizedBox(height: 2),
+                Text('Fruits', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
+                Text('Other mat', style: TextStyle(color: AppColors.secondaryText, fontSize: 11)),
               ],
             ),
           ),
@@ -744,19 +761,44 @@ class _InteractiveGameDemoStageState extends State<InteractiveGameDemoStage>
     );
   }
 
-  // 2. Market Basket: Shelf tapping & basket collecting
+  // 2. Market Basket: Realistic wooden shelf & woven basket
   Widget _buildMarketBasketPlay(double t, BoxConstraints constraints) {
-    final applePicked = t >= 0.28;
-    final milkPicked = t >= 0.62;
+    final applePicked = t >= 0.22;
+    final milkPicked = t >= 0.56;
+    final w = constraints.maxWidth;
+    final h = constraints.maxHeight;
+
+    final itemW = w * 0.36;
+    final itemH = h * 0.28;
+    final basketW = w * 0.70;
+    final basketH = h * 0.28;
 
     return Stack(
       children: [
+        // Wooden shelf bar
+        Positioned(
+          left: 12,
+          right: 12,
+          top: h * 0.46,
+          height: 12,
+          child: Container(
+            decoration: BoxDecoration(
+              color: const Color(0xFF8B5A2B),
+              borderRadius: BorderRadius.circular(6),
+              boxShadow: [
+                BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 4, offset: const Offset(0, 3)),
+              ],
+            ),
+          ),
+        ),
+
+        // Top Shopping banner
         Positioned(
           top: 10,
-          left: 14,
-          right: 14,
+          left: 20,
+          right: 20,
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            padding: const EdgeInsets.symmetric(vertical: 6),
             decoration: BoxDecoration(
               color: AppColors.raisedSurface,
               borderRadius: BorderRadius.circular(12),
@@ -768,27 +810,72 @@ class _InteractiveGameDemoStageState extends State<InteractiveGameDemoStage>
             ),
           ),
         ),
+
+        // Apple item
         Positioned(
-          left: constraints.maxWidth * 0.22 - 32,
-          top: constraints.maxHeight * 0.38 - 28,
-          child: _buildShelfItemMock('🍎 Apple', applePicked),
-        ),
-        Positioned(
-          left: constraints.maxWidth * 0.72 - 32,
-          top: constraints.maxHeight * 0.38 - 28,
-          child: _buildShelfItemMock('🥛 Milk', milkPicked),
-        ),
-        Positioned(
-          left: constraints.maxWidth * 0.25,
-          right: constraints.maxWidth * 0.25,
-          bottom: 10,
+          left: w * marketApplePos.dx - itemW / 2,
+          top: h * marketApplePos.dy - itemH / 2,
           child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 8),
+            width: itemW,
+            height: itemH,
             decoration: BoxDecoration(
-              color: (applePicked && milkPicked)
-                  ? AppColors.leafGreen.withValues(alpha: 0.25)
-                  : AppColors.raisedSurface,
+              color: applePicked ? AppColors.leafGreen.withValues(alpha: 0.2) : AppColors.raisedSurface,
               borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: applePicked ? AppColors.leafGreen : AppColors.border,
+                width: applePicked ? 3 : 1.5,
+              ),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Text('🍎', style: TextStyle(fontSize: 26)),
+                const Text('Apple', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                if (applePicked)
+                  const Text('Picked ✓', style: TextStyle(color: AppColors.leafGreen, fontSize: 10, fontWeight: FontWeight.w800)),
+              ],
+            ),
+          ),
+        ),
+
+        // Milk item
+        Positioned(
+          left: w * marketMilkPos.dx - itemW / 2,
+          top: h * marketMilkPos.dy - itemH / 2,
+          child: Container(
+            width: itemW,
+            height: itemH,
+            decoration: BoxDecoration(
+              color: milkPicked ? AppColors.leafGreen.withValues(alpha: 0.2) : AppColors.raisedSurface,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: milkPicked ? AppColors.leafGreen : AppColors.border,
+                width: milkPicked ? 3 : 1.5,
+              ),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Text('🥛', style: TextStyle(fontSize: 26)),
+                const Text('Milk', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                if (milkPicked)
+                  const Text('Picked ✓', style: TextStyle(color: AppColors.leafGreen, fontSize: 10, fontWeight: FontWeight.w800)),
+              ],
+            ),
+          ),
+        ),
+
+        // Basket at bottom
+        Positioned(
+          left: w * marketBasketPos.dx - basketW / 2,
+          top: h * marketBasketPos.dy - basketH / 2,
+          child: Container(
+            width: basketW,
+            height: basketH,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            decoration: BoxDecoration(
+              color: (applePicked && milkPicked) ? AppColors.leafGreen.withValues(alpha: 0.25) : AppColors.wovenMat,
+              borderRadius: BorderRadius.circular(20),
               border: Border.all(
                 color: (applePicked && milkPicked) ? AppColors.leafGreen : AppColors.marigoldDark,
                 width: 2.5,
@@ -797,13 +884,15 @@ class _InteractiveGameDemoStageState extends State<InteractiveGameDemoStage>
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.shopping_basket_rounded, color: AppColors.marigoldDark, size: 22),
-                const SizedBox(width: 8),
+                const Icon(Icons.shopping_basket_rounded, color: AppColors.marigoldDark, size: 28),
+                const SizedBox(width: 10),
                 Text(
-                  (applePicked && milkPicked) ? '🧺 All 2 Picked! ✓' : (applePicked ? '🧺 1/2 Picked' : '🧺 Basket'),
+                  (applePicked && milkPicked)
+                      ? '🧺 2 / 2 Collected! ✓'
+                      : (applePicked ? '🧺 1 / 2 Collected' : '🧺 Market Basket'),
                   style: TextStyle(
                     fontWeight: FontWeight.w800,
-                    fontSize: 13,
+                    fontSize: 14,
                     color: (applePicked && milkPicked) ? AppColors.leafGreen : AppColors.primaryText,
                   ),
                 ),
@@ -815,75 +904,73 @@ class _InteractiveGameDemoStageState extends State<InteractiveGameDemoStage>
     );
   }
 
-  Widget _buildShelfItemMock(String label, bool picked) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: picked ? AppColors.leafGreen.withValues(alpha: 0.2) : AppColors.raisedSurface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: picked ? AppColors.leafGreen : AppColors.border,
-          width: picked ? 3 : 1.5,
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-          if (picked) ...const [
-            SizedBox(width: 4),
-            Icon(Icons.check_circle_rounded, color: AppColors.leafGreen, size: 16),
-          ],
-        ],
-      ),
-    );
-  }
-
-  // 3. Trace the Path: Stepping stones in sequential order 1 -> 2 -> 3
+  // 3. Trace the Path: Meadow & River backdrop with realistic stone nodes
   Widget _buildTracePathPlay(double t, BoxConstraints constraints) {
-    final s1 = t >= 0.24;
-    final s2 = t >= 0.54;
+    final s1 = t >= 0.22;
+    final s2 = t >= 0.52;
     final s3 = t >= 0.82;
+    final w = constraints.maxWidth;
+    final h = constraints.maxHeight;
 
     return Stack(
       children: [
-        CustomPaint(
-          size: Size(constraints.maxWidth, constraints.maxHeight),
-          painter: _PathLinePainter(
-            p1: Offset(constraints.maxWidth * 0.22, constraints.maxHeight * 0.50),
-            p2: Offset(constraints.maxWidth * 0.50, constraints.maxHeight * 0.40),
-            p3: Offset(constraints.maxWidth * 0.78, constraints.maxHeight * 0.55),
+        // River meadow backdrop
+        Positioned.fill(
+          child: CustomPaint(
+            painter: _TutorialRiverScenePainter(),
           ),
         ),
-        Positioned(
-          left: constraints.maxWidth * 0.22 - 26,
-          top: constraints.maxHeight * 0.50 - 26,
-          child: _buildStoneNodeMock('1', s1),
+
+        // Path connector line
+        CustomPaint(
+          size: Size(w, h),
+          painter: _PathLinePainter(
+            p1: Offset(w * traceP1.dx, h * traceP1.dy),
+            p2: Offset(w * traceP2.dx, h * traceP2.dy),
+            p3: Offset(w * traceP3.dx, h * traceP3.dy),
+            seg1Active: s2,
+            seg2Active: s3,
+          ),
         ),
+
+        // Stone 1
         Positioned(
-          left: constraints.maxWidth * 0.50 - 26,
-          top: constraints.maxHeight * 0.40 - 26,
-          child: _buildStoneNodeMock('2', s2),
+          left: w * traceP1.dx - 28,
+          top: h * traceP1.dy - 28,
+          child: _buildRealisticStone('1', s1),
         ),
+
+        // Stone 2
         Positioned(
-          left: constraints.maxWidth * 0.78 - 26,
-          top: constraints.maxHeight * 0.55 - 26,
-          child: _buildStoneNodeMock('3', s3),
+          left: w * traceP2.dx - 28,
+          top: h * traceP2.dy - 28,
+          child: _buildRealisticStone('2', s2),
         ),
+
+        // Stone 3
+        Positioned(
+          left: w * traceP3.dx - 28,
+          top: h * traceP3.dy - 28,
+          child: _buildRealisticStone('3', s3),
+        ),
+
         if (s3)
           Positioned(
             bottom: 8,
-            left: 20,
-            right: 20,
+            left: 0,
+            right: 0,
             child: Center(
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                 decoration: BoxDecoration(
                   color: AppColors.leafGreen,
                   borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 6),
+                  ],
                 ),
                 child: const Text('⭐ Path Complete! ✓',
-                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
               ),
             ),
           ),
@@ -891,307 +978,495 @@ class _InteractiveGameDemoStageState extends State<InteractiveGameDemoStage>
     );
   }
 
-  Widget _buildStoneNodeMock(String label, bool active) {
+  Widget _buildRealisticStone(String label, bool active) {
     return Container(
-      width: 52,
-      height: 52,
+      width: 56,
+      height: 56,
       decoration: BoxDecoration(
-        color: active ? AppColors.leafGreen : AppColors.indigo,
+        color: active ? AppColors.leafGreen : const Color(0xFF5C6B73),
         shape: BoxShape.circle,
         border: Border.all(color: Colors.white, width: 2.5),
         boxShadow: [
           BoxShadow(
-            color: (active ? AppColors.leafGreen : AppColors.indigo).withValues(alpha: 0.35),
+            color: Colors.black.withValues(alpha: 0.3),
             blurRadius: 8,
-            offset: const Offset(0, 3),
+            offset: const Offset(0, 4),
           ),
         ],
       ),
       child: Center(
         child: Text(
           active ? '$label ✓' : label,
-          style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w900),
+          style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w900),
         ),
       ),
     );
   }
 
-  // 4. Faces of My Family: Match family member
-  Widget _buildFacesPlay(double t, BoxConstraints constraints) {
-    final matched = t >= 0.42;
-
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-          decoration: BoxDecoration(
-            color: AppColors.raisedSurface,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.border),
-          ),
-          child: const Text('Who is your Daughter? 👧',
-              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: AppColors.primaryText)),
-        ),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            _buildPortraitCardMock('Grandson', Icons.face_rounded, false),
-            _buildPortraitCardMock('Daughter', Icons.face_3_rounded, matched),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildPortraitCardMock(String name, IconData icon, bool matched) {
-    return Container(
-      width: 110,
-      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-      decoration: BoxDecoration(
-        color: matched ? AppColors.leafGreen.withValues(alpha: 0.18) : AppColors.raisedSurface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: matched ? AppColors.leafGreen : AppColors.border,
-          width: matched ? 3.5 : 1.5,
-        ),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 36, color: matched ? AppColors.leafGreen : AppColors.terracotta),
-          const SizedBox(height: 4),
-          Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-          if (matched) ...const [
-            SizedBox(height: 2),
-            Text('❤️ Match! ✓',
-                style: TextStyle(color: AppColors.leafGreen, fontWeight: FontWeight.w800, fontSize: 11)),
-          ],
-        ],
-      ),
-    );
-  }
-
-  // 5. Lamps of the Festival: Watch sequence then tap in order
+  // 4. Lamps of the Festival: Authentic brass/clay diya lamps & midnight sky
   Widget _buildLampsPlay(double t, BoxConstraints constraints) {
-    final lamp1Lit = (t >= 0.05 && t < 0.22) || t >= 0.60;
-    final lamp2Lit = (t >= 0.22 && t < 0.40) || t >= 0.82;
+    final lamp1Lit = (t >= 0.08 && t < 0.22) || t >= 0.58;
+    final lamp2Lit = (t >= 0.24 && t < 0.38) || t >= 0.82;
     final isWatch = t < 0.45;
+    final w = constraints.maxWidth;
+    final h = constraints.maxHeight;
 
     return Container(
-      color: const Color(0xFF13182E),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      color: const Color(0xFF10152B),
+      child: Stack(
         children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-            decoration: BoxDecoration(
-              color: isWatch ? Colors.amber.shade900 : AppColors.leafGreen,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Text(
-              isWatch ? '1. Watch lights 🪔' : '2. Tap in same order! 🪔',
-              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
-            ),
-          ),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              _buildLampMock('1', lamp1Lit),
-              _buildLampMock('2', false),
-              _buildLampMock('3', lamp2Lit),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildLampMock(String num, bool lit) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(
-          Icons.local_fire_department_rounded,
-          size: 32,
-          color: lit ? Colors.amberAccent : Colors.transparent,
-        ),
-        Container(
-          width: 54,
-          height: 28,
-          decoration: BoxDecoration(
-            color: AppColors.teaBrown,
-            borderRadius: const BorderRadius.vertical(bottom: Radius.circular(20)),
-            boxShadow: lit
-                ? [
-                    BoxShadow(
-                      color: Colors.amber.withValues(alpha: 0.6),
-                      blurRadius: 16,
-                      spreadRadius: 4,
-                    )
-                  ]
-                : null,
-          ),
-          child: Center(
-            child: Text(num, style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.bold, fontSize: 12)),
-          ),
-        ),
-      ],
-    );
-  }
-
-  // 6. My Day: Drag to reorder daily routine into order
-  Widget _buildMyDayPlay(double t, BoxConstraints constraints) {
-    final sorted = t >= 0.70;
-
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: [
-        _buildRoutineItemMock('1. 🥣 Breakfast', false),
-        _buildRoutineItemMock(sorted ? '2. 🚶 Morning Walk' : '2. 🛏️ Sleep (Drag Walk here!)', sorted),
-        _buildRoutineItemMock(sorted ? '3. 🛏️ Night Sleep' : '3. 🚶 Morning Walk', false),
-      ],
-    );
-  }
-
-  Widget _buildRoutineItemMock(String text, bool highlight) {
-    return Container(
-      width: 260,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-      decoration: BoxDecoration(
-        color: highlight ? AppColors.leafGreen.withValues(alpha: 0.2) : AppColors.raisedSurface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: highlight ? AppColors.leafGreen : AppColors.border,
-          width: highlight ? 2.5 : 1.5,
-        ),
-      ),
-      child: Row(
-        children: [
-          Expanded(child: Text(text, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13))),
-          if (highlight)
-            const Icon(Icons.check_circle_rounded, color: AppColors.leafGreen, size: 18),
-        ],
-      ),
-    );
-  }
-
-  // 7. Weaving Patterns: Match top Manipuri textile strip
-  Widget _buildWeavingPlay(double t, BoxConstraints constraints) {
-    final matched = t >= 0.62;
-
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: [
-        Column(
-          children: [
-            const Text('Target Pattern:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 4),
-            _buildTextileStrip(const [Colors.red, Colors.amber, Colors.green, Colors.amber], 20),
-          ],
-        ),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            Column(
-              children: [
-                _buildTextileStrip(const [Colors.red, Colors.amber, Colors.green, Colors.amber], 24, matched: matched),
-                const SizedBox(height: 2),
-                Text(matched ? 'Match! ✓' : 'Option A',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
-                      color: matched ? AppColors.leafGreen : AppColors.primaryText,
-                    )),
-              ],
-            ),
-            Column(
-              children: [
-                _buildTextileStrip(const [Colors.green, Colors.red, Colors.amber, Colors.red], 24),
-                const SizedBox(height: 2),
-                const Text('Option B', style: TextStyle(fontSize: 12, color: AppColors.secondaryText)),
-              ],
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildTextileStrip(List<Color> colors, double size, {bool matched = false}) {
-    return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: AppColors.raisedSurface,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-          color: matched ? AppColors.leafGreen : AppColors.border,
-          width: matched ? 3 : 1.5,
-        ),
-        boxShadow: matched
-            ? [BoxShadow(color: AppColors.marigold.withValues(alpha: 0.5), blurRadius: 10)]
-            : null,
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: colors
-            .map((c) => Container(
-                  width: size,
-                  height: size,
-                  margin: const EdgeInsets.symmetric(horizontal: 1.5),
-                  color: c,
-                ))
-            .toList(),
-      ),
-    );
-  }
-
-  // 8. Sounds of Home: Bird sound wave -> tap the drum
-  Widget _buildSoundsHomePlay(double t, BoxConstraints constraints) {
-    final birdSinging = t < 0.40;
-    final drumTapped = t >= 0.56;
-
-    return Container(
-      color: const Color(0xFF24422D),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.flutter_dash_rounded, color: AppColors.marigold, size: 36),
-              const SizedBox(width: 8),
-              Text(
-                birdSinging ? '🎵 Chirp! Chirp!' : '🎵 Listen...',
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+          // Header mode badge
+          Positioned(
+            top: 10,
+            left: 20,
+            right: 20,
+            child: Center(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
+                decoration: BoxDecoration(
+                  color: isWatch ? Colors.amber.shade900 : AppColors.leafGreen,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Text(
+                  isWatch ? '👀 1. Watch the sequence' : '👉 2. Tap lamps in same order!',
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
+                ),
               ),
-            ],
+            ),
           ),
+
+          // Lamp 1
+          Positioned(
+            left: w * lamp1Pos.dx - 36,
+            top: h * lamp1Pos.dy - 36,
+            child: _buildDiyaMock('1', lamp1Lit),
+          ),
+
+          // Lamp 2
+          Positioned(
+            left: w * lamp2Pos.dx - 36,
+            top: h * lamp2Pos.dy - 36,
+            child: _buildDiyaMock('2', lamp2Lit),
+          ),
+
+          // Lamp 3 (decor)
+          Positioned(
+            left: w * lamp3Pos.dx - 36,
+            top: h * lamp3Pos.dy - 36,
+            child: _buildDiyaMock('3', false),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDiyaMock(String num, bool lit) {
+    return SizedBox(
+      width: 72,
+      height: 72,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          // Flame
+          Icon(
+            Icons.local_fire_department_rounded,
+            size: 28,
+            color: lit ? const Color(0xFFFFB300) : Colors.transparent,
+          ),
+          // Clay bowl base
           Container(
-            width: 72,
-            height: 72,
+            width: 52,
+            height: 24,
             decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: drumTapped ? AppColors.marigold : AppColors.terracotta,
-              border: Border.all(color: Colors.white, width: 3),
-              boxShadow: drumTapped
+              color: const Color(0xFFB55333),
+              borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
+              border: Border.all(color: const Color(0xFFD48B4B), width: 1.5),
+              boxShadow: lit
                   ? [
                       BoxShadow(
-                        color: AppColors.marigold.withValues(alpha: 0.7),
+                        color: const Color(0xFFFFB300).withValues(alpha: 0.8),
                         blurRadius: 18,
-                        spreadRadius: 6,
+                        spreadRadius: 4,
                       )
                     ]
                   : null,
             ),
             child: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.touch_app_rounded, color: Colors.white, size: 22),
-                  Text(drumTapped ? '✓ Beat!' : 'Drum',
-                      style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
-                ],
+              child: Text(num, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 5. Faces of My Family: Framed family portraits & prompt
+  Widget _buildFacesPlay(double t, BoxConstraints constraints) {
+    final matched = t >= 0.50;
+    final w = constraints.maxWidth;
+    final h = constraints.maxHeight;
+
+    final cardW = w * 0.38;
+    final cardH = h * 0.40;
+
+    return Stack(
+      children: [
+        // Prompt banner
+        Positioned(
+          left: 20,
+          right: 20,
+          top: h * facePromptPos.dy - 18,
+          child: Center(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              decoration: BoxDecoration(
+                color: AppColors.raisedSurface,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: AppColors.marigold, width: 1.5),
+              ),
+              child: const Text('Who is Daughter (Anita)? 👧',
+                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: AppColors.primaryText)),
+            ),
+          ),
+        ),
+
+        // Card 1: Daughter Anita
+        Positioned(
+          left: w * faceCard1Pos.dx - cardW / 2,
+          top: h * faceCard1Pos.dy - cardH / 2,
+          child: Container(
+            width: cardW,
+            height: cardH,
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: matched ? AppColors.leafGreen.withValues(alpha: 0.20) : AppColors.raisedSurface,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(
+                color: matched ? AppColors.leafGreen : AppColors.border,
+                width: matched ? 3.5 : 1.5,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: matched ? AppColors.leafGreen.withValues(alpha: 0.3) : Colors.black.withValues(alpha: 0.08),
+                  blurRadius: 8,
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const CircleAvatar(
+                  radius: 20,
+                  backgroundColor: AppColors.medicineBlush,
+                  child: Icon(Icons.face_3_rounded, size: 26, color: AppColors.terracotta),
+                ),
+                const SizedBox(height: 4),
+                const Text('Anita', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                Text(matched ? '❤️ Match! ✓' : 'Daughter',
+                    style: TextStyle(
+                      color: matched ? AppColors.leafGreen : AppColors.secondaryText,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 11,
+                    )),
+              ],
+            ),
+          ),
+        ),
+
+        // Card 2: Grandson
+        Positioned(
+          left: w * faceCard2Pos.dx - cardW / 2,
+          top: h * faceCard2Pos.dy - cardH / 2,
+          child: Container(
+            width: cardW,
+            height: cardH,
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppColors.raisedSurface,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: AppColors.border, width: 1.5),
+            ),
+            child: const Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                CircleAvatar(
+                  radius: 20,
+                  backgroundColor: AppColors.bottomStrip,
+                  child: Icon(Icons.face_rounded, size: 26, color: AppColors.indigo),
+                ),
+                SizedBox(height: 4),
+                Text('Rahul', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                Text('Grandson', style: TextStyle(color: AppColors.secondaryText, fontSize: 11)),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // 6. My Day: Routine matching into chronological slots
+  Widget _buildMyDayPlay(double t, BoxConstraints constraints) {
+    final matched = t >= 0.50;
+    final w = constraints.maxWidth;
+    final h = constraints.maxHeight;
+
+    final cardW = w * 0.56;
+    final cardH = h * 0.26;
+    final slotW = w * 0.28;
+    final slotH = h * 0.28;
+
+    return Stack(
+      children: [
+        // Activity card
+        Positioned(
+          left: w * myDayActivityPos.dx - cardW / 2,
+          top: h * myDayActivityPos.dy - cardH / 2,
+          child: Container(
+            width: cardW,
+            height: cardH,
+            decoration: BoxDecoration(
+              color: AppColors.raisedSurface,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppColors.marigold, width: 2),
+              boxShadow: [
+                BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 6, offset: const Offset(0, 3)),
+              ],
+            ),
+            child: const Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text('🍛', style: TextStyle(fontSize: 26)),
+                SizedBox(width: 8),
+                Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Eat Lunch', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+                    Text('Choose correct time', style: TextStyle(color: AppColors.secondaryText, fontSize: 10)),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        // Morning slot
+        Positioned(
+          left: w * myDaySlot1Pos.dx - slotW / 2,
+          top: h * myDaySlot1Pos.dy - slotH / 2,
+          child: _buildTimeSlot('🌅 Morning', false, slotW, slotH),
+        ),
+
+        // Afternoon slot (Target)
+        Positioned(
+          left: w * myDaySlot2Pos.dx - slotW / 2,
+          top: h * myDaySlot2Pos.dy - slotH / 2,
+          child: _buildTimeSlot(matched ? '☀️ Afternoon ✓' : '☀️ Afternoon', matched, slotW, slotH),
+        ),
+
+        // Night slot
+        Positioned(
+          left: w * myDaySlot3Pos.dx - slotW / 2,
+          top: h * myDaySlot3Pos.dy - slotH / 2,
+          child: _buildTimeSlot('🌙 Night', false, slotW, slotH),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTimeSlot(String label, bool active, double w, double h) {
+    return Container(
+      width: w,
+      height: h,
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      decoration: BoxDecoration(
+        color: active ? AppColors.leafGreen.withValues(alpha: 0.22) : AppColors.raisedSurface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: active ? AppColors.leafGreen : AppColors.border,
+          width: active ? 3 : 1.5,
+        ),
+      ),
+      child: Center(
+        child: Text(
+          label,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontWeight: FontWeight.w800,
+            fontSize: 12,
+            color: active ? AppColors.leafGreen : AppColors.primaryText,
+          ),
+        ),
+      ),
+    );
+  }
+
+  // 7. Weaving Patterns: Traditional loom motifs
+  Widget _buildWeavingPlay(double t, BoxConstraints constraints) {
+    final matched = t >= 0.52;
+    final w = constraints.maxWidth;
+    final h = constraints.maxHeight;
+
+    final optW = w * 0.28;
+    final optH = h * 0.28;
+
+    return Stack(
+      children: [
+        // Master swatch at top
+        Positioned(
+          left: w * weaveMasterPos.dx - 80,
+          top: h * weaveMasterPos.dy - 34,
+          child: Container(
+            width: 160,
+            height: 68,
+            decoration: BoxDecoration(
+              color: AppColors.raisedSurface,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppColors.bamboo, width: 2),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Text('Target Motif:', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 3),
+                _buildPatternStripe(const [Color(0xFF8B263E), Color(0xFFD4AF37), Color(0xFF2E6F40)]),
+              ],
+            ),
+          ),
+        ),
+
+        // Option 1
+        Positioned(
+          left: w * weaveOpt1Pos.dx - optW / 2,
+          top: h * weaveOpt1Pos.dy - optH / 2,
+          child: _buildSwatchCard(const [Color(0xFF2E6F40), Color(0xFF8B263E), Color(0xFFD4AF37)], false, optW, optH),
+        ),
+
+        // Option 2 (Match)
+        Positioned(
+          left: w * weaveOpt2Pos.dx - optW / 2,
+          top: h * weaveOpt2Pos.dy - optH / 2,
+          child: _buildSwatchCard(const [Color(0xFF8B263E), Color(0xFFD4AF37), Color(0xFF2E6F40)], matched, optW, optH),
+        ),
+
+        // Option 3
+        Positioned(
+          left: w * weaveOpt3Pos.dx - optW / 2,
+          top: h * weaveOpt3Pos.dy - optH / 2,
+          child: _buildSwatchCard(const [Color(0xFFD4AF37), Color(0xFF8B263E), Color(0xFF8B263E)], false, optW, optH),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPatternStripe(List<Color> colors) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: colors
+          .map((c) => Container(
+                width: 22,
+                height: 22,
+                margin: const EdgeInsets.symmetric(horizontal: 2),
+                decoration: BoxDecoration(color: c, borderRadius: BorderRadius.circular(4)),
+              ))
+          .toList(),
+    );
+  }
+
+  Widget _buildSwatchCard(List<Color> colors, bool active, double w, double h) {
+    return Container(
+      width: w,
+      height: h,
+      decoration: BoxDecoration(
+        color: active ? AppColors.leafGreen.withValues(alpha: 0.22) : AppColors.raisedSurface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: active ? AppColors.leafGreen : AppColors.border,
+          width: active ? 3 : 1.5,
+        ),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          _buildPatternStripe(colors),
+          const SizedBox(height: 4),
+          Text(active ? 'Match! ✓' : 'Pattern',
+              style: TextStyle(
+                fontWeight: FontWeight.w800,
+                fontSize: 11,
+                color: active ? AppColors.leafGreen : AppColors.secondaryText,
+              )),
+        ],
+      ),
+    );
+  }
+
+  // 8. Sounds of Home: Audio waveform & traditional Dhol drum
+  Widget _buildSoundsHomePlay(double t, BoxConstraints constraints) {
+    final struck = t >= 0.56 && t < 0.86;
+    final w = constraints.maxWidth;
+    final h = constraints.maxHeight;
+
+    return Container(
+      color: const Color(0xFF1B3322),
+      child: Stack(
+        children: [
+          // Audio header
+          Positioned(
+            top: 14,
+            left: 20,
+            right: 20,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.flutter_dash_rounded, color: AppColors.marigold, size: 28),
+                const SizedBox(width: 8),
+                Text(
+                  t < 0.38 ? '🎵 Bird Chirping! Listen...' : '🎵 Strike the Drum on beat!',
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                ),
+              ],
+            ),
+          ),
+
+          // Folk drum at center
+          Positioned(
+            left: w * soundsDrumPos.dx - 48,
+            top: h * soundsDrumPos.dy - 48,
+            child: Transform.scale(
+              scale: struck ? 1.10 : 1.0,
+              child: Container(
+                width: 96,
+                height: 96,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: struck ? AppColors.marigold : const Color(0xFF8B4513),
+                  border: Border.all(color: Colors.white, width: 3.5),
+                  boxShadow: struck
+                      ? [
+                          BoxShadow(
+                            color: AppColors.marigold.withValues(alpha: 0.85),
+                            blurRadius: 24,
+                            spreadRadius: 8,
+                          )
+                        ]
+                      : [
+                          BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 10, offset: const Offset(0, 4)),
+                        ],
+                ),
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.music_note_rounded, color: Colors.white, size: struck ? 32 : 26),
+                      Text(
+                        struck ? '✓ BEAT!' : 'Dhol',
+                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
           ),
@@ -1200,61 +1475,109 @@ class _InteractiveGameDemoStageState extends State<InteractiveGameDemoStage>
     );
   }
 
-  // 9. Name the Harvest: Type word & tap Add
+  // 9. Name the Harvest: Text search & Add button
   Widget _buildNameHarvestPlay(double t, BoxConstraints constraints) {
-    final typed = t >= 0.28;
-    final added = t >= 0.62;
+    final added = t >= 0.48;
+    final w = constraints.maxWidth;
+    final h = constraints.maxHeight;
 
-    return Padding(
-      padding: const EdgeInsets.all(12),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          const Text('Category: Vegetables 🥔', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-          Row(
-            children: [
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: AppColors.raisedSurface,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppColors.border),
-                  ),
-                  child: Text(
-                    typed ? 'Potato 🥔' : 'Type here...',
-                    style: TextStyle(
-                      color: typed ? AppColors.primaryText : AppColors.secondaryText,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: AppColors.leafGreen,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(Icons.add_rounded, color: Colors.white, size: 22),
-              ),
-            ],
-          ),
-          if (added)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+    final inputW = w * 0.54;
+    final addBtnW = w * 0.24;
+
+    return Stack(
+      children: [
+        // Category prompt
+        Positioned(
+          top: 14,
+          left: 20,
+          right: 20,
+          child: Center(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
               decoration: BoxDecoration(
-                color: AppColors.leafGreen.withValues(alpha: 0.25),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: AppColors.leafGreen),
+                color: AppColors.raisedSurface,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.border),
               ),
-              child: const Text('🥔 Potato (+1 named!) ✓',
-                  style: TextStyle(color: AppColors.leafGreen, fontWeight: FontWeight.w800, fontSize: 12)),
+              child: const Text('Category: 🥬 Vegetables',
+                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: AppColors.primaryText)),
             ),
-        ],
-      ),
+          ),
+        ),
+
+        // Text input field
+        Positioned(
+          left: w * nameInputPos.dx - inputW / 2,
+          top: h * nameInputPos.dy - 22,
+          child: Container(
+            width: inputW,
+            height: 44,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              color: AppColors.raisedSurface,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppColors.marigold, width: 2),
+            ),
+            child: const Row(
+              children: [
+                Icon(Icons.edit_rounded, size: 18, color: AppColors.secondaryText),
+                SizedBox(width: 8),
+                Text('Potato 🥔', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+              ],
+            ),
+          ),
+        ),
+
+        // Add button
+        Positioned(
+          left: w * nameAddBtnPos.dx - addBtnW / 2,
+          top: h * nameAddBtnPos.dy - 22,
+          child: Transform.scale(
+            scale: (t >= 0.48 && t < 0.62) ? 0.92 : 1.0,
+            child: Container(
+              width: addBtnW,
+              height: 44,
+              decoration: BoxDecoration(
+                color: AppColors.leafGreen,
+                borderRadius: BorderRadius.circular(14),
+                boxShadow: [
+                  BoxShadow(color: AppColors.leafGreen.withValues(alpha: 0.3), blurRadius: 6, offset: const Offset(0, 2)),
+                ],
+              ),
+              child: const Center(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.add_rounded, color: Colors.white, size: 20),
+                    SizedBox(width: 4),
+                    Text('Add', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+
+        // Result tag chip
+        if (added)
+          Positioned(
+            bottom: 12,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppColors.leafGreen.withValues(alpha: 0.25),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppColors.leafGreen, width: 2),
+                ),
+                child: const Text('🥔 Potato (+1 named!) ✓',
+                    style: TextStyle(color: AppColors.leafGreen, fontWeight: FontWeight.w800, fontSize: 13)),
+              ),
+            ),
+          ),
+      ],
     );
   }
 }
@@ -1267,24 +1590,96 @@ class _HandData {
 }
 
 class _PathLinePainter extends CustomPainter {
-  const _PathLinePainter({required this.p1, required this.p2, required this.p3});
+  const _PathLinePainter({
+    required this.p1,
+    required this.p2,
+    required this.p3,
+    this.seg1Active = false,
+    this.seg2Active = false,
+  });
+
   final Offset p1;
   final Offset p2;
   final Offset p3;
+  final bool seg1Active;
+  final bool seg2Active;
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.black26
-      ..strokeWidth = 3
+    // Segment 1 (p1 -> p2)
+    final paint1 = Paint()
+      ..color = seg1Active ? AppColors.leafGreen : Colors.white.withValues(alpha: 0.45)
+      ..strokeWidth = seg1Active ? 4.5 : 3.0
       ..style = PaintingStyle.stroke;
+    canvas.drawLine(p1, p2, paint1);
 
-    final path = Path()
-      ..moveTo(p1.dx, p1.dy)
-      ..lineTo(p2.dx, p2.dy)
-      ..lineTo(p3.dx, p3.dy);
+    // Segment 2 (p2 -> p3)
+    final paint2 = Paint()
+      ..color = seg2Active ? AppColors.leafGreen : Colors.white.withValues(alpha: 0.45)
+      ..strokeWidth = seg2Active ? 4.5 : 3.0
+      ..style = PaintingStyle.stroke;
+    canvas.drawLine(p2, p3, paint2);
+  }
 
-    canvas.drawPath(path, paint);
+  @override
+  bool shouldRepaint(covariant _PathLinePainter oldDelegate) =>
+      oldDelegate.seg1Active != seg1Active || oldDelegate.seg2Active != seg2Active;
+}
+
+/// River meadow painter matching TracePathWidget aesthetics
+class _TutorialRiverScenePainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width;
+    final h = size.height;
+
+    // Meadow green background gradient
+    canvas.drawRect(
+      Offset.zero & size,
+      Paint()
+        ..shader = const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFFDCE9C4), Color(0xFFB7D19A), Color(0xFF9DBB80)],
+        ).createShader(Offset.zero & size),
+    );
+
+    // River bed
+    final stream = Path()
+      ..moveTo(-10, h * 0.40)
+      ..cubicTo(w * 0.30, h * 0.18, w * 0.55, h * 0.58, w * 0.80, h * 0.38)
+      ..cubicTo(w * 0.95, h * 0.30, w * 1.05, h * 0.45, w * 1.10, h * 0.48);
+
+    // Sand shore
+    canvas.drawPath(
+      stream,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = h * 0.28
+        ..strokeCap = StrokeCap.round
+        ..color = const Color(0xFFE6D8B5),
+    );
+
+    // Blue water
+    canvas.drawPath(
+      stream,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = h * 0.20
+        ..strokeCap = StrokeCap.round
+        ..shader = const LinearGradient(
+          colors: [Color(0xFF8CC4E0), Color(0xFF5FA6CC)],
+        ).createShader(Offset.zero & size),
+    );
+
+    // Water shimmer
+    canvas.drawPath(
+      stream,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2
+        ..color = Colors.white.withValues(alpha: 0.5),
+    );
   }
 
   @override

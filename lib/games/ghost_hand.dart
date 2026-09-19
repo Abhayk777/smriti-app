@@ -342,17 +342,16 @@ class RealisticHandPainter extends CustomPainter {
     const nailBase = Color(0xFFFCE6DA);
     const nailShine = Color(0xFFFFFFFF);
 
-    // 1. Draw Finger Body (Path with rounded tip)
+    // 1. Draw Finger Body with apex exactly at (0, 0)
     final fingerPath = Path();
-    fingerPath.moveTo(-fingerWidth * 0.45, 0); // left side of tip
-    // Rounded fingertip pad
+    fingerPath.moveTo(-fingerWidth * 0.45, 12);
     fingerPath.quadraticBezierTo(
-      0, -12, // tip apex
-      fingerWidth * 0.45, 0, // right side of tip
+      0, 0, // fingertip apex at (0, 0)
+      fingerWidth * 0.45, 12,
     );
-    // Shaft widening upward
-    fingerPath.lineTo(fingerWidth * 0.65, fingerLength);
-    fingerPath.lineTo(-fingerWidth * 0.65, fingerLength);
+    // Shaft widening downward
+    fingerPath.lineTo(fingerWidth * 0.65, fingerLength + 12);
+    fingerPath.lineTo(-fingerWidth * 0.65, fingerLength + 12);
     fingerPath.close();
 
     // Shaded skin gradient
@@ -361,7 +360,7 @@ class RealisticHandPainter extends CustomPainter {
       end: Alignment.centerRight,
       colors: const [fleshDark, fleshLight, fleshBase, fleshShadow],
       stops: const [0.0, 0.35, 0.75, 1.0],
-    ).createShader(Rect.fromLTWH(-fingerWidth, -15, fingerWidth * 2, fingerLength + 20));
+    ).createShader(Rect.fromLTWH(-fingerWidth, -5, fingerWidth * 2, fingerLength + 25));
 
     final skinPaint = Paint()
       ..shader = skinGradient
@@ -377,7 +376,7 @@ class RealisticHandPainter extends CustomPainter {
 
     // 2. Fingernail
     final nailRect = Rect.fromCenter(
-      center: const Offset(0, 14),
+      center: const Offset(0, 24),
       width: fingerWidth * 0.58,
       height: 24,
     );
@@ -411,14 +410,14 @@ class RealisticHandPainter extends CustomPainter {
 
     // First joint crease
     final crease1 = Path();
-    crease1.moveTo(-fingerWidth * 0.35, 42);
-    crease1.quadraticBezierTo(0, 46, fingerWidth * 0.35, 42);
+    crease1.moveTo(-fingerWidth * 0.35, 54);
+    crease1.quadraticBezierTo(0, 58, fingerWidth * 0.35, 54);
     canvas.drawPath(crease1, creasePaint);
 
     // Second joint crease
     final crease2 = Path();
-    crease2.moveTo(-fingerWidth * 0.45, 78);
-    crease2.quadraticBezierTo(0, 83, fingerWidth * 0.45, 78);
+    crease2.moveTo(-fingerWidth * 0.45, 90);
+    crease2.quadraticBezierTo(0, 95, fingerWidth * 0.45, 90);
     canvas.drawPath(crease2, creasePaint);
 
     canvas.restore();
