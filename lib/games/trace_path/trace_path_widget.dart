@@ -8,6 +8,7 @@ import '../../core/i18n/locale_controller.dart';
 import '../../ui/smriti_ui.dart';
 import '../cognitive_game.dart';
 import '../hint/game_hint.dart';
+import '../ui/game_chrome.dart';
 import 'trace_path_game.dart';
 
 /// Playable Trace the Path widget.
@@ -110,21 +111,28 @@ class _TracePathWidgetState extends State<TracePathWidget> {
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
-          Text(
+          GamePrompt(
             _variant == 'A'
                 ? AppStrings.tracePathSequential(lang)
                 : AppStrings.tracePathAlternating(lang),
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 21,
-              fontWeight: FontWeight.w700,
-              color: AppColors.primaryText,
-            ),
+            icon: Icons.route_rounded,
+            color: AppColors.indigo,
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           Expanded(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(28),
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(30),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.indigo.withValues(alpha: 0.22),
+                    blurRadius: 22,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: ClipRRect(
+              borderRadius: BorderRadius.circular(30),
               child: Stack(
                 fit: StackFit.expand,
                 children: [
@@ -169,6 +177,7 @@ class _TracePathWidgetState extends State<TracePathWidget> {
               },
             ),
                 ],
+              ),
               ),
             ),
           ),

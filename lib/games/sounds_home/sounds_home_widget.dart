@@ -347,7 +347,8 @@ class _SoundsHomeWidgetState extends State<SoundsHomeWidget>
                   onPressed: _previewBird,
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.onColor,
-                    side: const BorderSide(color: AppColors.marigold, width: 2.5),
+                    backgroundColor: AppColors.onColor.withValues(alpha: 0.14),
+                    side: BorderSide.none,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(22),
                     ),

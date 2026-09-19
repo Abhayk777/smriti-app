@@ -6,6 +6,7 @@ import '../../core/i18n/locale_controller.dart';
 import '../../ui/smriti_ui.dart';
 import '../cognitive_game.dart';
 import '../hint/game_hint.dart';
+import '../ui/game_chrome.dart';
 import 'weaving_game.dart';
 import 'woven_strip.dart';
 
@@ -75,15 +76,12 @@ class _WeavingWidgetState extends State<WeavingWidget> {
       padding: const EdgeInsets.all(20),
       child: Column(
         children: [
-          Text(
+          GamePrompt(
             AppStrings.whichPatternMatches(lang),
-            style: const TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.w600,
-              color: AppColors.primaryText,
-            ),
+            icon: Icons.texture_rounded,
+            color: AppColors.gamosaRed,
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 22),
 
           // Target pattern (large)
           FittedBox(

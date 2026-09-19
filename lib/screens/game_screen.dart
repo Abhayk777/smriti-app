@@ -16,6 +16,7 @@ import '../core/repo/event_repo.dart';
 import '../core/sync/sync_engine.dart';
 import '../games/cognitive_game.dart';
 import '../games/game_catalog.dart';
+import '../games/ui/game_chrome.dart';
 import '../games/session_runner.dart';
 import '../ui/smriti_ui.dart';
 import 'game_tutorial_screen.dart';
@@ -641,22 +642,10 @@ class _GameScreenState extends State<GameScreen> {
       body: SafeArea(
         child: Stack(
           children: [
-            // A soft, faded photo of the game's theme behind everything.
-            if (_info?.image != null && _info!.image != familyHomeGlyph)
-              Positioned.fill(
-                child: IgnorePointer(
-                  child: Opacity(
-                    opacity: 0.12,
-                    child: Image.asset(
-                      'assets/images/photos/${_info!.image}',
-                      fit: BoxFit.cover,
-                      cacheWidth: 800,
-                      excludeFromSemantics: true,
-                      errorBuilder: (_, _, _) => const SizedBox.shrink(),
-                    ),
-                  ),
-                ),
-              ),
+            // A clean wash of the game's colour that fades into the page.
+            Positioned.fill(
+              child: IgnorePointer(child: GameBackdrop(color: _color)),
+            ),
             Column(
               children: [
                 // Top bar with timer and exit
@@ -688,115 +677,21 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   Widget _buildTopBar() {
-    final isCompact = MediaQuery.of(context).size.height < 500;
-    final minutes = _elapsed.inMinutes;
-    final seconds = _elapsed.inSeconds % 60;
-    final progress = _elapsed.inSeconds / 360.0;
-    final deep = Color.lerp(_color, Colors.black, 0.22)!;
-
-    return Container(
-      color: _color,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Padding(
-            padding: EdgeInsets.fromLTRB(12, isCompact ? 6 : 10, 12, isCompact ? 6 : 10),
-            child: Row(
-              children: [
-                IconMedallion(
-                  icon: _info?.icon ?? Icons.extension_rounded,
-                image: _info?.image,
-                  color: _color,
-                  size: 48,
-                ),
-                const SizedBox(width: 12),
-                // Game name
-                Expanded(
-                  child: Text(
-                    _gameName(widget.gameId),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 21,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.onColor,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-
-                // Timer
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: deep,
-                    borderRadius: BorderRadius.circular(40),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.schedule_rounded, size: 22, color: AppColors.onColor),
-                      const SizedBox(width: 6),
-                      Text(
-                        '$minutes:${seconds.toString().padLeft(2, '0')}',
-                        style: const TextStyle(
-                          fontSize: 19,
-                          fontWeight: FontWeight.w700,
-                          fontFeatures: [FontFeature.tabularFigures()],
-                          color: AppColors.onColor,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                // Help / How to play button
-                IconButton(
-                  tooltip: 'How to play',
-                  onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => GameTutorialScreen(
-                          gameId: widget.gameId,
-                          isFromGame: true,
-                        ),
-                      ),
-                    );
-                  },
-                  iconSize: 28,
-                  style: IconButton.styleFrom(
-                    minimumSize: const Size(48, 48),
-                    backgroundColor: deep,
-                  ),
-                  icon: const Icon(Icons.help_outline_rounded),
-                  color: AppColors.onColor,
-                ),
-                const SizedBox(width: 8),
-
-                // Exit button
-                IconButton(
-                  tooltip: 'Stop playing',
-                  onPressed: () => _endSession(completed: false),
-                  iconSize: 30,
-                  style: IconButton.styleFrom(
-                    minimumSize: const Size(52, 52),
-                    backgroundColor: AppColors.raisedSurface,
-                  ),
-                  icon: const Icon(Icons.close_rounded),
-                  color: AppColors.primaryText,
-                ),
-              ],
-            ),
+    final info = _info;
+    if (info == null) return const SizedBox.shrink();
+    return GameTopBar(
+      info: info,
+      title: _gameName(widget.gameId),
+      elapsed: _elapsed,
+      compact: MediaQuery.sizeOf(context).height < 500,
+      onHelp: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => GameTutorialScreen(gameId: widget.gameId, isFromGame: true),
           ),
-
-          // Progress through the 6-minute session
-          LinearProgressIndicator(
-            value: progress.clamp(0.0, 1.0),
-            backgroundColor: deep,
-            valueColor: const AlwaysStoppedAnimation(AppColors.marigold),
-            minHeight: 6,
-          ),
-        ],
-      ),
+        );
+      },
+      onClose: () => _endSession(completed: false),
     );
   }
 
@@ -872,7 +767,7 @@ class _GameScreenState extends State<GameScreen> {
   Widget _buildFeedbackOverlay() {
     final isPraise = _lastFeedback!.tone == FeedbackTone.praise;
     return Positioned(
-      top: 96,
+      top: 8,
       left: 16,
       right: 16,
       child: IgnorePointer(
@@ -880,25 +775,31 @@ class _GameScreenState extends State<GameScreen> {
           child: PopIn(
             key: ValueKey(_feedbackCount),
             child: Container(
-              padding: const EdgeInsets.fromLTRB(12, 10, 26, 10),
+              padding: const EdgeInsets.fromLTRB(10, 8, 22, 8),
               decoration: BoxDecoration(
                 color: isPraise ? AppColors.leafGreen : AppColors.indigo,
-                borderRadius: BorderRadius.circular(48),
+                borderRadius: BorderRadius.circular(40),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.25),
+                    blurRadius: 14,
+                    offset: const Offset(0, 5),
+                  ),
+                ],
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   IconMedallion(
                     icon: isPraise ? Icons.star_rounded : Icons.thumb_up_alt_rounded,
-                    
                     color: isPraise ? AppColors.marigoldDark : AppColors.indigo,
-                    size: 48,
+                    size: 40,
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 10),
                   Text(
                     isPraise ? 'Well done!' : 'Nice try!',
                     style: const TextStyle(
-                      fontSize: 24,
+                      fontSize: 22,
                       fontWeight: FontWeight.w800,
                       color: AppColors.onColor,
                     ),

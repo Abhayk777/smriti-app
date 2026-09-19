@@ -7,6 +7,7 @@ import '../../core/i18n/app_strings.dart';
 import '../../core/i18n/locale_controller.dart';
 import '../cognitive_game.dart';
 import '../hint/game_hint.dart';
+import '../ui/game_chrome.dart';
 import 'name_harvest_game.dart';
 
 /// Playable Name the Harvest widget.
@@ -150,13 +151,10 @@ class _NameHarvestWidgetState extends State<NameHarvestWidget>
                 ),
                 const SizedBox(width: 14),
                 Expanded(
-                  child: Text(
+                  child: GamePrompt(
                     promptText,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.primaryText,
-                    ),
+                    icon: Icons.record_voice_over_rounded,
+                    color: AppColors.orchid,
                   ),
                 ),
               ],
@@ -198,14 +196,10 @@ class _NameHarvestWidgetState extends State<NameHarvestWidget>
               ),
             ),
             const SizedBox(height: 16),
-            Text(
+            GamePrompt(
               promptText,
-              style: const TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.w600,
-                color: AppColors.primaryText,
-              ),
-              textAlign: TextAlign.center,
+              icon: Icons.record_voice_over_rounded,
+              color: AppColors.orchid,
             ),
           ],
           SizedBox(height: isCompact ? 8 : 16),
@@ -229,9 +223,16 @@ class _NameHarvestWidgetState extends State<NameHarvestWidget>
                         filled: true,
                         fillColor: AppColors.raisedSurface,
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
-                          borderSide: const BorderSide(
-                              color: AppColors.border, width: 1.5),
+                          borderRadius: BorderRadius.circular(18),
+                          borderSide: BorderSide.none,
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(18),
+                          borderSide: BorderSide.none,
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(18),
+                          borderSide: BorderSide(color: AppColors.orchid.withValues(alpha: 0.6), width: 2),
                         ),
                         contentPadding: EdgeInsets.symmetric(
                             horizontal: 14, vertical: isCompact ? 10 : 16),
@@ -244,6 +245,8 @@ class _NameHarvestWidgetState extends State<NameHarvestWidget>
                 ElevatedButton(
                   onPressed: _addItem,
                   style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.orchid,
+                    shape: const CircleBorder(),
                     padding: EdgeInsets.all(isCompact ? 12 : 16),
                   ),
                   child: Icon(Icons.add_rounded, size: isCompact ? 24 : 30),
@@ -260,6 +263,7 @@ class _NameHarvestWidgetState extends State<NameHarvestWidget>
                 runSpacing: 8,
                 children: _namedItems.asMap().entries.map((entry) {
                   return Chip(
+                    avatar: const Icon(Icons.check_circle_rounded, color: AppColors.onColor, size: 20),
                     label: Text(
                       entry.value,
                       style: TextStyle(
@@ -270,6 +274,7 @@ class _NameHarvestWidgetState extends State<NameHarvestWidget>
                     ),
                     backgroundColor: AppColors.leafGreen,
                     side: BorderSide.none,
+                    shape: const StadiumBorder(),
                     padding: EdgeInsets.symmetric(
                         horizontal: isCompact ? 8 : 12, vertical: isCompact ? 4 : 6),
                   );

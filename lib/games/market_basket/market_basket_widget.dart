@@ -8,6 +8,7 @@ import '../../core/i18n/locale_controller.dart';
 import '../../ui/smriti_ui.dart';
 import '../cognitive_game.dart';
 import '../hint/game_hint.dart';
+import '../ui/game_chrome.dart';
 import 'market_basket_game.dart';
 
 /// Playable Market Basket widget.
@@ -152,15 +153,12 @@ class _MarketBasketWidgetState extends State<MarketBasketWidget>
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text(
+          GamePrompt(
             AppStrings.rememberTheseItems(lang),
-            style: TextStyle(
-              fontSize: isCompact ? 18 : 24,
-              fontWeight: FontWeight.w600,
-              color: AppColors.primaryText,
-            ),
+            icon: Icons.visibility_rounded,
+            color: AppColors.marigoldDark,
           ),
-          SizedBox(height: isCompact ? 12 : 30),
+          SizedBox(height: isCompact ? 14 : 34),
           Wrap(
             spacing: isCompact ? 12 : 20,
             runSpacing: isCompact ? 12 : 20,
@@ -177,14 +175,16 @@ class _MarketBasketWidgetState extends State<MarketBasketWidget>
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.hourglass_top_rounded, size: 64, color: AppColors.marigoldDark),
-          const SizedBox(height: 16),
-          Text(
+          IconMedallion(
+            icon: Icons.shopping_basket_rounded,
+            color: AppColors.marigoldDark,
+            size: 110,
+            background: AppColors.marigold.withValues(alpha: 0.18),
+          ),
+          const SizedBox(height: 22),
+          GamePrompt(
             AppStrings.getReady(lang),
-            style: const TextStyle(
-              fontSize: 22,
-              color: AppColors.secondaryText,
-            ),
+            color: AppColors.marigoldDark,
           ),
         ],
       ),
@@ -194,15 +194,12 @@ class _MarketBasketWidgetState extends State<MarketBasketWidget>
   Widget _buildPickingPhase(bool isCompact, String lang) {
     return Column(
       children: [
-        Text(
+        GamePrompt(
           AppStrings.pickItemsFromList(lang),
-          style: TextStyle(
-            fontSize: isCompact ? 16 : 22,
-            fontWeight: FontWeight.w600,
-            color: AppColors.primaryText,
-          ),
+          icon: Icons.touch_app_rounded,
+          color: AppColors.marigoldDark,
         ),
-        SizedBox(height: isCompact ? 8 : 20),
+        SizedBox(height: isCompact ? 8 : 16),
         Expanded(
           child: GridView.builder(
             gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
@@ -221,25 +218,26 @@ class _MarketBasketWidgetState extends State<MarketBasketWidget>
         ),
         // Finish picking button
         Padding(
-          padding: EdgeInsets.symmetric(vertical: isCompact ? 4 : 8),
-          child: ElevatedButton(
-            onPressed: _submitResult,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.marigold,
-              foregroundColor: AppColors.primaryText,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
+          padding: EdgeInsets.only(top: isCompact ? 4 : 10),
+          child: SizedBox(
+            width: double.infinity,
+            height: isCompact ? 52 : 62,
+            child: ElevatedButton(
+              onPressed: _submitResult,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.marigold,
+                foregroundColor: AppColors.primaryText,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(22),
+                ),
               ),
-              padding: EdgeInsets.symmetric(
-                horizontal: isCompact ? 32 : 48,
-                vertical: isCompact ? 10 : 16,
-              ),
-            ),
-            child: Text(
-              AppStrings.done(lang),
-              style: TextStyle(
-                fontSize: isCompact ? 17 : 20,
-                fontWeight: FontWeight.w700,
+              child: Text(
+                AppStrings.done(lang),
+                style: TextStyle(
+                  fontSize: isCompact ? 18 : 22,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
             ),
           ),

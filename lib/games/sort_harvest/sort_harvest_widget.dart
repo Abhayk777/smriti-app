@@ -6,6 +6,7 @@ import '../../core/i18n/locale_controller.dart';
 import '../../ui/smriti_ui.dart';
 import '../cognitive_game.dart';
 import '../hint/game_hint.dart';
+import '../ui/game_chrome.dart';
 import 'sort_harvest_game.dart';
 
 /// Playable Sort the Harvest widget.
@@ -87,41 +88,52 @@ class _SortHarvestWidgetState extends State<SortHarvestWidget> {
     final isCompact = MediaQuery.of(context).size.height < 500;
     final lang = LocaleController.instance.currentLanguage;
 
-    return SingleChildScrollView(
-      padding: EdgeInsets.symmetric(horizontal: 16, vertical: isCompact ? 8 : 20),
-      child: Column(
-        children: [
-          // Instruction
-          Text(
-            AppStrings.placeItemWhereBelongs(lang),
-            style: TextStyle(
-              fontSize: isCompact ? 18 : 22,
-              fontWeight: FontWeight.w600,
-              color: AppColors.primaryText,
+    return LayoutBuilder(
+      builder: (context, constraints) => SingleChildScrollView(
+        padding: EdgeInsets.symmetric(horizontal: 16, vertical: isCompact ? 8 : 16),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            minHeight: (constraints.maxHeight - (isCompact ? 16 : 32)).clamp(0.0, double.infinity),
+          ),
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                GamePrompt(
+                  AppStrings.placeItemWhereBelongs(lang),
+                  icon: Icons.category_rounded,
+                  color: AppColors.bamboo,
+                ),
+                SizedBox(height: isCompact ? 12 : 26),
+
+                // The item to sort
+                _buildCard(isCompact, lang),
+                SizedBox(height: isCompact ? 6 : 12),
+                Icon(
+                  Icons.south_rounded,
+                  size: isCompact ? 26 : 38,
+                  color: AppColors.bamboo.withValues(alpha: 0.45),
+                ),
+                SizedBox(height: isCompact ? 6 : 12),
+
+                // The baskets
+                if (!_answered)
+                  Wrap(
+                    alignment: WrapAlignment.center,
+                    spacing: isCompact ? 12 : 18,
+                    runSpacing: isCompact ? 12 : 18,
+                    children: _mats.map((m) => _buildMat(m, isCompact, lang)).toList(),
+                  )
+                else
+                  const Center(
+                    child: PopIn(
+                      child: Icon(Icons.check_circle_rounded, size: 72, color: AppColors.leafGreen),
+                    ),
+                  ),
+              ],
             ),
           ),
-          SizedBox(height: isCompact ? 10 : 24),
-
-          // Card to sort
-          _buildCard(isCompact, lang),
-          SizedBox(height: isCompact ? 14 : 32),
-
-          // Sorting mats
-          if (!_answered)
-            Wrap(
-              alignment: WrapAlignment.center,
-              spacing: isCompact ? 12 : 20,
-              runSpacing: isCompact ? 12 : 20,
-              children: _mats.map((m) => _buildMat(m, isCompact, lang)).toList(),
-            )
-          else
-            const Center(
-              child: PopIn(
-                child: Icon(Icons.check_circle_rounded,
-                    size: 64, color: AppColors.leafGreen),
-              ),
-            ),
-        ],
+        ),
       ),
     );
   }
@@ -136,7 +148,7 @@ class _SortHarvestWidgetState extends State<SortHarvestWidget> {
   };
 
   Widget _buildCard(bool isCompact, String lang) {
-    final size = isCompact ? 96.0 : 160.0;
+    final size = isCompact ? 100.0 : 190.0;
     final rawId = _card['id']?.split('_').first ?? '';
     return Container(
       width: size,
@@ -189,8 +201,8 @@ class _SortHarvestWidgetState extends State<SortHarvestWidget> {
   Widget _buildMatCore(String mat, bool isCompact, String lang) {
     final color = _colorForMat(mat);
     final photo = _matPhoto[mat];
-    final w = isCompact ? 104.0 : 144.0;
-    final h = isCompact ? 112.0 : 164.0;
+    final w = isCompact ? 108.0 : 160.0;
+    final h = isCompact ? 116.0 : 186.0;
     return BouncyTap(
       onTap: () => _onMatTap(mat),
       child: Container(

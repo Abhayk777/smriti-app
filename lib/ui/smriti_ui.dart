@@ -1047,12 +1047,22 @@ class RoutinePhoto extends StatelessWidget {
     'nap': Icons.weekend_rounded,
   };
 
-  String? _match(Map<String, String> table) {
-    final text = '$emoji $label'.toLowerCase();
+  static T? _find<T>(Map<String, T> table, String text) {
+    final t = text.toLowerCase();
     for (final e in table.entries) {
-      if (text.contains(e.key)) return e.value;
+      if (t.contains(e.key)) return e.value;
     }
     return null;
+  }
+
+  /// The step's own label decides first; the icon word from the caregiver's
+  /// data is only a backup, because it is sometimes wrong (a "walk" step
+  /// saved with a tea icon).
+  String? _photoName() {
+    final fromLabel = _find(_photoByWord, label);
+    if (fromLabel != null) return fromLabel;
+    if (_find(_iconByWord, label) != null) return null;
+    return _find(_photoByWord, emoji);
   }
 
   Widget _fallback() {
@@ -1063,14 +1073,9 @@ class RoutinePhoto extends StatelessWidget {
         child: Center(child: Text(emoji, style: TextStyle(fontSize: size * 0.5))),
       );
     }
-    final text = '$emoji $label'.toLowerCase();
-    IconData icon = Icons.event_available_rounded;
-    for (final e in _iconByWord.entries) {
-      if (text.contains(e.key)) {
-        icon = e.value;
-        break;
-      }
-    }
+    final icon = _find(_iconByWord, label) ??
+        _find(_iconByWord, emoji) ??
+        Icons.event_available_rounded;
     return ColoredBox(
       color: AppColors.medallion,
       child: Icon(icon, size: size * 0.52, color: AppColors.terracottaDark),
@@ -1091,7 +1096,7 @@ class RoutinePhoto extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final byWord = _match(_photoByWord);
+    final byWord = _photoName();
     return ClipOval(
       child: SizedBox(
         width: size,

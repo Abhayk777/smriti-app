@@ -10,6 +10,7 @@ import '../../core/i18n/locale_controller.dart';
 import '../../ui/smriti_ui.dart';
 import '../cognitive_game.dart';
 import '../hint/game_hint.dart';
+import '../ui/game_chrome.dart';
 import 'faces_game.dart';
 
 /// Playable Faces of My Family widget.
@@ -120,24 +121,23 @@ class _FacesWidgetState extends State<FacesWidget> {
     final wide = size.width > size.height && size.width >= 720;
     final lang = LocaleController.instance.currentLanguage;
 
-    final prompt = Text(
+    final prompt = GamePrompt(
       _promptForMode(_mode, lang),
-      style: TextStyle(
-        fontSize: isCompact ? 20 : 26,
-        fontWeight: FontWeight.w800,
-        color: AppColors.primaryText,
-      ),
-      textAlign: TextAlign.center,
+      icon: Icons.favorite_rounded,
+      color: AppColors.terracotta,
     );
 
-    final options = Wrap(
-      spacing: 14,
-      runSpacing: 14,
-      alignment: WrapAlignment.center,
-      children: [
-        for (var i = 0; i < _options.length; i++)
-          _buildOption(_options[i], _optionColors[i % _optionColors.length], isCompact),
-      ],
+    final options = ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 460),
+      child: Column(
+        children: [
+          for (var i = 0; i < _options.length; i++)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: _buildOption(_options[i], _optionColors[i % _optionColors.length], isCompact),
+            ),
+        ],
+      ),
     );
 
     if (wide) {
@@ -152,7 +152,7 @@ class _FacesWidgetState extends State<FacesWidget> {
                 child: SingleChildScrollView(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
-                    children: [prompt, const SizedBox(height: 28), options],
+                    children: [prompt, const SizedBox(height: 24), options],
                   ),
                 ),
               ),
@@ -163,13 +163,13 @@ class _FacesWidgetState extends State<FacesWidget> {
     }
 
     return SingleChildScrollView(
-      padding: EdgeInsets.symmetric(horizontal: 18, vertical: isCompact ? 8 : 22),
+      padding: EdgeInsets.symmetric(horizontal: 18, vertical: isCompact ? 8 : 16),
       child: Column(
         children: [
           prompt,
           SizedBox(height: isCompact ? 12 : 22),
-          _buildPortrait(isCompact ? 120 : (size.width * 0.6).clamp(160.0, 260.0)),
-          SizedBox(height: isCompact ? 14 : 26),
+          _buildPortrait(isCompact ? 120 : (size.width * 0.62).clamp(160.0, 260.0)),
+          SizedBox(height: isCompact ? 14 : 24),
           options,
         ],
       ),
@@ -214,7 +214,13 @@ class _FacesWidgetState extends State<FacesWidget> {
         decoration: BoxDecoration(
           color: AppColors.raisedSurface,
           borderRadius: BorderRadius.circular(size * 0.18),
-          border: Border.all(color: AppColors.marigold, width: 3),
+          boxShadow: [
+            BoxShadow(
+              color: _personColor.withValues(alpha: 0.28),
+              blurRadius: 26,
+              offset: const Offset(0, 10),
+            ),
+          ],
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(size * 0.14),
@@ -262,10 +268,9 @@ class _FacesWidgetState extends State<FacesWidget> {
   Widget _buildOption(PersonItem person, Color color, bool isCompact) {
     final chosen = _chosenId == person.id;
     final dimmed = _answered && !chosen;
-    final isCorrect = person.id == _target.id;
 
     return HintGlow(
-      isAnswer: !_answered && isCorrect,
+      isAnswer: !_answered && person.id == _target.id,
       radius: 22,
       child: AnimatedOpacity(
         duration: const Duration(milliseconds: 250),
@@ -274,18 +279,22 @@ class _FacesWidgetState extends State<FacesWidget> {
           onTap: _answered ? null : () => _onOptionTap(person),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 200),
-            constraints: BoxConstraints(
-              minWidth: isCompact ? 130 : 160,
-              minHeight: isCompact ? 56 : 72,
-            ),
+            width: double.infinity,
+            constraints: BoxConstraints(minHeight: isCompact ? 56 : 68),
             padding: EdgeInsets.symmetric(
               horizontal: isCompact ? 18 : 26,
-              vertical: isCompact ? 10 : 16,
+              vertical: isCompact ? 10 : 14,
             ),
             decoration: BoxDecoration(
-              color: chosen ? color : Color.lerp(color, Colors.white, 0.84),
+              color: chosen ? color : Color.lerp(color, Colors.white, 0.86),
               borderRadius: BorderRadius.circular(22),
-              border: Border.all(color: color, width: 2.5),
+              boxShadow: [
+                BoxShadow(
+                  color: color.withValues(alpha: chosen ? 0.4 : 0.14),
+                  blurRadius: chosen ? 16 : 8,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -293,7 +302,7 @@ class _FacesWidgetState extends State<FacesWidget> {
                 Text(
                   _mode == 'relationship' ? _capitalize(person.relationship) : person.name,
                   style: TextStyle(
-                    fontSize: isCompact ? 19 : 24,
+                    fontSize: isCompact ? 20 : 25,
                     fontWeight: FontWeight.w800,
                     color: chosen ? AppColors.onColor : AppColors.primaryText,
                   ),

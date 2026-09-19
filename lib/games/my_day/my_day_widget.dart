@@ -6,6 +6,7 @@ import '../../core/i18n/locale_controller.dart';
 import '../../ui/smriti_ui.dart';
 import '../cognitive_game.dart';
 import '../hint/game_hint.dart';
+import '../ui/game_chrome.dart';
 import 'my_day_game.dart';
 
 /// Soft tints that give each card its own colour.
@@ -185,45 +186,28 @@ class _MyDayWidgetState extends State<MyDayWidget> {
     );
   }
 
+  /// The event that belongs at the first out-of-place position, so the hint
+  /// (and the tutorial) can point at the row to move up.
+  String? _hintEventId() {
+    final correct = (widget.item.payload['correctOrder'] as List<Object?>?)?.cast<String>();
+    if (correct == null) return null;
+    final current = _events.map((e) => e['id'] as String).toList();
+    for (var i = 0; i < current.length && i < correct.length; i++) {
+      if (current[i] != correct[i]) return correct[i];
+    }
+    return null;
+  }
+
   Widget _buildOrderingMode(bool isCompact) {
     final lang = LocaleController.instance.currentLanguage;
     return Column(
       children: [
-        Container(
-          padding: EdgeInsets.symmetric(
-            horizontal: isCompact ? 12 : 20,
-            vertical: isCompact ? 8 : 12,
-          ),
-          decoration: BoxDecoration(
-            color: AppColors.marigold.withValues(alpha: 0.15),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: AppColors.marigold.withValues(alpha: 0.4),
-              width: 1.5,
-            ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text('🌅', style: TextStyle(fontSize: 22)),
-              const SizedBox(width: 8),
-              Flexible(
-                child: Text(
-                  AppStrings.putInOrderMorningToNight(lang),
-                  style: TextStyle(
-                    fontSize: isCompact ? 16 : 20,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.primaryText,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-              const SizedBox(width: 8),
-              const Text('🌙', style: TextStyle(fontSize: 22)),
-            ],
-          ),
+        GamePrompt(
+          AppStrings.putInOrderMorningToNight(lang),
+          icon: Icons.wb_twilight_rounded,
+          color: AppColors.riverTeal,
         ),
-        SizedBox(height: isCompact ? 8 : 16),
+        SizedBox(height: isCompact ? 8 : 14),
         Expanded(
           child: ReorderableListView(
             buildDefaultDragHandles: false,
@@ -250,29 +234,24 @@ class _MyDayWidgetState extends State<MyDayWidget> {
             }).toList(),
           ),
         ),
-        SizedBox(height: isCompact ? 8 : 16),
+        SizedBox(height: isCompact ? 8 : 14),
         if (!_submitted)
-          ElevatedButton.icon(
-            onPressed: _onReorderComplete,
-            icon: const Icon(Icons.check_circle_outline_rounded, size: 24),
-            label: Text(
-              AppStrings.done(lang),
-              style: TextStyle(
-                fontSize: isCompact ? 17 : 20,
-                fontWeight: FontWeight.w700,
+          SizedBox(
+            width: double.infinity,
+            height: isCompact ? 52 : 62,
+            child: ElevatedButton.icon(
+              onPressed: _onReorderComplete,
+              icon: const Icon(Icons.check_circle_outline_rounded, size: 26),
+              label: Text(
+                AppStrings.done(lang),
+                style: TextStyle(fontSize: isCompact ? 18 : 21, fontWeight: FontWeight.w800),
               ),
-            ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.leafGreen,
-              foregroundColor: Colors.white,
-              padding: EdgeInsets.symmetric(
-                horizontal: isCompact ? 36 : 56,
-                vertical: isCompact ? 12 : 18,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.leafGreen,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
               ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              elevation: 3,
             ),
           )
         else
@@ -308,91 +287,99 @@ class _MyDayWidgetState extends State<MyDayWidget> {
     final rawLabel = (event['label'] as String?) ?? '';
     final localizedLabel = AppStrings.routineLabel(lang, rawLabel);
 
-    return Container(
+    Widget moveButton(String tooltip, IconData icon, VoidCallback? onPressed) {
+      return IconButton(
+        tooltip: tooltip,
+        onPressed: onPressed,
+        icon: Icon(icon),
+        iconSize: isCompact ? 22 : 26,
+        style: IconButton.styleFrom(
+          minimumSize: Size(isCompact ? 40 : 46, isCompact ? 40 : 46),
+          backgroundColor: AppColors.marigold.withValues(alpha: 0.22),
+          foregroundColor: AppColors.marigoldDark,
+          disabledBackgroundColor: Colors.transparent,
+          disabledForegroundColor: AppColors.secondaryText.withValues(alpha: 0.25),
+        ),
+      );
+    }
+
+    return HintGlow(
       key: key,
-      margin: EdgeInsets.symmetric(vertical: isCompact ? 3 : 6),
-      padding: EdgeInsets.symmetric(
-        horizontal: isCompact ? 12 : 18,
-        vertical: isCompact ? 8 : 12,
-      ),
-      decoration: BoxDecoration(
-        color: AppColors.raisedSurface,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: isCompact ? 28 : 34,
-            height: isCompact ? 28 : 34,
-            decoration: BoxDecoration(
-              color: AppColors.marigold.withValues(alpha: 0.3),
-              shape: BoxShape.circle,
-            ),
-            alignment: Alignment.center,
-            child: Text(
-              '${index + 1}',
-              style: TextStyle(
-                fontSize: isCompact ? 14 : 17,
-                fontWeight: FontWeight.w800,
-                color: AppColors.primaryText,
-              ),
-            ),
-          ),
-          SizedBox(width: isCompact ? 10 : 14),
-          RoutinePhoto(
-            id: (event['id'] as String?) ?? '',
-            emoji: (event['icon'] as String?) ?? '📌',
-            label: rawLabel,
-            size: isCompact ? 40 : 48,
-          ),
-          SizedBox(width: isCompact ? 12 : 16),
-          Expanded(
-            child: Text(
-              localizedLabel,
-              style: TextStyle(
-                fontSize: isCompact ? 17 : 20,
-                fontWeight: FontWeight.w600,
-                color: AppColors.primaryText,
-              ),
-            ),
-          ),
-          if (!_submitted) ...[
-            IconButton(
-              tooltip: 'Move Up',
-              onPressed: index > 0 ? () => _moveUp(index) : null,
-              icon: const Icon(Icons.arrow_upward_rounded),
-              iconSize: isCompact ? 22 : 28,
-              color: AppColors.marigoldDark,
-              disabledColor: AppColors.secondaryText.withValues(alpha: 0.2),
-            ),
-            IconButton(
-              tooltip: 'Move Down',
-              onPressed: index < totalCount - 1 ? () => _moveDown(index) : null,
-              icon: const Icon(Icons.arrow_downward_rounded),
-              iconSize: isCompact ? 22 : 28,
-              color: AppColors.marigoldDark,
-              disabledColor: AppColors.secondaryText.withValues(alpha: 0.2),
+      isAnswer: !_submitted && event['id'] == _hintEventId(),
+      radius: 22,
+      child: Container(
+        margin: EdgeInsets.symmetric(vertical: isCompact ? 4 : 7),
+        padding: EdgeInsets.fromLTRB(isCompact ? 10 : 14, isCompact ? 8 : 11, 6, isCompact ? 8 : 11),
+        decoration: BoxDecoration(
+          color: AppColors.raisedSurface,
+          borderRadius: BorderRadius.circular(22),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.riverTeal.withValues(alpha: 0.14),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
             ),
           ],
-          ReorderableDragStartListener(
-            index: index,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-              child: Icon(
-                Icons.drag_handle_rounded,
-                color: AppColors.ghostHand,
-                size: isCompact ? 26 : 32,
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: isCompact ? 28 : 34,
+              height: isCompact ? 28 : 34,
+              decoration: BoxDecoration(
+                color: AppColors.riverTeal.withValues(alpha: 0.16),
+                shape: BoxShape.circle,
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                '${index + 1}',
+                style: TextStyle(
+                  fontSize: isCompact ? 14 : 17,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.riverTealDark,
+                ),
               ),
             ),
-          ),
-        ],
+            SizedBox(width: isCompact ? 10 : 12),
+            RoutinePhoto(
+              id: (event['id'] as String?) ?? '',
+              emoji: (event['icon'] as String?) ?? '📌',
+              label: rawLabel,
+              size: isCompact ? 44 : 54,
+            ),
+            SizedBox(width: isCompact ? 10 : 14),
+            Expanded(
+              child: Text(
+                localizedLabel,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: isCompact ? 17 : 20,
+                  height: 1.15,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.primaryText,
+                ),
+              ),
+            ),
+            if (!_submitted) ...[
+              moveButton('Move Up', Icons.arrow_upward_rounded, index > 0 ? () => _moveUp(index) : null),
+              const SizedBox(width: 4),
+              moveButton('Move Down', Icons.arrow_downward_rounded,
+                  index < totalCount - 1 ? () => _moveDown(index) : null),
+            ],
+            ReorderableDragStartListener(
+              index: index,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                child: Icon(
+                  Icons.drag_indicator_rounded,
+                  color: AppColors.ghostHand.withValues(alpha: 0.7),
+                  size: isCompact ? 22 : 26,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -7,6 +7,7 @@ import '../../core/i18n/locale_controller.dart';
 import '../../ui/smriti_ui.dart';
 import '../cognitive_game.dart';
 import '../hint/game_hint.dart';
+import '../ui/game_chrome.dart';
 import 'diya_lamp.dart';
 import 'lamps_game.dart';
 
@@ -152,7 +153,7 @@ class _LampsWidgetState extends State<LampsWidget> {
         child: Column(
           children: [
             // Status text
-            Text(
+            GamePrompt(
               _phase == 'watching'
                   ? AppStrings.watchLampsLightUp(lang)
                   : _phase == 'tapping'
@@ -160,14 +161,10 @@ class _LampsWidgetState extends State<LampsWidget> {
                           ? AppStrings.tapLampsReverseOrder(lang)
                           : AppStrings.tapLampsSameOrder(lang)
                       : AppStrings.wellDone(lang),
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 23,
-                fontWeight: FontWeight.w700,
-                color: Colors.amber.shade200,
-              ),
+              icon: _phase == 'watching' ? Icons.visibility_rounded : Icons.touch_app_rounded,
+              dark: true,
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 14),
             // Progress dots
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
