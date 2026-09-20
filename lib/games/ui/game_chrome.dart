@@ -116,7 +116,7 @@ class GameTopBar extends StatelessWidget {
               const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(color: tint, borderRadius: BorderRadius.circular(30)),
+                decoration: BoxDecoration(color: tint, borderRadius: BorderRadius.circular(32)),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -190,7 +190,7 @@ class GamePrompt extends StatelessWidget {
       padding: EdgeInsets.symmetric(horizontal: 18, vertical: compact ? 8 : 12),
       decoration: BoxDecoration(
         color: dark ? Colors.white.withValues(alpha: 0.1) : c.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

@@ -229,7 +229,7 @@ class _MarketBasketWidgetState extends State<MarketBasketWidget>
                 foregroundColor: AppColors.primaryText,
                 elevation: 0,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(22),
+                  borderRadius: BorderRadius.circular(20),
                 ),
               ),
               child: Text(
@@ -316,7 +316,7 @@ class _MarketBasketWidgetState extends State<MarketBasketWidget>
         height: side,
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(22),
+          borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.18),

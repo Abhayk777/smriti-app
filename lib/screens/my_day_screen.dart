@@ -89,7 +89,7 @@ class _MyDayScreenState extends State<MyDayScreen> {
             child: Column(
               children: [
                 ScreenHeader(
-      image: 'game_myday.jpg',
+                  image: 'game_myday.jpg',
                   title: AppStrings.myDay(lang),
                   subtitle: _dateString(lang),
                   icon: Icons.wb_sunny_rounded,
@@ -236,10 +236,11 @@ class _SummaryCard extends StatelessWidget {
     final progress = total == 0 ? 0.0 : done / total;
 
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(Insets.lg),
       decoration: BoxDecoration(
         color: part.color,
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(Radii.lg),
+        boxShadow: Shadows.raised(part.color),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -265,22 +266,18 @@ class _SummaryCard extends StatelessWidget {
                   children: [
                     Text(
                       next == null ? AppStrings.thatsAllForToday(lang) : AppStrings.comingUpNext(lang),
-                      style: TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w600,
-                        color: onCard.withValues(alpha: 0.88),
+                      style: AppText.eyebrow.copyWith(
+                        color: onCard.withValues(alpha: 0.9),
                       ),
                     ),
+                    const SizedBox(height: 2),
                     Text(
                       next == null
                           ? AppStrings.routineLabel(lang, 'Time to rest')
                           : AppStrings.routineLabel(lang, next!.labelKey),
-                      style: TextStyle(
-                        fontSize: 26,
-                        fontWeight: FontWeight.w800,
-                        color: onCard,
-                        height: 1.15,
-                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppText.title.copyWith(color: onCard),
                     ),
                     if (nextTime != null)
                       Text(
@@ -354,17 +351,13 @@ class _PartHeading extends StatelessWidget {
                 const SizedBox(width: 10),
                 Text(
                   AppStrings.dayPartLabel(lang, part.name),
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
-                    color: part.deep,
-                  ),
+                  style: AppText.heading.copyWith(fontSize: 20, color: part.deep),
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 12),
-          Expanded(child: Container(height: 2, color: part.tint)),
+          const SizedBox(width: Insets.md),
+          Expanded(child: Hairline(color: part.color, thickness: 2)),
         ],
       ),
     );
@@ -438,7 +431,8 @@ class _TimelineItem extends StatelessWidget {
                 clipBehavior: Clip.antiAlias,
                 decoration: BoxDecoration(
                   color: isActive ? color : (isPast ? part.tint.withValues(alpha: 0.55) : part.tint),
-                  borderRadius: BorderRadius.circular(22),
+                  borderRadius: BorderRadius.circular(Radii.md),
+                  boxShadow: isActive ? Shadows.raised(color) : Shadows.card(color),
                 ),
                 child: Row(
                   children: [
@@ -472,9 +466,10 @@ class _TimelineItem extends StatelessWidget {
                                 children: [
                                   Text(
                                     AppStrings.routineLabel(lang, entry.labelKey),
-                                    style: TextStyle(
-                                      fontSize: isActive ? 24 : 21,
-                                      fontWeight: FontWeight.w800,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: AppText.heading.copyWith(
+                                      fontSize: isActive ? 23 : 20,
                                       color: isActive
                                           ? onActive
                                           : isPast

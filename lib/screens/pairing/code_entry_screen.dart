@@ -211,16 +211,16 @@ class _CodeEntryScreenState extends State<CodeEntryScreen> {
           fillColor: AppColors.raisedSurface,
           contentPadding: const EdgeInsets.symmetric(vertical: 16),
           border: UnderlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: AppColors.border, width: 1.5),
+            borderRadius: BorderRadius.circular(14),
+            borderSide: BorderSide.none,
           ),
           enabledBorder: UnderlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: AppColors.border, width: 1.5),
+            borderRadius: BorderRadius.circular(14),
+            borderSide: BorderSide.none,
           ),
           focusedBorder: UnderlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: AppColors.terracotta, width: 2),
+            borderRadius: BorderRadius.circular(14),
+            borderSide: const BorderSide(color: AppColors.terracotta, width: 2.5),
           ),
         ),
         onChanged: (value) => _onChanged(index, value),

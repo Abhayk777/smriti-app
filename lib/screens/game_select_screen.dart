@@ -10,7 +10,9 @@ import '../core/i18n/locale_controller.dart';
 import '../core/progression/progression_service.dart';
 import '../core/repo/event_repo.dart';
 import '../games/game_catalog.dart';
+import '../ui/motion.dart';
 import '../ui/smriti_ui.dart';
+import '../ui/textures.dart';
 import '../widgets/language_switcher_button.dart';
 import 'diagnostics_screen.dart';
 import 'game_tutorial_screen.dart';
@@ -124,7 +126,9 @@ class _GameSelectScreenState extends State<GameSelectScreen> {
         final lang = LocaleController.instance.currentLanguage;
         return Scaffold(
           backgroundColor: AppColors.pageBackground,
-          body: SafeArea(
+          body: LivingBackground(
+            tint: AppColors.terracotta,
+            child: SafeArea(
             child: Column(
               children: [
                 ScreenHeader(
@@ -139,9 +143,7 @@ class _GameSelectScreenState extends State<GameSelectScreen> {
                     IconButton(
                       tooltip: 'Sync & Diagnostics',
                       onPressed: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(builder: (_) => const DiagnosticsScreen()),
-                        );
+                        pushSmriti(context, const DiagnosticsScreen());
                       },
                       iconSize: 28,
                       icon: const Icon(Icons.sync_rounded, color: AppColors.secondaryText),
@@ -186,8 +188,8 @@ class _GameSelectScreenState extends State<GameSelectScreen> {
                           itemBuilder: (context, index) {
                             final info = gameCatalog[index];
                             final isSuggested = suggestion?.suggestedGameId == info.id;
-                            return FadeSlideIn(
-                              delay: Duration(milliseconds: 40 * index.clamp(0, 6)),
+                            return RiseIn(
+                              delay: Duration(milliseconds: 70 * index.clamp(0, 7)),
                               child: _GameTile(
                                 info: info,
                                 lang: lang,
@@ -234,6 +236,7 @@ class _GameSelectScreenState extends State<GameSelectScreen> {
               ],
             ),
           ),
+          ),
         );
       },
     );
@@ -252,11 +255,7 @@ class _GameSelectScreenState extends State<GameSelectScreen> {
       return;
     }
 
-    await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => GameTutorialScreen(gameId: info.id),
-      ),
-    );
+    await pushSmriti(context, GameTutorialScreen(gameId: info.id));
     if (mounted) {
       _loadSuggestion();
       _restAdviceKey.currentState?.reload();
@@ -319,7 +318,7 @@ class RestAdviceCardState extends State<RestAdviceCard> {
       child: Container(
         margin: const EdgeInsets.fromLTRB(18, 14, 18, 0),
         padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(color: Color.lerp(AppColors.leafGreen, Colors.white, 0.85), borderRadius: BorderRadius.circular(28)),
+        decoration: BoxDecoration(color: Color.lerp(AppColors.leafGreen, Colors.white, 0.85), borderRadius: BorderRadius.circular(26)),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -365,13 +364,14 @@ class _GameTile extends StatelessWidget {
     return PressableCard(
       onTap: onTap,
       color: info.color,
-      radius: 26,
+      borderColor: info.color,
+      radius: Radii.lg,
       semanticLabel: title,
-      padding: const EdgeInsets.fromLTRB(14, 14, 10, 14),
+      padding: const EdgeInsets.fromLTRB(Insets.md, Insets.md, Insets.sm + 2, Insets.md),
       child: Row(
         children: [
           IconMedallion(icon: info.icon, image: info.image, color: info.color, size: 72),
-          const SizedBox(width: 14),
+          const SizedBox(width: Insets.md),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -381,7 +381,7 @@ class _GameTile extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
                       color: AppColors.marigold,
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(14),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -391,8 +391,8 @@ class _GameTile extends StatelessWidget {
                         Text(
                           AppStrings.tryToday(l),
                           style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
                             color: AppColors.primaryText,
                           ),
                         ),
@@ -403,6 +403,8 @@ class _GameTile extends StatelessWidget {
                 ],
                 Text(
                   title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.w800,
@@ -410,14 +412,32 @@ class _GameTile extends StatelessWidget {
                     height: 1.15,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 3),
                 Text(
                   desc,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w500,
                     color: AppColors.onColor.withValues(alpha: 0.9),
                     height: 1.25,
+                  ),
+                ),
+                const SizedBox(height: Insets.sm),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Color.lerp(info.color, Colors.black, 0.22),
+                    borderRadius: BorderRadius.circular(Radii.sm),
+                  ),
+                  child: Text(
+                    info.domain,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.onColor,
+                    ),
                   ),
                 ),
               ],
@@ -454,9 +474,10 @@ class _GameCard extends StatelessWidget {
     return PressableCard(
       onTap: onTap,
       color: info.color,
-      radius: 28,
+      borderColor: info.color,
+      radius: Radii.lg,
       semanticLabel: title,
-      padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
+      padding: const EdgeInsets.fromLTRB(Insets.lg, Insets.lg, Insets.lg, Insets.md),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -473,7 +494,7 @@ class _GameCard extends StatelessWidget {
                 child: Text(
                   info.domain,
                   style: const TextStyle(
-                    fontSize: 14,
+                    fontSize: 15,
                     fontWeight: FontWeight.w700,
                     color: AppColors.onColor,
                   ),
@@ -487,7 +508,7 @@ class _GameCard extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
                 color: AppColors.marigold,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(14),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -497,8 +518,8 @@ class _GameCard extends StatelessWidget {
                   Text(
                     AppStrings.tryToday(l),
                     style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
                       color: AppColors.primaryText,
                     ),
                   ),
@@ -656,7 +677,7 @@ class _PlayHistoryDialogState extends State<_PlayHistoryDialog> {
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                         decoration: BoxDecoration(
                           color: AppColors.pageBackground,
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(14),
                           boxShadow: [BoxShadow(color: AppColors.terracottaDeep.withValues(alpha: 0.07), blurRadius: 10, offset: const Offset(0, 3))],
                         ),
                         child: Row(
@@ -672,13 +693,17 @@ class _PlayHistoryDialogState extends State<_PlayHistoryDialog> {
                                     color: AppColors.terracotta,
                                   ),
                                 ),
-                                const Text(
+                                Text(
                                   'Sessions Played',
-                                  style: TextStyle(fontSize: 12, color: AppColors.secondaryText),
+                                  style: AppText.bodyMuted.copyWith(fontSize: 15),
                                 ),
                               ],
                             ),
-                            Container(width: 1, height: 28, color: AppColors.border),
+                            Container(
+                              width: 1,
+                              height: 28,
+                              color: AppColors.border.withValues(alpha: 0.7),
+                            ),
                             Column(
                               children: [
                                 Text(
@@ -689,9 +714,9 @@ class _PlayHistoryDialogState extends State<_PlayHistoryDialog> {
                                     color: AppColors.leafGreen,
                                   ),
                                 ),
-                                const Text(
+                                Text(
                                   'Total Play Time',
-                                  style: TextStyle(fontSize: 12, color: AppColors.secondaryText),
+                                  style: AppText.bodyMuted.copyWith(fontSize: 15),
                                 ),
                               ],
                             ),
@@ -715,15 +740,14 @@ class _PlayHistoryDialogState extends State<_PlayHistoryDialog> {
                               contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                               title: Text(
                                 _gameDisplayName(s.gameIds),
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 15,
-                                  color: AppColors.primaryText,
+                                style: AppText.body.copyWith(
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.w700,
                                 ),
                               ),
                               subtitle: Text(
                                 date,
-                                style: const TextStyle(fontSize: 12, color: AppColors.secondaryText),
+                                style: AppText.bodyMuted.copyWith(fontSize: 15),
                               ),
                               trailing: Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
@@ -731,18 +755,17 @@ class _PlayHistoryDialogState extends State<_PlayHistoryDialog> {
                                 children: [
                                   Text(
                                     duration,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 14,
-                                      color: AppColors.primaryText,
+                                    style: AppText.body.copyWith(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w800,
                                     ),
                                   ),
                                   Text(
                                     s.completed ? 'Completed' : 'Stopped early',
                                     style: TextStyle(
-                                      fontSize: 11,
+                                      fontSize: 15,
                                       color: s.completed ? AppColors.leafGreen : AppColors.secondaryText,
-                                      fontWeight: FontWeight.w500,
+                                      fontWeight: FontWeight.w600,
                                     ),
                                   ),
                                 ],
@@ -793,7 +816,7 @@ class VarietySuggestionCard extends StatelessWidget {
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
           color: Color.lerp(AppColors.marigold, Colors.white, 0.8),
-          borderRadius: BorderRadius.circular(28),
+          borderRadius: BorderRadius.circular(26),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,

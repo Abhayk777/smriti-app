@@ -502,10 +502,11 @@ class _FullScreenReminderScreenState extends State<FullScreenReminderScreen>
                   Container(
                     width: photoSize,
                     height: photoSize,
+                    padding: const EdgeInsets.all(6),
                     decoration: BoxDecoration(
-                      color: AppColors.medicineBlush,
-                      borderRadius: BorderRadius.circular(photoSize * 0.16),
-                      border: Border.all(color: AppColors.raisedSurface, width: 6),
+                      color: AppColors.raisedSurface,
+                      borderRadius: BorderRadius.circular(photoSize * 0.18),
+                      boxShadow: Shadows.raised(AppColors.terracotta),
                     ),
                     clipBehavior: Clip.antiAlias,
                     child: hasPhoto
@@ -518,24 +519,23 @@ class _FullScreenReminderScreenState extends State<FullScreenReminderScreen>
                   ),
                   const SizedBox(height: 18),
                 ],
-                Text(
-                  med?.name ?? 'Scheduled Medication',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: AppColors.primaryText,
-                    fontSize: 36,
-                    fontWeight: FontWeight.w800,
-                    height: 1.1,
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: Insets.lg),
+                  child: Text(
+                    med?.name ?? 'Scheduled Medication',
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppText.display.copyWith(fontSize: 38),
                   ),
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: Insets.xs),
                 Text(
                   AppStrings.doseLabel(lang, med?.dose ?? "As directed"),
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
+                  style: AppText.bodyMuted.copyWith(
                     fontSize: 23,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.secondaryText,
                   ),
                 ),
                 if (hasVoice) ...[
@@ -562,7 +562,7 @@ class _FullScreenReminderScreenState extends State<FullScreenReminderScreen>
         decoration: BoxDecoration(
           color: playing ? AppColors.indigo : AppColors.raisedSurface,
           borderRadius: BorderRadius.circular(40),
-          border: Border.all(color: AppColors.indigo, width: 2),
+          boxShadow: Shadows.card(AppColors.indigo),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -608,7 +608,7 @@ class _FullScreenReminderScreenState extends State<FullScreenReminderScreen>
               foregroundColor: AppColors.onColor,
               elevation: 0,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(24),
+                borderRadius: BorderRadius.circular(26),
               ),
             ),
             icon: const Icon(Icons.check_circle_rounded,
@@ -631,7 +631,7 @@ class _FullScreenReminderScreenState extends State<FullScreenReminderScreen>
               foregroundColor: AppColors.marigoldDark,
               backgroundColor: AppColors.marigold.withValues(alpha: 0.14),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(24),
+                borderRadius: BorderRadius.circular(26),
               ),
             ),
             icon: const Icon(Icons.snooze_rounded, size: 30),

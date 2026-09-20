@@ -200,7 +200,7 @@ class _MedicineScreenState extends State<MedicineScreen>
             child: Column(
               children: [
                 ScreenHeader(
-      image: 'tile_medicine.jpg',
+                  image: 'tile_medicine.jpg',
                   title: AppStrings.myMedicines(lang),
                   subtitle: AppStrings.tapTakeOnceHad(lang),
                   icon: Icons.medication_rounded,
@@ -271,9 +271,11 @@ class _MedicineScreenState extends State<MedicineScreen>
         final photo = Container(
           width: photoSize,
           height: photoSize,
+          clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
             color: AppColors.medicineBlush,
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(Radii.md),
+            boxShadow: Shadows.card(AppColors.terracotta),
           ),
           child: FutureBuilder<File?>(
             future: _resolveMedPhoto(med.pillPhotoPath, med.id),
@@ -306,9 +308,10 @@ class _MedicineScreenState extends State<MedicineScreen>
           children: [
             Text(
               med.name,
-              style: TextStyle(
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: AppText.title.copyWith(
                 fontSize: 24,
-                fontWeight: FontWeight.w800,
                 color: isTaken ? AppColors.secondaryText : AppColors.primaryText,
                 decoration: isTaken ? TextDecoration.lineThrough : null,
               ),
@@ -344,13 +347,17 @@ class _MedicineScreenState extends State<MedicineScreen>
         );
 
         final listen = SizedBox(
-          height: 60,
+          height: 62,
           child: OutlinedButton.icon(
             onPressed: () => _playInstruction(med),
             style: OutlinedButton.styleFrom(
               foregroundColor: AppColors.leafGreenDark,
-              side: const BorderSide(color: AppColors.leafGreen, width: 2),
+              side: BorderSide.none,
+              backgroundColor: AppColors.leafGreen.withValues(alpha: 0.12),
               padding: const EdgeInsets.symmetric(horizontal: 18),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(Radii.md),
+              ),
             ),
             icon: const Icon(Icons.volume_up_rounded, size: 28),
             label: Text(
@@ -361,14 +368,18 @@ class _MedicineScreenState extends State<MedicineScreen>
         );
 
         final take = SizedBox(
-          height: 60,
+          height: 62,
           child: ElevatedButton.icon(
             onPressed: () => _onTakeTap(med, isTaken, lang),
             style: ElevatedButton.styleFrom(
               backgroundColor:
                   isTaken ? AppColors.leafGreenDark : AppColors.leafGreen,
               foregroundColor: AppColors.onColor,
+              elevation: 0,
               padding: const EdgeInsets.symmetric(horizontal: 22),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(Radii.md),
+              ),
             ),
             icon: Icon(
               isTaken ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
@@ -381,18 +392,16 @@ class _MedicineScreenState extends State<MedicineScreen>
           ),
         );
 
-        return Container(
-          margin: const EdgeInsets.only(bottom: 16),
-          padding: const EdgeInsets.all(18),
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 250),
+          margin: const EdgeInsets.only(bottom: Insets.md),
+          padding: const EdgeInsets.all(Insets.lg),
           decoration: BoxDecoration(
             color: isTaken
                 ? AppColors.leafGreen.withValues(alpha: 0.10)
                 : AppColors.raisedSurface,
-            borderRadius: BorderRadius.circular(26),
-            border: Border.all(
-              color: isTaken ? AppColors.leafGreen : AppColors.border,
-              width: isTaken ? 2 : 1.5,
-            ),
+            borderRadius: BorderRadius.circular(Radii.lg),
+            boxShadow: isTaken ? null : Shadows.card(AppColors.leafGreen),
           ),
           child: stacked
               ? Column(

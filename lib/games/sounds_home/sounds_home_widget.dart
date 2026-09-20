@@ -350,7 +350,7 @@ class _SoundsHomeWidgetState extends State<SoundsHomeWidget>
                     backgroundColor: AppColors.onColor.withValues(alpha: 0.14),
                     side: BorderSide.none,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(22),
+                      borderRadius: BorderRadius.circular(20),
                     ),
                   ),
                   icon: const Icon(Icons.volume_up_rounded, size: 32),
@@ -373,7 +373,7 @@ class _SoundsHomeWidgetState extends State<SoundsHomeWidget>
                       backgroundColor: AppColors.marigold,
                       foregroundColor: AppColors.primaryText,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(22),
+                        borderRadius: BorderRadius.circular(20),
                       ),
                     ),
                     icon: const Icon(Icons.play_arrow_rounded, size: 40),

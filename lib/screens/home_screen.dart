@@ -9,7 +9,9 @@ import '../core/i18n/locale_controller.dart';
 import '../core/progression/progression_service.dart';
 import '../core/sync/sync_engine.dart';
 import '../ui/day_scene.dart';
+import '../ui/motion.dart';
 import '../ui/smriti_ui.dart';
+import '../ui/textures.dart';
 import '../widgets/language_switcher_button.dart';
 import 'diagnostics_screen.dart';
 import 'family_screen.dart';
@@ -115,7 +117,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   void _open(Widget screen) {
-    Navigator.of(context).push(MaterialPageRoute(builder: (_) => screen));
+    pushSmriti(context, screen);
   }
 
   Future<void> _onPlayTap(String lang) async {
@@ -125,7 +127,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       await showDialog<void>(
         context: context,
         builder: (ctx) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(26)),
           title: Row(
             children: [
               const Icon(Icons.local_cafe_rounded, color: AppColors.leafGreen, size: 32),
@@ -177,7 +179,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         return Scaffold(
           backgroundColor: AppColors.pageBackground,
           bottomNavigationBar: _buildFooter(lang),
-          body: SafeArea(
+          body: LivingBackground(
+            tint: AppColors.terracotta,
+            child: SafeArea(
             bottom: false,
             child: Stack(
               children: [
@@ -204,6 +208,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               ],
             ),
           ),
+          ),
         );
       },
     );
@@ -225,15 +230,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
-              children: const [
-                LanguageSwitcherButton(),
-              ],
+              children: const [LanguageSwitcherButton()],
             ),
             const SizedBox(height: 10),
-            FadeSlideIn(child: _buildGreetingCard(lang)),
-            const SizedBox(height: 28),
-            FadeSlideIn(
-              delay: const Duration(milliseconds: 80),
+            RiseIn(child: _buildGreetingCard(lang)),
+            const SizedBox(height: Insets.xl),
+            RiseIn(
+              delay: const Duration(milliseconds: 120),
               child: _sectionTitle(AppStrings.whatWouldYouLikeToDo(lang)),
             ),
             const SizedBox(height: 14),
@@ -286,19 +289,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
-  Widget _sectionTitle(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 4),
-      child: Text(
+  Widget _sectionTitle(String text) => SectionHeading(
         text,
-        style: const TextStyle(
-          fontSize: 21,
-          fontWeight: FontWeight.w700,
-          color: AppColors.secondaryText,
-        ),
-      ),
-    );
-  }
+        color: AppColors.terracotta,
+        padding: EdgeInsets.zero,
+      );
 
   List<Widget> _buildTiles(double height, String lang, {required double gap}) {
     final tiles = [
@@ -335,8 +330,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     return [
       for (var i = 0; i < tiles.length; i++) ...[
         if (i > 0) SizedBox(height: gap),
-        FadeSlideIn(
-          delay: Duration(milliseconds: 140 + i * 90),
+        RiseIn(
+          delay: Duration(milliseconds: 240 + i * 110),
           child: tiles[i],
         ),
       ],
@@ -384,6 +379,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     Flexible(
                       child: Text(
                         _elderName.isNotEmpty ? '${_greeting(lang)},' : _greeting(lang),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           fontSize: nameSize * 0.58,
                           fontWeight: FontWeight.w600,
@@ -398,6 +395,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 if (_elderName.isNotEmpty)
                   Text(
                     _elderName,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       fontSize: nameSize,
                       fontWeight: FontWeight.w800,
@@ -442,7 +441,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       decoration: BoxDecoration(
         color: const Color(0xFF9CC5EC),
         borderRadius: BorderRadius.circular(32),
-        boxShadow: [BoxShadow(color: AppColors.terracottaDeep.withValues(alpha: 0.07), blurRadius: 10, offset: const Offset(0, 3))],
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.terracottaDeep.withValues(alpha: 0.14),
+            blurRadius: 18,
+            offset: const Offset(0, 6),
+          ),
+        ],
       ),
       child: Stack(
         children: [
@@ -469,6 +474,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
+  /// A frosted chip that sits on the sky without hiding it.
   Widget _infoChip({
     required IconData icon,
     required String label,
@@ -506,12 +512,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   Widget _buildFooter(String lang) {
     final bottomInset = MediaQuery.paddingOf(context).bottom;
-    return Container(
-      decoration: const BoxDecoration(
-        color: AppColors.raisedSurface,
-        border: Border(top: BorderSide(color: AppColors.border, width: 1.5)),
-      ),
-      padding: EdgeInsets.fromLTRB(16, 12, 16, 12 + bottomInset),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Hairline(color: AppColors.terracotta),
+        Container(
+      color: AppColors.raisedSurface,
+      padding: EdgeInsets.fromLTRB(16, 14, 16, 12 + bottomInset),
       child: MaxWidth(
         maxWidth: 900,
         child: Row(
@@ -537,6 +544,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           ],
         ),
       ),
+        ),
+      ],
     );
   }
 }

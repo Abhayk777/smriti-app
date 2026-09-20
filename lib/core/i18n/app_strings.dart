@@ -2833,6 +2833,57 @@ class AppStrings {
     }
   }
 
+  // The four strings below are new with the speaking version of Name the
+  // Harvest. Bodo, Garo, Khasi, Mizo, Manipuri, Nagamese and Kokborok still
+  // need a native speaker; until then they read in English, and the buttons
+  // they sit on also carry an icon.
+
+  /// Shown while the microphone is open and nothing has been said yet.
+  static String nameHarvestListening(String code) {
+    switch (code) {
+      case 'as': return 'শুনি আছোঁ... আপুনি কওক';
+      case 'bn': return 'শুনছি... আপনি বলুন';
+      case 'ne': return 'सुन्दै छु... भन्नुहोस्';
+      case 'hi': return 'सुन रहे हैं... आप बोलिए';
+      case 'en':
+      default: return 'Listening... please speak';
+    }
+  }
+
+  /// Said kindly when a word has already been given.
+  static String nameHarvestAlreadySaid(String code, String word) {
+    switch (code) {
+      case 'as': return '$word ইতিমধ্যে আছে';
+      case 'bn': return '$word আগেই বলা হয়েছে';
+      case 'ne': return '$word पहिले नै भनियो';
+      case 'hi': return '$word पहले ही बता दिया';
+      case 'en':
+      default: return '$word is already on the list';
+    }
+  }
+
+  static String nameHarvestSpeak(String code) {
+    switch (code) {
+      case 'as': return 'কওক';
+      case 'bn': return 'বলুন';
+      case 'ne': return 'बोल्नुहोस्';
+      case 'hi': return 'बोलिए';
+      case 'en':
+      default: return 'Speak';
+    }
+  }
+
+  static String nameHarvestPause(String code) {
+    switch (code) {
+      case 'as': return 'ৰওক';
+      case 'bn': return 'থামুন';
+      case 'ne': return 'रोक्नुहोस्';
+      case 'hi': return 'रुकिए';
+      case 'en':
+      default: return 'Pause';
+    }
+  }
+
   static String itemsNamed(String code, int count) {
     switch (code) {
       case 'as': return '$count টা বস্তুৰ নাম কোৱা হ\'ল';
@@ -3117,6 +3168,38 @@ class AppStrings {
           case 'hi': return 'बड़ा';
           case 'en':
           default: return 'large';
+        }
+      // The three values below are still missing translations for Bodo, Garo,
+      // Khasi, Mizo, Manipuri, Nagamese and Kokborok; they fall back to
+      // English until a native speaker fills them in. The basket also shows
+      // the colour itself, so the word is a label rather than the only clue.
+      case 'grain':
+      case 'grains':
+        switch (code) {
+          case 'as': return 'শস্য';
+          case 'bn': return 'শস্য';
+          case 'ne': return 'अन्न';
+          case 'hi': return 'अनाज';
+          case 'en':
+          default: return 'grain';
+        }
+      case 'brown':
+        switch (code) {
+          case 'as': return 'মটিয়া';
+          case 'bn': return 'বাদামি';
+          case 'ne': return 'खैरो';
+          case 'hi': return 'भूरा';
+          case 'en':
+          default: return 'brown';
+        }
+      case 'white':
+        switch (code) {
+          case 'as': return 'বগা';
+          case 'bn': return 'সাদা';
+          case 'ne': return 'सेतो';
+          case 'hi': return 'सफ़ेद';
+          case 'en':
+          default: return 'white';
         }
       default:
         return mat.replaceAll('_', ' ');

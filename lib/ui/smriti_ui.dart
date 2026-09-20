@@ -31,6 +31,144 @@ class Screen {
       MediaQuery.sizeOf(context).width >= 600 ? 32 : 18;
 }
 
+// ---------------------------------------------------------------------------
+// Design tokens
+// ---------------------------------------------------------------------------
+
+/// The spacing steps the whole app uses. Sticking to these is what makes
+/// screens feel like one app rather than a collection of pages.
+abstract final class Insets {
+  static const double xs = 4;
+  static const double sm = 8;
+  static const double md = 14;
+  static const double lg = 20;
+  static const double xl = 28;
+  static const double xxl = 40;
+}
+
+/// Corner radii. Large and soft, because rounded shapes read as friendly and
+/// are easier for an older eye to separate from the background.
+abstract final class Radii {
+  static const double sm = 14;
+  static const double md = 20;
+  static const double lg = 26;
+  static const double xl = 32;
+  static const Radius pill = Radius.circular(999);
+}
+
+/// Shadows, in place of outlines. A card is separated from the page by light,
+/// not by a drawn border.
+abstract final class Shadows {
+  /// A resting card.
+  static List<BoxShadow> card([Color? tint]) => [
+        BoxShadow(
+          color: (tint ?? AppColors.terracottaDeep).withValues(alpha: 0.07),
+          blurRadius: 14,
+          offset: const Offset(0, 4),
+        ),
+      ];
+
+  /// Something the elder is meant to act on.
+  static List<BoxShadow> raised(Color tint) => [
+        BoxShadow(
+          color: tint.withValues(alpha: 0.24),
+          blurRadius: 22,
+          offset: const Offset(0, 8),
+        ),
+      ];
+
+  /// A sheet or dialog above everything else.
+  static List<BoxShadow> overlay() => [
+        BoxShadow(
+          color: Colors.black.withValues(alpha: 0.2),
+          blurRadius: 30,
+          offset: const Offset(0, 12),
+        ),
+      ];
+}
+
+/// The type scale. Everything elder-facing is large: the smallest size here is
+/// 15, and body text is 18.
+abstract final class AppText {
+  static const display = TextStyle(
+    fontSize: 32,
+    height: 1.12,
+    fontWeight: FontWeight.w800,
+    color: AppColors.primaryText,
+  );
+  static const title = TextStyle(
+    fontSize: 26,
+    height: 1.15,
+    fontWeight: FontWeight.w800,
+    color: AppColors.primaryText,
+  );
+  static const heading = TextStyle(
+    fontSize: 21,
+    height: 1.2,
+    fontWeight: FontWeight.w800,
+    color: AppColors.primaryText,
+  );
+  static const body = TextStyle(
+    fontSize: 18,
+    height: 1.35,
+    fontWeight: FontWeight.w500,
+    color: AppColors.primaryText,
+  );
+  static const bodyMuted = TextStyle(
+    fontSize: 17,
+    height: 1.35,
+    fontWeight: FontWeight.w500,
+    color: AppColors.secondaryText,
+  );
+
+  /// Small capitalised label above a title or over a section.
+  static const eyebrow = TextStyle(
+    fontSize: 15,
+    height: 1.2,
+    fontWeight: FontWeight.w800,
+    letterSpacing: 0.4,
+  );
+  static const button = TextStyle(
+    fontSize: 21,
+    fontWeight: FontWeight.w800,
+  );
+}
+
+/// A soft rule that closes off a header or separates two blocks. It replaces
+/// the heavy bordered band the screens used to carry: strongest under the
+/// title and fading out towards the right, so it frames without boxing in.
+class Hairline extends StatelessWidget {
+  const Hairline({super.key, this.color, this.thickness = 2, this.indent = 0});
+
+  final Color? color;
+  final double thickness;
+  final double indent;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = color ?? AppColors.terracotta;
+    return Padding(
+      padding: EdgeInsets.only(left: indent),
+      child: SizedBox(
+        height: thickness,
+        width: double.infinity,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                c.withValues(alpha: 0.45),
+                c.withValues(alpha: 0.16),
+                c.withValues(alpha: 0.0),
+              ],
+              stops: const [0.0, 0.55, 1.0],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// Centres its child and caps its width, so lists and forms stay readable on
 /// large tablets.
 class MaxWidth extends StatelessWidget {
@@ -74,16 +212,17 @@ class SmritiTheme {
       outlineVariant: AppColors.border,
     );
 
-    final rounded16 = RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(16),
+    final roundedButton = RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(Radii.md),
     );
     final textTheme = Typography.blackMountainView.apply(
       bodyColor: AppColors.primaryText,
       displayColor: AppColors.primaryText,
     );
     final buttonText = textTheme.labelLarge!.copyWith(
-      fontSize: 17,
-      fontWeight: FontWeight.w700,
+      fontSize: 19,
+      fontWeight: FontWeight.w800,
+      letterSpacing: 0.2,
     );
 
     return ThemeData(
@@ -113,8 +252,8 @@ class SmritiTheme {
           disabledBackgroundColor: AppColors.wovenMat,
           disabledForegroundColor: AppColors.secondaryText,
           elevation: 0,
-          minimumSize: const Size(64, 52),
-          shape: rounded16,
+          minimumSize: const Size(64, 58),
+          shape: roundedButton,
           textStyle: buttonText,
         ),
       ),
@@ -122,9 +261,9 @@ class SmritiTheme {
         style: OutlinedButton.styleFrom(
           foregroundColor: AppColors.terracottaDark,
           backgroundColor: AppColors.wovenMat.withValues(alpha: 0.5),
-          minimumSize: const Size(64, 52),
+          minimumSize: const Size(64, 58),
           side: BorderSide.none,
-          shape: rounded16,
+          shape: roundedButton,
           textStyle: buttonText,
         ),
       ),
@@ -132,23 +271,27 @@ class SmritiTheme {
         style: TextButton.styleFrom(
           foregroundColor: AppColors.terracottaDark,
           minimumSize: const Size(48, 48),
-          textStyle: buttonText.copyWith(fontSize: 16),
+          textStyle: buttonText.copyWith(fontSize: 17),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: AppColors.raisedSurface,
         hintStyle: const TextStyle(color: AppColors.secondaryText),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: Insets.lg,
+          vertical: Insets.md + 2,
+        ),
         border: const UnderlineInputBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(Radii.sm)),
           borderSide: BorderSide(color: AppColors.wovenMat, width: 2),
         ),
         enabledBorder: const UnderlineInputBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(Radii.sm)),
           borderSide: BorderSide(color: AppColors.wovenMat, width: 2),
         ),
         focusedBorder: const UnderlineInputBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(Radii.sm)),
           borderSide: BorderSide(color: AppColors.terracotta, width: 3),
         ),
       ),
@@ -156,34 +299,27 @@ class SmritiTheme {
         behavior: SnackBarBehavior.floating,
         backgroundColor: AppColors.primaryText,
         contentTextStyle: const TextStyle(
-          fontSize: 17,
+          fontSize: 18,
           color: AppColors.onColor,
-          fontWeight: FontWeight.w500,
+          fontWeight: FontWeight.w600,
         ),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       ),
       dialogTheme: DialogThemeData(
         backgroundColor: AppColors.raisedSurface,
         surfaceTintColor: Colors.transparent,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        titleTextStyle: const TextStyle(
-          fontSize: 22,
-          fontWeight: FontWeight.w700,
-          color: AppColors.primaryText,
-        ),
-        contentTextStyle: const TextStyle(
-          fontSize: 16,
-          color: AppColors.secondaryText,
-          height: 1.4,
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(Radii.xl)),
+        titleTextStyle: AppText.heading,
+        contentTextStyle: AppText.bodyMuted,
       ),
       progressIndicatorTheme: const ProgressIndicatorThemeData(
         color: AppColors.terracotta,
         linearTrackColor: AppColors.border,
       ),
-      dividerTheme: const DividerThemeData(
-        color: AppColors.border,
+      dividerTheme: DividerThemeData(
+        color: AppColors.border.withValues(alpha: 0.7),
         thickness: 1,
+        space: Insets.lg,
       ),
       chipTheme: const ChipThemeData(
         side: BorderSide.none,
@@ -306,8 +442,9 @@ class RoundBackButton extends StatelessWidget {
   }
 }
 
-/// Page header: back button, icon, title and optional subtitle, sitting on a
-/// slim woven band.
+/// Page header: back button, title with an optional line under it, any
+/// actions, and the screen's picture on the right. It is closed off by a soft
+/// [Hairline] rather than a drawn border.
 class ScreenHeader extends StatelessWidget {
   const ScreenHeader({
     super.key,
@@ -336,21 +473,11 @@ class ScreenHeader extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Padding(
-          padding: EdgeInsets.fromLTRB(gutter, 14, gutter, 14),
+          padding: EdgeInsets.fromLTRB(gutter, Insets.sm, gutter, Insets.md),
           child: Row(
             children: [
               RoundBackButton(onPressed: onBack),
-              const SizedBox(width: 14),
-              if (!compact) ...[
-                IconMedallion(
-                  icon: icon,
-                  color: color,
-                  image: image,
-                  size: 52,
-                  background: color.withValues(alpha: 0.12),
-                ),
-                const SizedBox(width: 14),
-              ],
+              const SizedBox(width: Insets.md),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -360,36 +487,130 @@ class ScreenHeader extends StatelessWidget {
                       title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: compact ? 24 : 28,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.primaryText,
-                        height: 1.15,
-                      ),
+                      style: AppText.title.copyWith(fontSize: compact ? 24 : 27),
                     ),
                     if (subtitle != null)
                       Padding(
-                        padding: const EdgeInsets.only(top: 2),
+                        padding: const EdgeInsets.only(top: 3),
                         child: Text(
                           subtitle!,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                            color: AppColors.secondaryText,
-                          ),
+                          style: AppText.bodyMuted.copyWith(fontSize: 16),
                         ),
                       ),
                   ],
                 ),
               ),
               ...actions,
+              if (!compact) ...[
+                const SizedBox(width: Insets.md),
+                IconMedallion(
+                  icon: icon,
+                  color: color,
+                  image: image,
+                  size: 52,
+                  background: color.withValues(alpha: 0.14),
+                ),
+              ],
             ],
           ),
         ),
-        const GamosaBand(),
+        Hairline(color: color),
       ],
+    );
+  }
+}
+
+/// The standard raised surface: everything that groups content sits on one of
+/// these. No outline, a soft shadow and a generous radius.
+class SmritiCard extends StatelessWidget {
+  const SmritiCard({
+    super.key,
+    required this.child,
+    this.padding = const EdgeInsets.all(Insets.lg),
+    this.color = AppColors.raisedSurface,
+    this.radius = Radii.lg,
+    this.tint,
+    this.margin = EdgeInsets.zero,
+    this.onTap,
+  });
+
+  final Widget child;
+  final EdgeInsetsGeometry padding;
+  final EdgeInsetsGeometry margin;
+  final Color color;
+  final double radius;
+
+  /// Colours the shadow, so a card can belong to a section's accent.
+  final Color? tint;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final decorated = Container(
+      margin: margin,
+      padding: padding,
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(radius),
+        boxShadow: Shadows.card(tint),
+      ),
+      child: child,
+    );
+    if (onTap == null) return decorated;
+    return PressableCard(
+      onTap: onTap,
+      color: color,
+      radius: radius,
+      padding: padding,
+      child: child,
+    );
+  }
+}
+
+/// A heading over a group of cards: a short coloured rule, the words, and an
+/// optional action on the right.
+class SectionHeading extends StatelessWidget {
+  const SectionHeading(
+    this.title, {
+    super.key,
+    this.color = AppColors.terracotta,
+    this.trailing,
+    this.padding = const EdgeInsets.fromLTRB(4, Insets.lg, 4, Insets.sm),
+  });
+
+  final String title;
+  final Color color;
+  final Widget? trailing;
+  final EdgeInsetsGeometry padding;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: padding,
+      child: Row(
+        children: [
+          Container(
+            width: 5,
+            height: 22,
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: BorderRadius.circular(3),
+            ),
+          ),
+          const SizedBox(width: Insets.sm + 2),
+          Expanded(
+            child: Text(
+              title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppText.heading,
+            ),
+          ),
+          if (trailing != null) trailing!,
+        ],
+      ),
     );
   }
 }

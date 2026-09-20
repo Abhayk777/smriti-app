@@ -130,7 +130,7 @@ class GameTutorialScreen extends StatelessWidget {
                                       ],
                                     ),
                                     child: ClipRRect(
-                                      borderRadius: BorderRadius.circular(30),
+                                      borderRadius: BorderRadius.circular(32),
                                       child: SizedBox(
                                         width: innerW,
                                         height: innerH,
@@ -149,7 +149,7 @@ class GameTutorialScreen extends StatelessWidget {
                                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                                       decoration: BoxDecoration(
                                         color: AppColors.raisedSurface,
-                                        borderRadius: BorderRadius.circular(22),
+                                        borderRadius: BorderRadius.circular(20),
                                         boxShadow: [
                                           BoxShadow(
                                             color: Colors.black.withValues(alpha: 0.07),
@@ -208,7 +208,7 @@ class GameTutorialScreen extends StatelessWidget {
                           backgroundColor: isFromGame ? AppColors.terracotta : AppColors.leafGreen,
                           foregroundColor: Colors.white,
                           elevation: 0,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(26)),
                         ),
                         icon: Icon(
                           isFromGame ? Icons.check_circle_outline_rounded : Icons.play_arrow_rounded,

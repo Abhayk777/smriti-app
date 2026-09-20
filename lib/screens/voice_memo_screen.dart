@@ -313,18 +313,20 @@ class _VoiceMemoScreenState extends State<VoiceMemoScreen> {
                 onTap: _toggleRecord,
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 250),
-                  width: 168,
-                  height: 168,
-                  padding: const EdgeInsets.all(14),
+                  width: 180,
+                  height: 180,
+                  padding: const EdgeInsets.all(Insets.md),
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     color: color.withValues(alpha: 0.12),
+                    boxShadow: _isRecording ? Shadows.raised(color) : null,
                   ),
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 250),
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       color: color,
+                      boxShadow: Shadows.card(color),
                     ),
                     child: Icon(
                       _isRecording ? Icons.stop_rounded : Icons.mic_rounded,
@@ -338,9 +340,8 @@ class _VoiceMemoScreenState extends State<VoiceMemoScreen> {
             const SizedBox(height: 20),
             Text(
               _isRecording ? AppStrings.recording(lang) : AppStrings.tapToRecord(lang),
-              style: TextStyle(
-                fontSize: 26,
-                fontWeight: FontWeight.w800,
+              textAlign: TextAlign.center,
+              style: AppText.title.copyWith(
                 color: _isRecording ? AppColors.recordingDot : AppColors.primaryText,
               ),
             ),
@@ -383,16 +384,10 @@ class _VoiceMemoScreenState extends State<VoiceMemoScreen> {
       itemCount: _memos.length + 1,
       itemBuilder: (context, index) {
         if (index == 0) {
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 12, left: 4),
-            child: Text(
-              AppStrings.yourVoiceMessages(lang),
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w700,
-                color: AppColors.primaryText,
-              ),
-            ),
+          return SectionHeading(
+            AppStrings.yourVoiceMessages(lang),
+            color: AppColors.riverTeal,
+            padding: const EdgeInsets.only(bottom: Insets.md, top: Insets.xs),
           );
         }
         final memo = _memos[index - 1];
@@ -404,27 +399,31 @@ class _VoiceMemoScreenState extends State<VoiceMemoScreen> {
           child: PressableCard(
             onTap: () => _playMemo(memo),
             color: isPlayingThis
-                ? AppColors.riverTeal.withValues(alpha: 0.10)
+                ? AppColors.riverTeal.withValues(alpha: 0.12)
                 : AppColors.raisedSurface,
-            borderColor: isPlayingThis ? AppColors.riverTeal : AppColors.border,
-            radius: 20,
+            borderColor: AppColors.riverTeal,
+            radius: Radii.md,
             semanticLabel: isPlayingThis ? 'Pause message' : 'Play message',
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            padding: const EdgeInsets.symmetric(
+              horizontal: Insets.md,
+              vertical: Insets.md,
+            ),
             child: Row(
               children: [
                 Container(
-                  width: 56,
-                  height: 56,
+                  width: 60,
+                  height: 60,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     color: isPlayingThis
                         ? AppColors.riverTeal
-                        : AppColors.riverTeal.withValues(alpha: 0.12),
+                        : AppColors.riverTeal.withValues(alpha: 0.14),
+                    boxShadow: isPlayingThis ? Shadows.card(AppColors.riverTeal) : null,
                   ),
                   child: Icon(
                     isPlayingThis ? Icons.pause_rounded : Icons.play_arrow_rounded,
                     color: isPlayingThis ? AppColors.onColor : AppColors.riverTeal,
-                    size: 34,
+                    size: 36,
                   ),
                 ),
                 const SizedBox(width: 16),
@@ -434,19 +433,17 @@ class _VoiceMemoScreenState extends State<VoiceMemoScreen> {
                     children: [
                       Text(
                         _formatMemoDate(memo.recordedAt, lang),
-                        style: const TextStyle(
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppText.body.copyWith(
                           fontSize: 19,
                           fontWeight: FontWeight.w700,
-                          color: AppColors.primaryText,
                         ),
                       ),
                       const SizedBox(height: 2),
                       Text(
                         _formatDuration((memo.durationMs / 1000).round()),
-                        style: const TextStyle(
-                          fontSize: 16,
-                          color: AppColors.secondaryText,
-                        ),
+                        style: AppText.bodyMuted.copyWith(fontSize: 16),
                       ),
                     ],
                   ),

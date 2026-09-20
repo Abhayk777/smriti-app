@@ -12,13 +12,17 @@ import '../ghost_hand.dart';
 /// Sort the Harvest: WCST-like card sorting with unsignalled rule shifts.
 ///
 /// Domain: executive.
-/// Sort produce onto mats by type, then colour, then size — the rule changes
-/// without announcement.
+/// Produce is sorted into baskets by what it is, then by its colour, then by
+/// its size. The rule **holds still** until the elder gets it right several
+/// times in a row, and only then quietly moves on. That is the whole point of
+/// the task: a rule that changed every card could not be learned, so nothing
+/// could be measured.
 ///
-/// Perseverative errors (continuing the old rule after switch) are the FTD
-/// signature. Post-switch RT cost is a clean set-shifting measure.
+/// Perseverative errors (sorting by the rule that has just been retired) are
+/// the FTD signature, so they are detected here from the card itself rather
+/// than guessed at by the screen.
 ///
-/// Metrics: switch_cost_ms, trials_to_criterion
+/// Metrics: switch_cost_ms, trials_to_criterion, rule, is_post_switch
 class SortHarvestGame implements CognitiveGame {
   SortHarvestGame({Random? random, GhostHandController? ghostHand})
       : _random = random ?? Random(),
@@ -48,7 +52,32 @@ class SortHarvestGame implements CognitiveGame {
     ]);
   }
 
-  // Sorting dimensions
+  // ── The rule in play, which lives across items in a session ──────────────
+
+  /// What the baskets currently stand for.
+  String? _rule;
+
+  /// The rule that was just retired, used to recognise perseveration.
+  String? _previousRule;
+
+  /// Correct sorts in a row under [_rule].
+  int _correctRun = 0;
+
+  /// Sorts made in total since the last shift, for trials-to-criterion.
+  int _sinceSwitch = 0;
+
+  /// True while the next item is the first one under a new rule.
+  bool _pendingSwitch = false;
+
+  /// Response time on the last settled trial, so the cost of a shift can be
+  /// reported as the extra time the first post-switch trial took.
+  int? _steadyResponseMs;
+
+  /// The rule the elder is sorting by right now, once the first item has been
+  /// generated. Exposed for the screen's rule banner.
+  String? get currentRule => _rule;
+
+  // Sorting dimensions, easiest first.
   static const List<String> dimensions = ['type', 'colour', 'size'];
 
   // Produce items with multi-dimensional attributes
@@ -87,72 +116,112 @@ class SortHarvestGame implements CognitiveGame {
     final params = _paramsFor(difficulty);
     final matCount = params['matCount']!.toInt();
     final dimensionCount = params['dimensionCount']!.toInt().clamp(1, dimensions.length);
-    final switchFrequency = params['switchEvery']!.round();
+    final switchFrequency = max(1, params['switchEvery']!.round());
 
-    final pool = [..._produce]..shuffle(_random);
-    final card = pool.first;
-
-    // Pick current sorting dimension, only among those unlocked so far.
     final eligibleDimensions = dimensions.take(dimensionCount).toList();
-    final currentDimension =
-        eligibleDimensions[_random.nextInt(eligibleDimensions.length)];
 
-    // Correct mat is the one matching the card's value for current dimension
-    final correctMat = card[currentDimension]!;
-
-    // Build mats (sorting targets): ALWAYS include the correct mat, plus distractors
-    final uniqueValues = <String>{};
-    for (final item in _produce) {
-      uniqueValues.add(item[currentDimension]!);
+    // Settle on the rule. It starts at the plainest one (what the thing is)
+    // and only moves on once the elder has shown they have this one.
+    if (_rule == null || !eligibleDimensions.contains(_rule)) {
+      _rule = eligibleDimensions.first;
+      _correctRun = 0;
+      _sinceSwitch = 0;
+    } else if (eligibleDimensions.length > 1 && _correctRun >= switchFrequency) {
+      _previousRule = _rule;
+      final next = (eligibleDimensions.indexOf(_rule!) + 1) % eligibleDimensions.length;
+      _rule = eligibleDimensions[next];
+      _correctRun = 0;
+      _sinceSwitch = 0;
+      _pendingSwitch = true;
     }
+    final rule = _rule!;
+    final isPostSwitch = _pendingSwitch;
+    _pendingSwitch = false;
+
+    // A card that actually tells the rules apart: its value under the current
+    // rule must not put it in the same basket as the retired rule would, or
+    // a perseverative answer would look correct.
+    final pool = [..._produce]..shuffle(_random);
+    final card = pool.firstWhere(
+      (c) => _previousRule == null || _previousRule == rule || c[_previousRule!] != c[rule],
+      orElse: () => pool.first,
+    );
+
+    final correctMat = card[rule]!;
+
+    // Build the baskets: always the right one, plus other real values of the
+    // same kind so every basket is a plausible home for something.
+    final uniqueValues = <String>{for (final item in _produce) item[rule]!};
     final otherValues = uniqueValues.where((v) => v != correctMat).toList()
       ..shuffle(_random);
     final actualMatCount = min(matCount, uniqueValues.length);
-    final distractorsNeeded = max(0, actualMatCount - 1);
     final mats = [
       correctMat,
-      ...otherValues.take(distractorsNeeded),
+      ...otherValues.take(max(0, actualMatCount - 1)),
     ]..shuffle(_random);
 
     return GameItem(
       id: 'sort_${card['id']}',
       difficulty: difficulty,
       context: {
-        'dimension': currentDimension,
+        'dimension': rule,
         'cardId': card['id'],
         'correctMat': correctMat,
         'matCount': actualMatCount,
         'switchFrequency': switchFrequency,
+        'isPostSwitch': isPostSwitch,
         'contentVersion': content.version,
       },
       payload: {
         'card': card,
         'mats': mats,
-        'dimension': currentDimension,
+        'dimension': rule,
         'correctMat': correctMat,
+
+        // The screen shows a calm "we are matching by ..." note on the first
+        // card under a new rule, so a shift is never a silent trap.
+        'ruleChanged': isPostSwitch,
+        'previousDimension': _previousRule,
       },
     );
   }
 
-  /// Called when the elder drags a card to a mat.
+  /// Called when the elder puts a card in a basket.
   void submit({
     required GameItem item,
     required String chosenMat,
     required int initiationMs,
     required int movementMs,
-    bool isPostSwitch = false,
-    int? previousSwitchCostMs,
-    int? trialsToLastCriterion,
   }) {
     final correctMat = item.context['correctMat'] as String;
     final correct = chosenMat == correctMat;
+    final isPostSwitch = item.context['isPostSwitch'] as bool? ?? false;
+    final card = (item.payload['card'] as Map?)?.cast<String, String>();
 
+    _sinceSwitch++;
+    if (correct) {
+      _correctRun++;
+    } else {
+      _correctRun = 0;
+    }
+
+    // Perseveration: the basket chosen is exactly where the retired rule
+    // would have put this card.
     String? errorClass;
     if (!correct) {
-      // Check if the chosen mat would be correct under a different dimension
-      // This indicates perseveration on an old rule
-      errorClass = isPostSwitch ? 'perseverative' : 'non_perseverative';
+      final previous = _previousRule;
+      final byOldRule = previous == null ? null : card?[previous];
+      errorClass = byOldRule != null && byOldRule == chosenMat
+          ? 'perseverative'
+          : 'non_perseverative';
     }
+
+    // The cost of a shift: how much longer the first card under a new rule
+    // took than the settled pace before it.
+    final responseMs = initiationMs + movementMs;
+    final switchCostMs =
+        isPostSwitch && _steadyResponseMs != null ? max(0, responseMs - _steadyResponseMs!) : 0;
+    if (!isPostSwitch) _steadyResponseMs = responseMs;
 
     _trials.add(TrialResult(
       correct: correct,
@@ -164,8 +233,9 @@ class SortHarvestGame implements CognitiveGame {
       metrics: {
         'dimension': item.context['dimension'],
         'is_post_switch': isPostSwitch,
-        'switch_cost_ms': previousSwitchCostMs ?? 0,
-        'trials_to_criterion': trialsToLastCriterion ?? 0,
+        'switch_cost_ms': switchCostMs,
+        'trials_to_criterion': _sinceSwitch,
+        'correct_run': _correctRun,
       },
     ));
   }

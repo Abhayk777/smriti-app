@@ -380,7 +380,7 @@ class RealisticHandPainter extends CustomPainter {
       width: fingerWidth * 0.58,
       height: 24,
     );
-    final nailRRect = RRect.fromRectAndRadius(nailRect, const Radius.circular(10));
+    final nailRRect = RRect.fromRectAndRadius(nailRect, const Radius.circular(14));
 
     final nailGradient = LinearGradient(
       begin: Alignment.topCenter,

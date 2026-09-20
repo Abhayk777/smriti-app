@@ -295,8 +295,8 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
                     decoration: BoxDecoration(
                       color: AppColors.raisedSurface,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppColors.border),
+                      borderRadius: BorderRadius.circular(14),
+                      boxShadow: Shadows.card(),
                     ),
                     child: DropdownButtonHideUnderline(
                       child: DropdownButton<String>(
@@ -345,7 +345,7 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
                         foregroundColor: AppColors.onColor,
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(14),
                         ),
                       ),
                       child: _isSyncing
@@ -364,9 +364,10 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
                       foregroundColor: AppColors.terracotta,
                       padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(14),
                       ),
-                      side: const BorderSide(color: AppColors.terracotta),
+                      side: BorderSide.none,
+                      backgroundColor: AppColors.terracotta.withValues(alpha: 0.12),
                     ),
                     child: const Text('Re-pair Device'),
                   ),
@@ -469,9 +470,10 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
                         foregroundColor: AppColors.terracotta,
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(14),
                         ),
-                        side: const BorderSide(color: AppColors.terracotta, width: 2),
+                        side: BorderSide.none,
+                        backgroundColor: AppColors.terracotta.withValues(alpha: 0.12),
                       ),
                       icon: const Icon(Icons.notification_important_rounded),
                       label: const Text(
@@ -585,19 +587,11 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
     );
   }
 
-  Widget _buildSectionTitle(String title) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 20, bottom: 12),
-      child: Text(
+  Widget _buildSectionTitle(String title) => SectionHeading(
         title,
-        style: const TextStyle(
-          fontSize: 18,
-          fontWeight: FontWeight.w700,
-          color: AppColors.primaryText,
-        ),
-      ),
-    );
-  }
+        color: AppColors.terracotta,
+        padding: const EdgeInsets.only(top: Insets.lg, bottom: Insets.md),
+      );
 
   Widget _buildInfoRow(String label, String value) {
     return Padding(
@@ -714,7 +708,7 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
                 keyboardType: TextInputType.number,
                 decoration: const InputDecoration(
                   isDense: true,
-                  border: OutlineInputBorder(),
+                  border: UnderlineInputBorder(),
                   contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                 ),
                 onSubmitted: _saveRestMinutes,
@@ -927,7 +921,7 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.06),
@@ -1010,7 +1004,9 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
         1: FlexColumnWidth(1.5),
         2: FlexColumnWidth(1.5),
       },
-      border: TableBorder.all(color: AppColors.border, width: 1),
+      border: TableBorder.symmetric(
+        inside: BorderSide(color: AppColors.border.withValues(alpha: 0.7)),
+      ),
       children: [
         TableRow(
           decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.04)),
@@ -1080,8 +1076,8 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: Shadows.card(),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

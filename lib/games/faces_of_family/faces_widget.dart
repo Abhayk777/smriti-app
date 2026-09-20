@@ -287,7 +287,7 @@ class _FacesWidgetState extends State<FacesWidget> {
             ),
             decoration: BoxDecoration(
               color: chosen ? color : Color.lerp(color, Colors.white, 0.86),
-              borderRadius: BorderRadius.circular(22),
+              borderRadius: BorderRadius.circular(20),
               boxShadow: [
                 BoxShadow(
                   color: color.withValues(alpha: chosen ? 0.4 : 0.14),

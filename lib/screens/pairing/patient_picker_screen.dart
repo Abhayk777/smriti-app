@@ -48,10 +48,10 @@ class PatientPickerScreen extends StatelessWidget {
                     final patient = patients[index];
                     return Material(
                       color: AppColors.raisedSurface,
-                      borderRadius: BorderRadius.circular(18),
+                      borderRadius: BorderRadius.circular(20),
                       child: InkWell(
                         key: Key('patient_${patient.id}'),
-                        borderRadius: BorderRadius.circular(18),
+                        borderRadius: BorderRadius.circular(20),
                         onTap: () => Navigator.of(context).pop(patient),
                         child: Container(
                           padding: const EdgeInsets.symmetric(
@@ -59,11 +59,8 @@ class PatientPickerScreen extends StatelessWidget {
                             vertical: 18,
                           ),
                           decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(18),
-                            border: Border.all(
-                              color: AppColors.border,
-                              width: 1.5,
-                            ),
+                            borderRadius: BorderRadius.circular(Radii.md),
+                            boxShadow: Shadows.card(AppColors.terracotta),
                           ),
                           child: Row(
                             children: [
@@ -80,17 +77,17 @@ class PatientPickerScreen extends StatelessWidget {
                                   children: [
                                     Text(
                                       patient.displayName,
-                                      style: const TextStyle(
-                                        fontSize: 18,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: AppText.body.copyWith(
+                                        fontSize: 19,
                                         fontWeight: FontWeight.w700,
-                                        color: AppColors.primaryText,
                                       ),
                                     ),
-                                    const SizedBox(height: 4),
+                                    const SizedBox(height: 3),
                                     Text(
                                       patient.langCode.toUpperCase(),
-                                      style: TextStyle(
-                                        fontSize: 13,
+                                      style: AppText.eyebrow.copyWith(
                                         color: AppColors.secondaryText,
                                       ),
                                     ),

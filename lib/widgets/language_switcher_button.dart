@@ -37,12 +37,12 @@ class LanguageSwitcherButton extends StatelessWidget {
           color: Colors.transparent,
           child: InkWell(
             onTap: () => showLanguagePicker(context, controller: _controller),
-            borderRadius: BorderRadius.circular(24),
+            borderRadius: BorderRadius.circular(26),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
               decoration: BoxDecoration(
                 color: AppColors.raisedSurface.withValues(alpha: 0.92),
-                borderRadius: BorderRadius.circular(24),
+                borderRadius: BorderRadius.circular(26),
                 
                 boxShadow: [
                   BoxShadow(
@@ -180,7 +180,7 @@ Future<void> showLanguagePicker(
                           ctrl.setLanguage(meta.code);
                           Navigator.of(ctx).pop();
                         },
-                        borderRadius: BorderRadius.circular(18),
+                        borderRadius: BorderRadius.circular(20),
                         child: Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 18,
@@ -190,7 +190,7 @@ Future<void> showLanguagePicker(
                             color: isSelected
                                 ? Color.lerp(AppColors.leafGreen, Colors.white, 0.85)
                                 : AppColors.raisedSurface,
-                            borderRadius: BorderRadius.circular(18),
+                            borderRadius: BorderRadius.circular(20),
                             border: Border.all(
                               color: isSelected
                                   ? AppColors.leafGreen

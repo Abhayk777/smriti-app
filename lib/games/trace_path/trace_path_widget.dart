@@ -122,7 +122,7 @@ class _TracePathWidgetState extends State<TracePathWidget> {
           Expanded(
             child: DecoratedBox(
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(30),
+                borderRadius: BorderRadius.circular(32),
                 boxShadow: [
                   BoxShadow(
                     color: AppColors.indigo.withValues(alpha: 0.22),
@@ -132,7 +132,7 @@ class _TracePathWidgetState extends State<TracePathWidget> {
                 ],
               ),
               child: ClipRRect(
-              borderRadius: BorderRadius.circular(30),
+              borderRadius: BorderRadius.circular(32),
               child: Stack(
                 fit: StackFit.expand,
                 children: [

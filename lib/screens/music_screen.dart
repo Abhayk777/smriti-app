@@ -254,7 +254,7 @@ class _MusicScreenState extends State<MusicScreen>
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     color: AppColors.raisedSurface,
-                    border: Border.all(color: AppColors.marigold, width: 3),
+                    boxShadow: Shadows.raised(AppColors.marigold),
                   ),
                   child: Center(
                     child: Icon(track.icon, size: 84, color: AppColors.marigoldDark),
@@ -266,23 +266,20 @@ class _MusicScreenState extends State<MusicScreen>
           const SizedBox(height: 24),
 
           // Track Title
-          Text(
-            track.title,
-            style: const TextStyle(
-              fontSize: 26,
-              fontWeight: FontWeight.w800,
-              color: AppColors.primaryText,
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: Insets.lg),
+            child: Text(
+              track.title,
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: AppText.title,
             ),
-            textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: Insets.xs),
           Text(
             track.category,
-            style: const TextStyle(
-              fontSize: 16,
-              color: AppColors.secondaryText,
-              fontWeight: FontWeight.w500,
-            ),
+            style: AppText.eyebrow.copyWith(color: AppColors.secondaryText),
           ),
           const SizedBox(height: 32),
 
@@ -340,32 +337,44 @@ class _MusicScreenState extends State<MusicScreen>
         final t = _tracks[index];
         final isCurrent = index == _selectedTrackIndex;
 
-        return Container(
-          margin: const EdgeInsets.only(bottom: 12),
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 220),
+          margin: const EdgeInsets.only(bottom: Insets.md),
           decoration: BoxDecoration(
             color: isCurrent
-                ? AppColors.marigold.withValues(alpha: 0.12)
+                ? AppColors.marigold.withValues(alpha: 0.16)
                 : AppColors.raisedSurface,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: isCurrent ? AppColors.marigold : AppColors.border,
-              width: isCurrent ? 2 : 1,
-            ),
+            borderRadius: BorderRadius.circular(Radii.md),
+            boxShadow: isCurrent
+                ? Shadows.raised(AppColors.marigold)
+                : Shadows.card(AppColors.marigoldDark),
           ),
           child: ListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            leading: Icon(t.icon, size: 30, color: AppColors.marigoldDark),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(Radii.md),
+            ),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: Insets.md,
+              vertical: Insets.sm + 2,
+            ),
+            leading: IconMedallion(
+              icon: t.icon,
+              color: AppColors.marigoldDark,
+              size: 50,
+              background: AppColors.marigold.withValues(alpha: 0.18),
+            ),
             title: Text(
               t.title,
-              style: TextStyle(
-                fontSize: 17,
-                fontWeight: isCurrent ? FontWeight.w700 : FontWeight.w600,
-                color: AppColors.primaryText,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppText.body.copyWith(
+                fontSize: 19,
+                fontWeight: isCurrent ? FontWeight.w800 : FontWeight.w700,
               ),
             ),
             subtitle: Text(
               t.category,
-              style: const TextStyle(fontSize: 13, color: AppColors.secondaryText),
+              style: AppText.bodyMuted.copyWith(fontSize: 15),
             ),
             trailing: isCurrent && _isPlaying
                 ? const Icon(Icons.equalizer_rounded, color: AppColors.marigold)

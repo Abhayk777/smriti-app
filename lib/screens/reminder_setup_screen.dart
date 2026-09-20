@@ -125,7 +125,7 @@ class _ReminderSetupScreenState extends State<ReminderSetupScreen>
                 ),
               ),
               const SizedBox(height: 16),
-              const GamosaBand(),
+              const Hairline(color: AppColors.terracotta),
               const SizedBox(height: 20),
               _row(
                 ReminderSetupItem.overlay,
@@ -174,7 +174,7 @@ class _ReminderSetupScreenState extends State<ReminderSetupScreen>
                         : AppColors.terracotta,
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(14),
                     ),
                   ),
                   child: Text(

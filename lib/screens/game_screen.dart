@@ -18,6 +18,7 @@ import '../games/cognitive_game.dart';
 import '../games/game_catalog.dart';
 import '../games/ui/game_chrome.dart';
 import '../games/session_runner.dart';
+import '../ui/motion.dart';
 import '../ui/smriti_ui.dart';
 import 'game_tutorial_screen.dart';
 
@@ -69,6 +70,9 @@ class _GameScreenState extends State<GameScreen> {
   StreamSubscription<TrialFeedback>? _feedbackSub;
   TrialFeedback? _lastFeedback;
   int _feedbackCount = 0;
+
+  /// Bumped on every praise, which sets the petals off.
+  int _praiseCount = 0;
 
   /// Faces of My Family is played with the elder's real family, so it needs
   /// at least two people from the caregiver before it can start.
@@ -143,7 +147,10 @@ class _GameScreenState extends State<GameScreen> {
     _feedbackSub = runner.feedback.listen((feedback) {
       if (mounted) {
         final shown = ++_feedbackCount;
-        setState(() => _lastFeedback = feedback);
+        setState(() {
+          _lastFeedback = feedback;
+          if (feedback.tone == FeedbackTone.praise) _praiseCount++;
+        });
         // Clear feedback after 2 seconds, unless a newer one replaced it
         Future.delayed(const Duration(seconds: 2), () {
           if (mounted && shown == _feedbackCount) {
@@ -279,7 +286,7 @@ class _GameScreenState extends State<GameScreen> {
             return Dialog(
               clipBehavior: Clip.antiAlias,
               insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(26)),
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 420),
                 child: BreakLockDialog(
@@ -304,7 +311,7 @@ class _GameScreenState extends State<GameScreen> {
             return Dialog(
               clipBehavior: Clip.antiAlias,
               insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(26)),
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 420),
                 child: RestCardDialog(
@@ -389,7 +396,7 @@ class _GameScreenState extends State<GameScreen> {
           return Dialog(
             clipBehavior: Clip.antiAlias,
             insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(26)),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 420),
               child: isBreak
@@ -668,6 +675,11 @@ class _GameScreenState extends State<GameScreen> {
               ],
             ),
 
+            // Marigold petals for a moment worth marking.
+            Positioned.fill(
+              child: PetalBurst(play: _praiseCount),
+            ),
+
             // Feedback overlay
             if (_lastFeedback != null) _buildFeedbackOverlay(),
           ],
@@ -685,10 +697,9 @@ class _GameScreenState extends State<GameScreen> {
       elapsed: _elapsed,
       compact: MediaQuery.sizeOf(context).height < 500,
       onHelp: () {
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => GameTutorialScreen(gameId: widget.gameId, isFromGame: true),
-          ),
+        pushSmriti(
+          context,
+          GameTutorialScreen(gameId: widget.gameId, isFromGame: true),
         );
       },
       onClose: () => _endSession(completed: false),
@@ -842,7 +853,7 @@ class RestCardDialog extends StatelessWidget {
         padding: EdgeInsets.all(isCompact ? 18 : 24),
         decoration: BoxDecoration(
           color: Color.lerp(AppColors.leafGreen, Colors.white, 0.85),
-          borderRadius: BorderRadius.circular(28),
+          borderRadius: BorderRadius.circular(26),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -935,7 +946,7 @@ class BreakLockDialog extends StatelessWidget {
         padding: EdgeInsets.all(isCompact ? 20 : 28),
         decoration: BoxDecoration(
           color: Color.lerp(AppColors.leafGreen, Colors.white, 0.85),
-          borderRadius: BorderRadius.circular(28),
+          borderRadius: BorderRadius.circular(26),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,

@@ -250,7 +250,7 @@ class _MyDayWidgetState extends State<MyDayWidget> {
                 backgroundColor: AppColors.leafGreen,
                 foregroundColor: Colors.white,
                 elevation: 0,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
               ),
             ),
           )
@@ -312,7 +312,7 @@ class _MyDayWidgetState extends State<MyDayWidget> {
         padding: EdgeInsets.fromLTRB(isCompact ? 10 : 14, isCompact ? 8 : 11, 6, isCompact ? 8 : 11),
         decoration: BoxDecoration(
           color: AppColors.raisedSurface,
-          borderRadius: BorderRadius.circular(22),
+          borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
               color: AppColors.riverTeal.withValues(alpha: 0.14),
@@ -438,7 +438,7 @@ class _MyDayWidgetState extends State<MyDayWidget> {
                       ),
                       decoration: BoxDecoration(
                         color: tint,
-                        borderRadius: BorderRadius.circular(18),
+                        borderRadius: BorderRadius.circular(20),
                         boxShadow: [BoxShadow(color: AppColors.terracottaDeep.withValues(alpha: 0.07), blurRadius: 10, offset: const Offset(0, 3))],
                       ),
                       child: Text(

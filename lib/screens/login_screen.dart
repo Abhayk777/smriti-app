@@ -178,7 +178,7 @@ class _LoginScreenState extends State<LoginScreen> {
     // The logo artwork has its own sand background, so it sits on a badge
     // of the same colour.
     final logo = ClipRRect(
-      borderRadius: BorderRadius.circular(24),
+      borderRadius: BorderRadius.circular(26),
       child: Image.asset(
         'assets/images/smriti_login_logo.png',
         width: large ? 340 : 260,
@@ -212,11 +212,11 @@ class _LoginScreenState extends State<LoginScreen> {
       decoration: BoxDecoration(
         color: AppColors.raisedSurface,
         borderRadius: BorderRadius.circular(32),
-        boxShadow: [BoxShadow(color: AppColors.terracottaDeep.withValues(alpha: 0.07), blurRadius: 10, offset: const Offset(0, 3))],
+        boxShadow: Shadows.card(),
       ),
       child: Column(
         children: [
-          const GamosaBand(height: 14),
+          const Hairline(color: AppColors.terracotta),
           Expanded(
             child: Center(
               child: SingleChildScrollView(
@@ -250,6 +250,18 @@ class _LoginScreenState extends State<LoginScreen> {
       filled: true,
       fillColor: AppColors.pageBackground,
       contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 20),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(Radii.md),
+        borderSide: BorderSide.none,
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(Radii.md),
+        borderSide: BorderSide.none,
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(Radii.md),
+        borderSide: const BorderSide(color: AppColors.terracotta, width: 2.5),
+      ),
     );
   }
 
@@ -259,26 +271,19 @@ class _LoginScreenState extends State<LoginScreen> {
       padding: const EdgeInsets.fromLTRB(22, 26, 22, 24),
       decoration: BoxDecoration(
         color: AppColors.raisedSurface,
-        borderRadius: BorderRadius.circular(28),
-        boxShadow: [BoxShadow(color: AppColors.terracottaDeep.withValues(alpha: 0.07), blurRadius: 10, offset: const Offset(0, 3))],
+        borderRadius: BorderRadius.circular(26),
+        boxShadow: Shadows.card(),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text(
-            'Caregiver sign in',
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.w800,
-              color: AppColors.primaryText,
-            ),
-          ),
-          const SizedBox(height: 4),
-          const Text(
+          Text('Caregiver sign in', style: AppText.title.copyWith(fontSize: 25)),
+          const SizedBox(height: Insets.xs),
+          Text(
             'Set up this device for your family member.',
-            style: TextStyle(fontSize: 16, color: AppColors.secondaryText),
+            style: AppText.bodyMuted.copyWith(fontSize: 16),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: Insets.lg),
 
           // EMAIL
           TextField(

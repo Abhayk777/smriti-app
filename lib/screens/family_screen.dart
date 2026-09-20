@@ -84,7 +84,7 @@ class _FamilyScreenState extends State<FamilyScreen> {
             child: Column(
               children: [
                 ScreenHeader(
-      image: familyHomeGlyph,
+                  image: familyHomeGlyph,
                   title: AppStrings.myFamily(lang),
                   subtitle: AppStrings.thePeopleWhoLoveYou(lang),
                   icon: Icons.people_alt_rounded,
@@ -125,7 +125,7 @@ class _FamilyScreenState extends State<FamilyScreen> {
         maxCrossAxisExtent: compact ? 240 : 280,
         crossAxisSpacing: compact ? 12 : 18,
         mainAxisSpacing: compact ? 12 : 18,
-        childAspectRatio: 0.78,
+        childAspectRatio: 0.82,
       ),
       itemCount: _people.length,
       itemBuilder: (context, index) {
@@ -155,17 +155,23 @@ class _PersonCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return PressableCard(
+    return BouncyTap(
+      pressedScale: 0.96,
       onTap: onTap,
-      borderColor: AppColors.border,
-      semanticLabel: person.name,
-      padding: const EdgeInsets.all(8),
-      child: Column(
-        children: [
-          Expanded(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(18),
-              child: FutureBuilder<File?>(
+      child: Semantics(
+        button: true,
+        label: person.name,
+        child: Container(
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            color: AppColors.raisedSurface,
+            borderRadius: BorderRadius.circular(Radii.lg),
+            boxShadow: Shadows.card(AppColors.indigo),
+          ),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              FutureBuilder<File?>(
                 future: _resolveFile(person.photoPath, FilePaths.peoplePhotos, person.id),
                 builder: (context, snapshot) {
                   final file = snapshot.data;
@@ -180,55 +186,65 @@ class _PersonCard extends StatelessWidget {
                   return _buildPlaceholder();
                 },
               ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(6, 10, 6, 6),
-            child: Column(
-              children: [
-                Text(
-                  person.name,
-                  style: const TextStyle(
-                    fontSize: 19,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.primaryText,
-                  ),
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+              const PhotoScrim(strength: 0.8),
+              Positioned(
+                left: Insets.md,
+                right: Insets.md,
+                bottom: Insets.md,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      person.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 21,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                      ),
+                    ),
+                    Text(
+                      _capitalize(person.relationship),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white.withValues(alpha: 0.88),
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  _capitalize(person.relationship),
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.secondaryText,
-                  ),
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
 
   Widget _buildPlaceholder() {
     final color = _placeholderColor(person.name);
-    return Container(
-      color: color.withValues(alpha: 0.14),
-      width: double.infinity,
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color.lerp(color, Colors.white, 0.72)!,
+            Color.lerp(color, Colors.white, 0.42)!,
+          ],
+        ),
+      ),
       child: Center(
         child: Text(
           person.name.isNotEmpty ? person.name[0].toUpperCase() : '?',
           style: TextStyle(
-            fontSize: 56,
-            fontWeight: FontWeight.w700,
-            color: color,
+            fontSize: 72,
+            fontWeight: FontWeight.w800,
+            color: Colors.white.withValues(alpha: 0.85),
           ),
         ),
       ),
@@ -385,7 +401,7 @@ class _PersonDetailScreenState extends State<_PersonDetailScreen> {
   Widget _buildPhoto(PeopleData person) {
     final color = _placeholderColor(person.name);
     return ClipRRect(
-      borderRadius: BorderRadius.circular(28),
+      borderRadius: BorderRadius.circular(26),
       child: _photoFile != null
           ? Image.file(_photoFile!, fit: BoxFit.cover)
           : Container(

@@ -134,25 +134,28 @@ class _PhotosScreenState extends State<PhotosScreen> {
   }
 
   Widget _buildGrid() {
+    final gutter = Screen.gutter(context);
     return GridView.builder(
-      padding: const EdgeInsets.all(20),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        crossAxisSpacing: 16,
-        mainAxisSpacing: 16,
-        childAspectRatio: 0.9,
+      padding: EdgeInsets.fromLTRB(gutter, Insets.lg, gutter, Insets.xl),
+      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+        maxCrossAxisExtent: 260,
+        crossAxisSpacing: Insets.md,
+        mainAxisSpacing: Insets.md,
+        childAspectRatio: 0.88,
       ),
       itemCount: _photos.length,
       itemBuilder: (context, index) {
         final item = _photos[index];
         final hasFile = item.imagePath.isNotEmpty && File(item.imagePath).existsSync();
 
-        return GestureDetector(
+        return BouncyTap(
+          pressedScale: 0.96,
           onTap: () => _openSlideshow(index),
           child: Container(
+            clipBehavior: Clip.antiAlias,
             decoration: BoxDecoration(
               color: AppColors.raisedSurface,
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(Radii.lg),
               
               boxShadow: [
                 BoxShadow(
@@ -162,56 +165,63 @@ class _PhotosScreenState extends State<PhotosScreen> {
                 ),
               ],
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+            child: Stack(
+              fit: StackFit.expand,
               children: [
-                Expanded(
-                  child: ClipRRect(
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
-                    child: hasFile
-                        ? Image.file(
-                            File(item.imagePath),
-                            fit: BoxFit.cover,
-                          )
-                        : Container(
-                            color: _placeholderColor(item.title),
-                            child: Center(
-                              child: Text(
-                                item.title.isNotEmpty ? item.title[0].toUpperCase() : '?',
-                                style: const TextStyle(
-                                  fontSize: 48,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                              ),
+                hasFile
+                    ? Image.file(File(item.imagePath), fit: BoxFit.cover)
+                    : DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              Color.lerp(_placeholderColor(item.title), Colors.white, 0.55)!,
+                              _placeholderColor(item.title),
+                            ],
+                          ),
+                        ),
+                        child: Center(
+                          child: Text(
+                            item.title.isNotEmpty ? item.title[0].toUpperCase() : '?',
+                            style: TextStyle(
+                              fontSize: 64,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white.withValues(alpha: 0.9),
                             ),
                           ),
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        ),
+                      ),
+                const PhotoScrim(strength: 0.8),
+                Positioned(
+                  left: Insets.md,
+                  right: Insets.md,
+                  bottom: Insets.md,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
                         item.title,
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.primaryText,
-                        ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                      ),
-                      Text(
-                        item.subtitle,
                         style: const TextStyle(
-                          fontSize: 14,
-                          color: AppColors.secondaryText,
+                          fontSize: 19,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                       ),
+                      if (item.subtitle.isNotEmpty)
+                        Text(
+                          item.subtitle,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white.withValues(alpha: 0.88),
+                          ),
+                        ),
                     ],
                   ),
                 ),
