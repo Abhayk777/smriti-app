@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="docs/assets/banner.svg" alt="Smriti — a calm, offline-first tablet companion for an elder living with dementia" width="100%">
+<img src=".github/assets/banner.svg" alt="Smriti — be close to her day, from wherever you are" width="100%"/>
 
 <br>
 
@@ -461,7 +461,7 @@ so a bad character never reaches the server.
 The palette is North-East India: fired clay, marigold, indigo dye, tea, the red
 selvedge of a **gamosa**. Nothing is grey, and nothing is corporate blue.
 
-<img src="docs/assets/palette.svg" alt="The palette: terracotta, indigo, marigold, leaf green, river teal, gamosa red, page background" width="100%">
+<img src=".github/assets/palette.svg" alt="The palette: terracotta, indigo, marigold, leaf green, river teal, gamosa red, page background" width="100%">
 
 | Token | Where it belongs |
 |---|---|
@@ -619,14 +619,12 @@ bite hardest.
 
 <div align="center">
 
-<img src="docs/assets/logo.svg" alt="" width="84">
+<img src=".github/assets/logomark.svg" width="56" alt="Smriti logomark"/>
 
-<br>
+**Smriti** · _built for families who live far from home, and for the parents who raised them._
 
-**Built for one person, carefully.**
-
-<sub>Photography in <code>assets/images/photos/</code> is credited in
-<a href="assets/images/photos/CREDITS.md"><code>CREDITS.md</code></a> ·
-audio in <a href="assets/sounds/CREDITS.md"><code>assets/sounds/CREDITS.md</code></a></sub>
+<sub>Specs live in <a href="docs/APP-BUILD-SPEC.md"><code>docs/</code></a> ·
+contributor rules in <a href="AGENTS.md"><code>AGENTS.md</code></a> ·
+photography credited in <a href="assets/images/photos/CREDITS.md"><code>assets/images/photos/CREDITS.md</code></a></sub>
 
 </div>
