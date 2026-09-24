@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" width="160" height="160" role="img" aria-label="Smriti logo: a clay lamp with a living flame">
+  <title>Smriti</title>
+
+  <defs>
+    <radialGradient id="halo" cx="50%" cy="38%" r="55%">
+      <stop offset="0%"  stop-color="#D79E34" stop-opacity="0.55"/>
+      <stop offset="60%" stop-color="#D79E34" stop-opacity="0.12"/>
+      <stop offset="100%" stop-color="#D79E34" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="clay" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"  stop-color="#BF5537"/>
+      <stop offset="100%" stop-color="#5A2617"/>
+    </linearGradient>
+    <linearGradient id="flame" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0%"  stop-color="#BF5537"/>
+      <stop offset="45%" stop-color="#D79E34"/>
+      <stop offset="100%" stop-color="#FFF8ED"/>
+    </linearGradient>
+  </defs>
+
+  <!-- the warm ground the app is painted on -->
+  <circle cx="80" cy="80" r="78" fill="#F5EEE2"/>
+
+  <!-- the weave: a gamosa's grain, barely there -->
+  <g stroke="#5A2617" stroke-opacity="0.07" stroke-width="1">
+    <path d="M14 0v160M26 0v160M38 0v160M50 0v160M62 0v160M74 0v160M86 0v160M98 0v160M110 0v160M122 0v160M134 0v160M146 0v160"/>
+  </g>
+  <g stroke="#FFFFFF" stroke-opacity="0.35" stroke-width="1">
+    <path d="M0 14h160M0 26h160M0 38h160M0 50h160M0 62h160M0 74h160M0 86h160M0 98h160M0 110h160M0 122h160M0 134h160M0 146h160"/>
+  </g>
+  <circle cx="80" cy="80" r="78" fill="none" stroke="#E2D5C1" stroke-width="3"/>
+
+  <!-- the light the lamp throws, breathing -->
+  <circle cx="80" cy="66" r="52" fill="url(#halo)">
+    <animate attributeName="r" values="48;56;48" dur="3.6s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values="0.75;1;0.75" dur="3.6s" repeatCount="indefinite"/>
+  </circle>
+
+  <!-- flame -->
+  <g>
+    <path d="M80 34c9 11 14 19 14 27a14 14 0 0 1-28 0c0-8 5-16 14-27z" fill="url(#flame)">
+      <animateTransform attributeName="transform" type="scale"
+                        values="1 1;1.04 0.96;0.97 1.05;1 1"
+                        additive="sum" dur="1.9s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="1;0.88;1" dur="1.9s" repeatCount="indefinite"/>
+    </path>
+    <ellipse cx="80" cy="66" rx="4.5" ry="7" fill="#FFF8ED" opacity="0.9">
+      <animate attributeName="ry" values="7;5.6;7" dur="1.2s" repeatCount="indefinite"/>
+    </ellipse>
+  </g>
+
+  <!-- the diya -->
+  <path d="M34 82h92c0 20-20 34-46 34S34 102 34 82z" fill="url(#clay)"/>
+  <path d="M34 82h92a6 6 0 0 1-6 6H40a6 6 0 0 1-6-6z" fill="#8C3A24"/>
+  <!-- the gamosa's red edge stripe, on the rim -->
+  <g fill="#FFF8ED" opacity="0.45">
+    <rect x="48" y="96" width="14" height="3" rx="1.5"/>
+    <rect x="70" y="101" width="20" height="3" rx="1.5"/>
+    <rect x="98" y="96" width="14" height="3" rx="1.5"/>
+  </g>
+</svg>

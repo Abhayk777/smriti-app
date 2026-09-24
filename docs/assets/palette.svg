@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 132" width="980" height="132" role="img" aria-label="The Smriti palette: terracotta, indigo, marigold, leaf green, river teal, gamosa red and the page background">
+  <title>Smriti palette</title>
+  <rect width="980" height="132" rx="18" fill="#F5EEE2"/>
+
+  <g font-family="Segoe UI, Helvetica, Arial, sans-serif">
+    <!-- terracotta -->
+    <g transform="translate(20,20)">
+      <rect width="120" height="66" rx="14" fill="#BF5537">
+        <animate attributeName="opacity" values="0;1" dur="0.5s" begin="0.00s" fill="freeze"/>
+      </rect>
+      <text x="60" y="100" font-size="13" font-weight="bold" fill="#26211D" text-anchor="middle">terracotta</text>
+      <text x="60" y="117" font-size="11" fill="#5E554D" text-anchor="middle">#BF5537</text>
+    </g>
+    <!-- indigo -->
+    <g transform="translate(156,20)">
+      <rect width="120" height="66" rx="14" fill="#3C5A88">
+        <animate attributeName="opacity" values="0;1" dur="0.5s" begin="0.10s" fill="freeze"/>
+      </rect>
+      <text x="60" y="100" font-size="13" font-weight="bold" fill="#26211D" text-anchor="middle">indigo</text>
+      <text x="60" y="117" font-size="11" fill="#5E554D" text-anchor="middle">#3C5A88</text>
+    </g>
+    <!-- marigold -->
+    <g transform="translate(292,20)">
+      <rect width="120" height="66" rx="14" fill="#D79E34">
+        <animate attributeName="opacity" values="0;1" dur="0.5s" begin="0.20s" fill="freeze"/>
+      </rect>
+      <text x="60" y="100" font-size="13" font-weight="bold" fill="#26211D" text-anchor="middle">marigold</text>
+      <text x="60" y="117" font-size="11" fill="#5E554D" text-anchor="middle">#D79E34</text>
+    </g>
+    <!-- leaf green -->
+    <g transform="translate(428,20)">
+      <rect width="120" height="66" rx="14" fill="#477A55">
+        <animate attributeName="opacity" values="0;1" dur="0.5s" begin="0.30s" fill="freeze"/>
+      </rect>
+      <text x="60" y="100" font-size="13" font-weight="bold" fill="#26211D" text-anchor="middle">leafGreen</text>
+      <text x="60" y="117" font-size="11" fill="#5E554D" text-anchor="middle">#477A55</text>
+    </g>
+    <!-- river teal -->
+    <g transform="translate(564,20)">
+      <rect width="120" height="66" rx="14" fill="#2F6A6D">
+        <animate attributeName="opacity" values="0;1" dur="0.5s" begin="0.40s" fill="freeze"/>
+      </rect>
+      <text x="60" y="100" font-size="13" font-weight="bold" fill="#26211D" text-anchor="middle">riverTeal</text>
+      <text x="60" y="117" font-size="11" fill="#5E554D" text-anchor="middle">#2F6A6D</text>
+    </g>
+    <!-- gamosa red -->
+    <g transform="translate(700,20)">
+      <rect width="120" height="66" rx="14" fill="#A8322A">
+        <animate attributeName="opacity" values="0;1" dur="0.5s" begin="0.50s" fill="freeze"/>
+      </rect>
+      <text x="60" y="100" font-size="13" font-weight="bold" fill="#26211D" text-anchor="middle">gamosaRed</text>
+      <text x="60" y="117" font-size="11" fill="#5E554D" text-anchor="middle">#A8322A</text>
+    </g>
+    <!-- page background -->
+    <g transform="translate(836,20)">
+      <rect width="120" height="66" rx="14" fill="#F5EEE2" stroke="#E2D5C1" stroke-width="2">
+        <animate attributeName="opacity" values="0;1" dur="0.5s" begin="0.60s" fill="freeze"/>
+      </rect>
+      <text x="60" y="100" font-size="13" font-weight="bold" fill="#26211D" text-anchor="middle">pageBackground</text>
+      <text x="60" y="117" font-size="11" fill="#5E554D" text-anchor="middle">#F5EEE2</text>
+    </g>
+  </g>
+</svg>
